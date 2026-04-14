@@ -37,8 +37,12 @@ cd web
 cp .env.example .env        # fill in GitHub OAuth creds (optional for dev)
 npm install
 npx prisma migrate dev
+npm run db:seed -- sharziki "Sharvil Saxena"   # local dev user + API key
 npm run dev                 # http://localhost:3000
 ```
+
+For local-only setup without GitHub OAuth, `npm run db:seed -- <username> "<name>"` now works and prints a usable API key for the CLI.
+
 
 ### CLI
 
