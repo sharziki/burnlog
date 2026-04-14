@@ -13,7 +13,7 @@ const CONNECTORS = [
   { id: "claude", name: "Claude Code", detail: "Reads assistant usage blocks from ~/.claude/projects and dedupes repeated request IDs." },
   { id: "codex", name: "Codex CLI", detail: "Consumes Codex session totals from ~/.codex/sessions for OpenAI-side burn tracking." },
   { id: "hermes", name: "Hermes", detail: "Prepared for multi-provider agent runtime logs once Hermes sessions are available locally." },
-  { id: "openclaw", name: "OpenClaw", detail: "Keeps open or self-hosted coding-agent workflows on the same benchmark surface." },
+  { id: "openclaw", name: "OpenClaw", detail: "Keeps open or self-hosted coding-agent workflows on the same standings surface." },
 ];
 
 export function SettingsClient({
@@ -53,17 +53,17 @@ export function SettingsClient({
   return (
     <div className="settings-shell">
       <div className="page-container">
-        <div className="topbar">
-          <div className="brand-lockup">
-            <div className="brand-mark">BL</div>
+        <div className="topbar settings-topbar">
+          <Link className="landing-brand-inline" href="/">
+            <div className="brand-mark minimal-mark">BL</div>
             <div>
-              <div className="brand-title">Burnlog</div>
-              <div className="brand-subtitle">Profile settings and source connection</div>
+              <div className="brand-title mono-title">burnlog</div>
+              <div className="brand-subtitle">profile settings and source connection</div>
             </div>
-          </div>
+          </Link>
 
           <div className="inline-row">
-            <Link className="action-chip" href="/">Back to board</Link>
+            <Link className="action-chip" href="/board">Back to board</Link>
             <form action={signOutAction}>
               <button className="action-chip" type="submit">Sign out</button>
             </form>
@@ -75,10 +75,10 @@ export function SettingsClient({
             <div className="panel section-panel">
               <div className="eyebrow">Signed in</div>
               <h1 className="section-title" style={{ marginTop: 8 }}>{name}</h1>
-              <p className="section-copy">@{username} · this profile owns the API key used by the Burnlog CLI when you sync local coding-agent usage.</p>
+              <p className="section-copy">@{username} · this profile owns the upload key used by the Burnlog CLI when you sync real local usage.</p>
               <div className="inline-row" style={{ marginTop: 16 }}>
                 <span className="status-pill status-live">Private by default</span>
-                <span className="status-pill status-warming">Public profile by choice</span>
+                <span className="status-pill status-warming">Public standing by choice</span>
               </div>
             </div>
 
@@ -87,7 +87,7 @@ export function SettingsClient({
                 <div>
                   <div className="eyebrow">CLI key</div>
                   <h2 className="section-title">Generate an upload key</h2>
-                  <p className="section-copy">This key is what lets your local CLI sync usage into your Burnlog profile without exposing repo contents.</p>
+                  <p className="section-copy">This key lets your local CLI sync usage into Burnlog without exposing prompt text, source code, repo names, or file paths.</p>
                 </div>
                 <button className="button-primary" disabled={loading} onClick={createKey} type="button">
                   {loading ? "Generating..." : "Generate new key"}
@@ -131,7 +131,7 @@ export function SettingsClient({
           <div className="stack">
             <div className="panel section-panel">
               <div className="eyebrow">Supported sources</div>
-              <h2 className="section-title" style={{ marginTop: 8 }}>Easy connect to coding agents</h2>
+              <h2 className="section-title" style={{ marginTop: 8 }}>Current ingest adapters</h2>
               <div className="stack" style={{ marginTop: 18 }}>
                 {CONNECTORS.map((item) => (
                   <div className="panel-muted card-pad" key={item.id}>

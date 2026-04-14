@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { SettingsClient } from "./client";
 
@@ -13,23 +14,26 @@ export default async function SettingsPage() {
     return (
       <div className="settings-shell">
         <div className="page-container">
-          <div className="topbar">
-            <div className="brand-lockup">
-              <div className="brand-mark">BL</div>
+          <div className="topbar settings-topbar">
+            <Link className="landing-brand-inline" href="/">
+              <div className="brand-mark minimal-mark">BL</div>
               <div>
-                <div className="brand-title">Burnlog</div>
-                <div className="brand-subtitle">Settings and connection flow</div>
+                <div className="brand-title mono-title">burnlog</div>
+                <div className="brand-subtitle">connect your operator profile</div>
               </div>
+            </Link>
+            <div className="inline-row">
+              <Link className="action-chip" href="/board">Open board</Link>
             </div>
           </div>
 
           <div className="hero-grid">
             <div className="panel hero-copy">
               <div className="eyebrow">Claim your profile</div>
-              <h1 className="hero-title mono">Mint an API key, connect the CLI, and own your benchmark.</h1>
+              <h1 className="hero-title mono">Connect local coding-agent logs without exposing your repo.</h1>
               <p className="hero-text">
-                Burnlog keeps the board public-facing enough to be interesting, but private enough to avoid shipping your actual repo context.
-                Sign in with GitHub to generate your API key and turn local coding-agent usage into a real profile.
+                Sign in with GitHub to generate an upload key, claim your username, and turn your private local burn history into a
+                real public standing.
               </p>
               <form
                 action={async () => {
@@ -42,10 +46,11 @@ export default async function SettingsPage() {
             </div>
 
             <div className="panel hero-side">
-              <div className="eyebrow">Local dev shortcut</div>
-              <h2 className="section-title" style={{ marginTop: 8 }}>Seed without OAuth</h2>
+              <div className="eyebrow">Local development</div>
+              <h2 className="section-title" style={{ marginTop: 8 }}>Bootstrap before OAuth is configured</h2>
               <p className="section-copy">
-                For local-only demo work, Burnlog also supports bootstrapping a user and API key directly from Prisma. This keeps local iteration fast while the production path stays GitHub-auth based.
+                For local development only, you can mint a user and API key directly from Prisma. This is a setup shortcut, not a
+                hidden demo mode.
               </p>
               <div className="command-block" style={{ marginTop: 18 }}>
                 <div className="command-text">npm run db:seed -- sharziki "Sharvil Saxena"</div>
