@@ -7,6 +7,15 @@ import type { UserStats } from "@/lib/stats";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const SOURCE_LABELS: Record<string, string> = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+  hermes: "Hermes",
+  openclaw: "openclaw",
+  "anthropic-api": "Anthropic API",
+  "openai-api": "OpenAI API",
+};
+
 // --- Animated Counter ---
 function AnimCount({ value, duration = 1200 }: { value: number; duration?: number }) {
   const [display, setDisplay] = useState(0);
@@ -71,12 +80,15 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
     anthropic: "#D97706",
     openai: "#10B981",
     google: "#3B82F6",
+    other: "#6B7280",
   };
   const labels: Record<string, string> = {
     anthropic: "Anthropic",
     openai: "OpenAI",
     google: "Google",
+    other: "Other",
   };
+  const entries = Object.entries(providers).filter(([, v]) => v > 0);
   return (
     <div>
       <div
@@ -89,7 +101,7 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
           background: "#141414",
         }}
       >
-        {Object.entries(providers).map(([k, v]) => (
+        {entries.map(([k, v]) => (
           <div
             key={k}
             style={{
@@ -101,7 +113,7 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {Object.entries(providers).map(([k, v]) => (
+        {entries.map(([k, v]) => (
           <span
             key={k}
             style={{ fontSize: 11, color: "#9CA3AF", display: "flex", alignItems: "center", gap: 4 }}
@@ -119,6 +131,37 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+// --- Sources Strip ---
+function SourcesStrip({ sources }: { sources: UserStats["sources"] }) {
+  if (!sources.length) return null;
+  const total = sources.reduce((s, x) => s + x.tokens, 0) || 1;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {sources.map((s) => (
+        <div
+          key={s.source}
+          style={{
+            padding: "6px 12px",
+            background: "#0D0D0D",
+            border: "1px solid #1F1F1F",
+            borderRadius: 6,
+            fontSize: 11,
+            color: "#9CA3AF",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ color: "#D97706", fontWeight: 700 }}>{SOURCE_LABELS[s.source] ?? s.source}</span>
+          <span style={{ color: "#4B5563" }}>·</span>
+          <span style={{ color: "#fff" }}>{formatTokens(s.tokens)}</span>
+          <span style={{ color: "#4B5563" }}>({Math.round((s.tokens / total) * 100)}%)</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -152,58 +195,51 @@ function RankBadgePreview({ user }: { user: UserStats }) {
   );
 }
 
-// --- Activity Heatmap (derived from weeklyHistory padded out) ---
-function ActivityHeatmap({ seed }: { seed: number }) {
-  // Deterministic pseudo-random based on userId hash so it doesn't flicker on rerender.
-  const weeks = 12;
-  const days = 7;
-  const cells = [];
-  let s = seed || 1;
-  const rand = () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
-  for (let w = 0; w < weeks; w++) {
-    for (let d = 0; d < days; d++) {
-      const intensity = rand();
-      let color = "rgba(217,119,6,0.08)";
-      if (intensity > 0.3) color = "rgba(217,119,6,0.2)";
-      if (intensity > 0.5) color = "rgba(217,119,6,0.4)";
-      if (intensity > 0.7) color = "rgba(217,119,6,0.65)";
-      if (intensity > 0.9) color = "rgba(217,119,6,0.9)";
-      cells.push(
-        <div
-          key={`${w}-${d}`}
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 2,
-            background: color,
-            gridColumn: w + 1,
-            gridRow: d + 1,
-          }}
-        />,
-      );
-    }
-  }
+// --- Activity Heatmap (real data, full-width) ---
+function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
+  // heatmap has 84 entries, chronological oldest -> newest.
+  // Render as 12 columns (weeks) x 7 rows (days).
+  const max = Math.max(...heatmap, 1);
+  const cells = heatmap.map((v, idx) => {
+    const week = Math.floor(idx / 7);
+    const day = idx % 7;
+    const intensity = v / max;
+    let background = "#0D0D0D";
+    if (intensity > 0) background = "rgba(217,119,6,0.12)";
+    if (intensity > 0.15) background = "rgba(217,119,6,0.28)";
+    if (intensity > 0.35) background = "rgba(217,119,6,0.45)";
+    if (intensity > 0.6) background = "rgba(217,119,6,0.7)";
+    if (intensity > 0.85) background = "rgba(217,119,6,1)";
+    return (
+      <div
+        key={idx}
+        title={`${formatTokens(v)} tokens`}
+        style={{
+          gridColumn: week + 1,
+          gridRow: day + 1,
+          background,
+          border: "1px solid #0A0A0A",
+          borderRadius: 6,
+          aspectRatio: "1 / 1",
+          transition: "background 0.2s ease",
+        }}
+      />
+    );
+  });
+
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${weeks}, 10px)`,
-        gridTemplateRows: `repeat(${days}, 10px)`,
-        gap: 3,
+        gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
+        gridTemplateRows: "repeat(7, auto)",
+        gap: 6,
+        width: "100%",
       }}
     >
       {cells}
     </div>
   );
-}
-
-function hashSeed(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return Math.abs(h);
 }
 
 export function Burnlog({
@@ -393,16 +429,16 @@ export function Burnlog({
       borderRadius: 14,
       padding: 28,
     },
-    tag: {
-      display: "inline-block",
-      padding: "4px 10px",
-      borderRadius: 4,
-      background: "#141414",
-      fontSize: 11,
-      color: "#9CA3AF",
-      border: "1px solid #1F1F1F",
-      marginRight: 6,
+    modelRow: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "10px 14px",
+      background: "#0D0D0D",
+      border: "1px solid #141414",
+      borderRadius: 8,
       marginBottom: 6,
+      fontSize: 12,
     },
     badgeSection: {
       background: "#0A0A0A",
@@ -491,6 +527,8 @@ export function Burnlog({
       </div>
     );
   }
+
+  const topModelMax = Math.max(...selectedUser.topModels.map((m) => m.tokens), 1);
 
   return (
     <div style={styles.app}>
@@ -747,6 +785,24 @@ export function Burnlog({
                 ))}
               </div>
 
+              {/* Sources strip */}
+              {selectedUser.sources.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#6B7280",
+                      marginBottom: 10,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Sources
+                  </div>
+                  <SourcesStrip sources={selectedUser.sources} />
+                </div>
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div>
                   <div
@@ -804,35 +860,84 @@ export function Burnlog({
                         color: "#4B5563",
                         letterSpacing: 1,
                         textTransform: "uppercase",
-                        marginBottom: 6,
+                        marginBottom: 8,
                       }}
                     >
-                      Top Projects
+                      Top Models
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap" }}>
-                      {selectedUser.topProjects.map((p) => (
-                        <span key={p} style={styles.tag}>
-                          {p}
-                        </span>
-                      ))}
-                    </div>
+                    {selectedUser.topModels.length === 0 ? (
+                      <div style={{ fontSize: 11, color: "#4B5563" }}>—</div>
+                    ) : (
+                      selectedUser.topModels.map((m) => (
+                        <div key={m.model} style={styles.modelRow}>
+                          <span style={{ color: "#fff", fontWeight: 600 }}>{m.model}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div
+                              style={{
+                                width: 60,
+                                height: 4,
+                                background: "#141414",
+                                borderRadius: 2,
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${(m.tokens / topModelMax) * 100}%`,
+                                  height: "100%",
+                                  background: rank.color,
+                                }}
+                              />
+                            </div>
+                            <span style={{ color: "#D97706", fontWeight: 700 }}>
+                              {formatTokens(m.tokens)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
 
-              <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #141414" }}>
+              {/* Activity Heatmap — full-width */}
+              <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #141414" }}>
                 <div
                   style={{
-                    fontSize: 11,
-                    color: "#6B7280",
-                    marginBottom: 12,
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    marginBottom: 16,
                   }}
                 >
-                  Burn Activity · 12 Weeks
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#6B7280",
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Burn Activity · 12 Weeks
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#4B5563" }}>
+                    <span>less</span>
+                    {[0.12, 0.28, 0.45, 0.7, 1].map((a) => (
+                      <span
+                        key={a}
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 3,
+                          background: `rgba(217,119,6,${a})`,
+                          display: "inline-block",
+                        }}
+                      />
+                    ))}
+                    <span>more</span>
+                  </div>
                 </div>
-                <ActivityHeatmap seed={hashSeed(selectedUser.id)} />
+                <ActivityHeatmap heatmap={selectedUser.heatmap} />
               </div>
             </div>
           </div>
@@ -942,7 +1047,7 @@ export function Burnlog({
             color: "#4B5563",
           }}
         >
-          <span>burnlog · private</span>
+          <span>burnlog · private · v1</span>
           <div style={{ display: "flex", gap: 16 }}>
             <a href="/settings">Settings</a>
             <span>CLI</span>

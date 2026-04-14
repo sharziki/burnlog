@@ -1,4 +1,4 @@
-import type { BurnEvent } from "./parser.js";
+import type { BurnEvent } from "./adapters/index.js";
 
 export type IngestResponse = {
   ok: boolean;

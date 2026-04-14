@@ -1,6 +1,6 @@
 import pc from "picocolors";
 import { loadConfig, saveConfig } from "../config.js";
-import { parseClaudeProjects, totalTokens } from "../parser.js";
+import { scanAll, totalTokens } from "../adapters/index.js";
 import { ingest } from "../api.js";
 import { formatTokens } from "../format.js";
 
@@ -12,28 +12,34 @@ export async function sync(_args: string[]): Promise<void> {
     console.error(pc.red("no api key — run ") + pc.bold("burnlog login <key>"));
     process.exit(1);
   }
-  console.log(pc.dim("scanning " + cfg.claudeProjectsDir));
-  const result = parseClaudeProjects(cfg.claudeProjectsDir!);
-  if (!result.events.length) {
-    console.log(pc.yellow("no events found"));
+  const results = scanAll();
+  const events = results.flatMap((r) => r.events);
+  if (!events.length) {
+    console.log(pc.yellow("no events found across any adapter"));
+    for (const r of results) {
+      console.log("  " + pc.dim(r.source + ": ") + pc.dim(r.note ?? "0 events"));
+    }
     return;
   }
 
-  const total = result.events.reduce((s, e) => s + totalTokens(e), 0);
-  console.log(
-    "found " +
-      pc.cyan(result.events.length.toString()) +
-      " events (" +
-      pc.yellow(formatTokens(total)) +
-      " tokens)",
-  );
+  const total = events.reduce((s, e) => s + totalTokens(e), 0);
+  console.log("found " + pc.cyan(events.length.toString()) + " events across adapters:");
+  for (const r of results) {
+    if (!r.events.length) continue;
+    const t = r.events.reduce((s, e) => s + totalTokens(e), 0);
+    console.log(
+      "  " + pc.green("●") + " " + pc.bold(r.source.padEnd(14)) + pc.yellow(formatTokens(t)),
+    );
+  }
+  console.log(pc.dim("total: ") + pc.yellow(formatTokens(total)));
+  console.log();
 
   let inserted = 0;
   let skipped = 0;
-  for (let i = 0; i < result.events.length; i += BATCH) {
-    const chunk = result.events.slice(i, i + BATCH);
+  for (let i = 0; i < events.length; i += BATCH) {
+    const chunk = events.slice(i, i + BATCH);
     process.stdout.write(
-      pc.dim(`  uploading ${i + 1}-${i + chunk.length} / ${result.events.length}... `),
+      pc.dim(`  uploading ${i + 1}-${i + chunk.length} / ${events.length}... `),
     );
     try {
       const res = await ingest(cfg.apiUrl, cfg.apiKey, chunk);

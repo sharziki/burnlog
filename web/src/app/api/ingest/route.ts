@@ -4,8 +4,7 @@ import { hashApiKey } from "@/lib/apiKey";
 
 type IngestEvent = {
   requestId: string;
-  sessionId: string;
-  project: string;
+  source: string; // "claude-code" | "codex" | "hermes" | "openclaw"
   model: string;
   provider: string;
   inputTokens: number;
@@ -18,6 +17,15 @@ type IngestEvent = {
 type IngestBody = {
   events: IngestEvent[];
 };
+
+const ALLOWED_SOURCES = new Set([
+  "claude-code",
+  "codex",
+  "hermes",
+  "openclaw",
+  "anthropic-api",
+  "openai-api",
+]);
 
 export async function POST(req: Request) {
   const auth = req.headers.get("authorization");
@@ -46,10 +54,12 @@ export async function POST(req: Request) {
   let inserted = 0;
   let skipped = 0;
 
-  // createMany on SQLite doesn't support skipDuplicates pre-6.x reliably in
-  // older prisma; do per-row upserts to be safe and get accurate counts.
   for (const e of body.events) {
-    if (!e.requestId || !e.sessionId || !e.project) {
+    if (!e.requestId || !e.source || !e.model) {
+      skipped++;
+      continue;
+    }
+    if (!ALLOWED_SOURCES.has(e.source)) {
       skipped++;
       continue;
     }
@@ -58,15 +68,33 @@ export async function POST(req: Request) {
       (e.outputTokens ?? 0) +
       (e.cacheCreationTokens ?? 0) +
       (e.cacheReadTokens ?? 0);
-    const result = await prisma.burnEvent.upsert({
-      where: { userId_requestId: { userId: keyRow.userId, requestId: e.requestId } },
-      create: {
+    if (total <= 0) {
+      skipped++;
+      continue;
+    }
+
+    const existing = await prisma.burnEvent.findUnique({
+      where: {
+        userId_source_requestId: {
+          userId: keyRow.userId,
+          source: e.source,
+          requestId: e.requestId,
+        },
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    await prisma.burnEvent.create({
+      data: {
         userId: keyRow.userId,
         requestId: e.requestId,
-        sessionId: e.sessionId,
-        project: e.project,
-        model: e.model ?? "unknown",
-        provider: e.provider ?? "anthropic",
+        source: e.source,
+        model: e.model,
+        provider: e.provider ?? "other",
         inputTokens: e.inputTokens ?? 0,
         outputTokens: e.outputTokens ?? 0,
         cacheCreationTokens: e.cacheCreationTokens ?? 0,
@@ -74,12 +102,8 @@ export async function POST(req: Request) {
         totalTokens: total,
         timestamp: new Date(e.timestamp),
       },
-      update: {}, // idempotent — never overwrite
-      select: { createdAt: true },
     });
-    // upsert doesn't tell us insert vs update directly; check createdAt recency
-    if (Date.now() - result.createdAt.getTime() < 5000) inserted++;
-    else skipped++;
+    inserted++;
   }
 
   await prisma.apiKey.update({

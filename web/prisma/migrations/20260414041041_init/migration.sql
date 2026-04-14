@@ -59,8 +59,7 @@ CREATE TABLE "BurnEvent" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
     "requestId" TEXT NOT NULL,
-    "sessionId" TEXT NOT NULL,
-    "project" TEXT NOT NULL,
+    "source" TEXT NOT NULL,
     "model" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "inputTokens" INTEGER NOT NULL,
@@ -98,7 +97,10 @@ CREATE UNIQUE INDEX "ApiKey_keyHash_key" ON "ApiKey"("keyHash");
 CREATE INDEX "BurnEvent_userId_timestamp_idx" ON "BurnEvent"("userId", "timestamp");
 
 -- CreateIndex
-CREATE INDEX "BurnEvent_userId_project_idx" ON "BurnEvent"("userId", "project");
+CREATE INDEX "BurnEvent_userId_source_idx" ON "BurnEvent"("userId", "source");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "BurnEvent_userId_requestId_key" ON "BurnEvent"("userId", "requestId");
+CREATE INDEX "BurnEvent_userId_model_idx" ON "BurnEvent"("userId", "model");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BurnEvent_userId_source_requestId_key" ON "BurnEvent"("userId", "source", "requestId");

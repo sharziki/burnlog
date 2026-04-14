@@ -9,9 +9,11 @@ export type UserStats = {
   totalTokens: number;
   weeklyTokens: number;
   streak: number;
-  providers: { anthropic: number; openai: number; google: number };
-  weeklyHistory: number[];
-  topProjects: string[];
+  providers: { anthropic: number; openai: number; google: number; other: number };
+  sources: { source: string; tokens: number }[];
+  topModels: { model: string; tokens: number }[];
+  weeklyHistory: number[]; // 7 buckets ending today
+  heatmap: number[]; // 84 buckets = 12 weeks x 7 days, chronological oldest→newest
   tokensPerCommit: number;
   commits: number;
 };
@@ -46,22 +48,27 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     .filter((e) => e.timestamp.getTime() >= weekStart)
     .reduce((s, e) => s + e.totalTokens, 0);
 
-  // Provider split by share of tokens.
-  const providerTotals = { anthropic: 0, openai: 0, google: 0 };
+  const providerTotals = { anthropic: 0, openai: 0, google: 0, other: 0 };
   for (const e of events) {
     const p = e.provider as keyof typeof providerTotals;
     if (p in providerTotals) providerTotals[p] += e.totalTokens;
+    else providerTotals.other += e.totalTokens;
   }
-  const providerSum = providerTotals.anthropic + providerTotals.openai + providerTotals.google;
+  const providerSum =
+    providerTotals.anthropic +
+    providerTotals.openai +
+    providerTotals.google +
+    providerTotals.other;
   const providers = providerSum
     ? {
         anthropic: providerTotals.anthropic / providerSum,
         openai: providerTotals.openai / providerSum,
         google: providerTotals.google / providerSum,
+        other: providerTotals.other / providerSum,
       }
-    : { anthropic: 1, openai: 0, google: 0 };
+    : { anthropic: 1, openai: 0, google: 0, other: 0 };
 
-  // Weekly history: 7 buckets ending today.
+  // Weekly history (7 buckets ending today).
   const weeklyHistory: number[] = Array(7).fill(0);
   for (const e of events) {
     const diff = now - e.timestamp.getTime();
@@ -70,7 +77,17 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     if (bucket >= 0 && bucket < 7) weeklyHistory[bucket] += e.totalTokens;
   }
 
-  // Streak: consecutive days ending today with at least one event.
+  // 12-week heatmap: 84 daily buckets chronological oldest→newest.
+  const heatmap: number[] = Array(84).fill(0);
+  const heatmapStart = now - 84 * DAY;
+  for (const e of events) {
+    const t = e.timestamp.getTime();
+    if (t < heatmapStart) continue;
+    const idx = Math.floor((t - heatmapStart) / DAY);
+    if (idx >= 0 && idx < 84) heatmap[idx] += e.totalTokens;
+  }
+
+  // Streak.
   const days = new Set(
     events.map((e) => {
       const d = new Date(e.timestamp);
@@ -85,18 +102,21 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     else if (i > 0) break;
   }
 
-  // Top projects by tokens.
-  const byProject = new Map<string, number>();
-  for (const e of events) {
-    const label = e.project.split("/").filter(Boolean).pop() ?? e.project;
-    byProject.set(label, (byProject.get(label) ?? 0) + e.totalTokens);
-  }
-  const topProjects = [...byProject.entries()]
+  // Sources breakdown.
+  const sourceMap = new Map<string, number>();
+  for (const e of events) sourceMap.set(e.source, (sourceMap.get(e.source) ?? 0) + e.totalTokens);
+  const sources = [...sourceMap.entries()]
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([k]) => k);
+    .map(([source, tokens]) => ({ source, tokens }));
 
-  // "Commits" here = requests (unique requestIds).
+  // Top models.
+  const modelMap = new Map<string, number>();
+  for (const e of events) modelMap.set(e.model, (modelMap.get(e.model) ?? 0) + e.totalTokens);
+  const topModels = [...modelMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([model, tokens]) => ({ model, tokens }));
+
   const commits = events.length;
   const tokensPerCommit = commits ? Math.round(total / commits) : 0;
 
@@ -110,8 +130,10 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     weeklyTokens: weekly,
     streak,
     providers,
+    sources,
+    topModels,
     weeklyHistory,
-    topProjects: topProjects.length ? topProjects : ["—"],
+    heatmap,
     tokensPerCommit,
     commits,
   };

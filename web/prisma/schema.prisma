@@ -66,7 +66,6 @@ model VerificationToken {
 model ApiKey {
   id        String    @id @default(cuid())
   userId    String
-  // stored as sha256 hex — raw key is only shown once at creation
   keyHash   String    @unique
   label     String?
   createdAt DateTime  @default(now())
@@ -75,14 +74,21 @@ model ApiKey {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// Tokens-only burn event. Intentionally does NOT store project, cwd,
+/// filenames, prompt content, sessionId, or anything else that could
+/// identify what the user was working on.
 model BurnEvent {
   id                  String   @id @default(cuid())
   userId              String
-  requestId           String // dedupe key from claude code message id
-  sessionId           String
-  project             String // cwd
+  /// Dedupe key from the source CLI (e.g. Anthropic requestId, Codex rollout uuid).
+  /// Random opaque ids only. Must be unique per (user, source).
+  requestId           String
+  /// Which CLI / agent the event came from.
+  source              String // "claude-code" | "codex" | "hermes" | "openclaw" | ...
+  /// Model name as reported by the source. e.g. "claude-opus-4-6", "gpt-5-codex".
   model               String
-  provider            String // "anthropic" | "openai" | "google"
+  /// Inferred from model name for the provider split chart.
+  provider            String // "anthropic" | "openai" | "google" | "other"
   inputTokens         Int
   outputTokens        Int
   cacheCreationTokens Int      @default(0)
@@ -93,7 +99,8 @@ model BurnEvent {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, requestId])
+  @@unique([userId, source, requestId])
   @@index([userId, timestamp])
-  @@index([userId, project])
+  @@index([userId, source])
+  @@index([userId, model])
 }
