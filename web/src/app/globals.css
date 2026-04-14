@@ -1,0 +1,11 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #050505;
+  color: #e5e5e5;
+  font-family: "JetBrains Mono", monospace;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
