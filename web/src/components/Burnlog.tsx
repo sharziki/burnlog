@@ -10,58 +10,50 @@ import type { UserStats } from "@/lib/stats";
 type TabId = "board" | "profiles" | "compare" | "trends" | "challenges" | "connect";
 
 const TABS: { id: TabId; label: string; hint: string }[] = [
-  { id: "board", label: "Board", hint: "Live benchmark" },
-  { id: "profiles", label: "Profiles", hint: "Operator cards" },
-  { id: "compare", label: "Compare", hint: "Side-by-side signal" },
-  { id: "trends", label: "Trends", hint: "Movement over time" },
-  { id: "challenges", label: "Challenges", hint: "Competitive loops" },
-  { id: "connect", label: "Connect", hint: "Hook up sources" },
+  { id: "board", label: "Board", hint: "Standings" },
+  { id: "profiles", label: "Profiles", hint: "Rated users" },
+  { id: "compare", label: "Compare", hint: "Head-to-head" },
+  { id: "trends", label: "Trends", hint: "Activity" },
+  { id: "challenges", label: "Challenges", hint: "Contests" },
+  { id: "connect", label: "Connect", hint: "Sources" },
 ];
-
-function formatPercent(value: number): string {
-  return `${Math.round(value * 100)}%`;
-}
 
 function formatFullTokens(value: number): string {
   return value.toLocaleString();
 }
 
-function profileSummary(user: UserStats): string {
-  const topModel = user.topModels[0]?.model ?? "no model data yet";
-  return `${formatTokens(user.weeklyTokens)} this week · ${user.streak}d streak · top model ${topModel}`;
+function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }
 
-function compareValue(user: UserStats, field: "weeklyTokens" | "streak" | "tokensPerCommit"): string {
-  if (field === "weeklyTokens") return formatTokens(user.weeklyTokens);
-  if (field === "streak") return `${user.streak}d`;
-  return formatTokens(user.tokensPerCommit);
-}
-
-function SourceChips({ user }: { user: UserStats }) {
-  if (!user.sources.length) {
-    return <div className="empty-state">No sources connected yet. Burnlog is ready once this builder runs the CLI and syncs local usage logs.</div>;
-  }
-
+function Heatmap({ values }: { values: number[] }) {
+  const recent = values.slice(-28);
+  const max = Math.max(...recent, 0);
   return (
-    <div className="inline-row">
-      {user.sources.map((source) => (
-        <span className="source-pill" key={`${user.id}-${source.source}`}>
-          {source.source}
-          <strong style={{ color: "var(--text)" }}>{formatTokens(source.tokens)}</strong>
-        </span>
-      ))}
+    <div className="heatmap-grid">
+      {recent.map((value, index) => {
+        const strength = max > 0 ? value / max : 0;
+        return (
+          <div
+            key={`${index}-${value}`}
+            className="heat-cell"
+            style={{ background: strength ? `rgba(245, 158, 11, ${0.12 + strength * 0.58})` : "rgba(255,255,255,0.04)" }}
+            title={`${value.toLocaleString()} tokens`}
+          />
+        );
+      })}
     </div>
   );
 }
 
 function WeeklySpark({ values }: { values: number[] }) {
   if (!values.length || values.every((value) => value === 0)) {
-    return <div className="eyebrow">No weekly movement yet</div>;
+    return <div className="tiny-copy">No activity yet</div>;
   }
 
   const max = Math.max(...values);
-  const height = 46;
-  const width = 170;
+  const height = 38;
+  const width = 152;
   const step = width / Math.max(values.length - 1, 1);
   const points = values
     .map((value, index) => {
@@ -73,345 +65,216 @@ function WeeklySpark({ values }: { values: number[] }) {
 
   return (
     <svg aria-label="weekly sparkline" height={height} viewBox={`0 0 ${width} ${height}`} width={width}>
-      <polyline
-        fill="none"
-        points={points}
-        stroke="url(#burnGradient)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="3"
-      />
-      <defs>
-        <linearGradient id="burnGradient" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stopColor="#f59e0b" />
-          <stop offset="100%" stopColor="#f97316" />
-        </linearGradient>
-      </defs>
+      <polyline fill="none" points={points} stroke="#f59e0b" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
     </svg>
   );
 }
 
-function Heatmap({ values }: { values: number[] }) {
-  const recent = values.slice(-28);
-  const max = Math.max(...recent, 0);
+function SourceBadges({ user }: { user: UserStats }) {
+  if (!user.sources.length) return <span className="tiny-copy">0 sources</span>;
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-        gap: 6,
-      }}
-    >
-      {recent.map((value, index) => {
-        const strength = max > 0 ? value / max : 0;
-        return (
-          <div
-            key={`${index}-${value}`}
-            style={{
-              aspectRatio: "1 / 1",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.05)",
-              background: strength
-                ? `rgba(245, 158, 11, ${0.12 + strength * 0.55})`
-                : "rgba(255,255,255,0.04)",
-            }}
-            title={`${value.toLocaleString()} tokens`}
-          />
-        );
-      })}
+    <div className="inline-row compact-row">
+      {user.sources.slice(0, 3).map((source) => (
+        <span className="data-chip" key={`${user.id}-${source.source}`}>
+          {source.source}
+        </span>
+      ))}
     </div>
+  );
+}
+
+function Header({ tab, setTab, totalUsers, weeklyLeader }: { tab: TabId; setTab: (tab: TabId) => void; totalUsers: number; weeklyLeader: string | null }) {
+  return (
+    <header className="comp-shell-header">
+      <div className="comp-brand-row">
+        <div className="brand-mark minimal-mark">BL</div>
+        <div>
+          <div className="brand-title mono-title">burnlog</div>
+          <div className="brand-subtitle">codeforces for ai-agentic programming</div>
+        </div>
+      </div>
+
+      <div className="header-right">
+        <div className="header-stats mono">
+          <span>{totalUsers} rated</span>
+          <span>{weeklyLeader ? `weekly lead @${weeklyLeader}` : "no weekly lead"}</span>
+        </div>
+        <nav className="tab-row comp-tabs">
+          {TABS.map((item) => (
+            <button className={`tab-chip ${tab === item.id ? "active" : ""}`} key={item.id} onClick={() => setTab(item.id)} type="button">
+              {item.label}
+            </button>
+          ))}
+          <Link className="action-chip" href="/settings">Settings</Link>
+        </nav>
+      </div>
+    </header>
   );
 }
 
 function BoardView({ users, currentUsername }: { users: UserStats[]; currentUsername: string | null }) {
   const snapshot = buildDashboardSnapshot(users, currentUsername);
-  const currentUser = snapshot.currentUser;
-  const heroUser = currentUser ?? snapshot.users[0] ?? null;
-  const heroRank = heroUser ? getRank(heroUser.totalTokens) : null;
-  const heroProgress = heroUser ? getRankProgress(heroUser.totalTokens) : null;
+  const currentUser = snapshot.currentUser ?? snapshot.users[0] ?? null;
+  const currentRank = currentUser ? getRank(currentUser.totalTokens) : null;
+  const currentProgress = currentUser ? getRankProgress(currentUser.totalTokens) : null;
 
   return (
-    <>
-      <section className="hero-grid">
-        <div className="panel hero-copy">
-          <div className="eyebrow">AI-native builder benchmark</div>
-          <h1 className="hero-title mono">Measure real coding-agent intensity, not just talk.</h1>
-          <p className="hero-text">
-            Burnlog turns local coding-agent usage into a private-by-default benchmark surface. Token burn is the hook.
-            Consistency, tool mix, and operator profile are what make it useful.
-          </p>
-          <div className="inline-row hero-kicker">
-            <span className="status-pill status-live">Private by default</span>
-            <span className="status-pill status-warming">Share by choice</span>
-            <span className="status-pill status-warming">Recruiting signal</span>
+    <div className="comp-layout">
+      <section className="panel section-panel standings-panel">
+        <div className="section-head minimal-head">
+          <div>
+            <div className="eyebrow">Standings</div>
+            <h1 className="section-title compact-title">Global leaderboard</h1>
           </div>
+          <div className="mono tiny-copy">ranked by total burn · streak and weekly burn visible</div>
         </div>
 
-        <div className="panel hero-side">
-          <div className="section-header" style={{ marginBottom: 12 }}>
-            <div>
-              <div className="eyebrow">Operator snapshot</div>
-              <h2 className="section-title" style={{ marginTop: 8 }}>{heroUser ? `@${heroUser.username}` : "Waiting for first burner"}</h2>
-            </div>
-            {heroRank ? (
-              <span className="rank-pill" style={{ borderColor: `${heroRank.color}44`, color: heroRank.color }}>
-                {heroRank.icon} {heroRank.name}
-              </span>
-            ) : null}
-          </div>
-
-          {heroUser ? (
-            <div className="stack">
-              <div>
-                <div className="metric-value">{formatTokens(heroUser.totalTokens)}</div>
-                <div className="metric-note">total burn · {profileSummary(heroUser)}</div>
-              </div>
-
-              {heroProgress ? (
-                <div className="stack" style={{ gap: 10 }}>
-                  <div className="inline-row" style={{ justifyContent: "space-between" }}>
-                    <span className="metric-label">rank progress</span>
-                    <span className="eyebrow">{heroProgress.next ? `${heroProgress.current} → ${heroProgress.next}` : `${heroProgress.current} maxed`}</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${heroProgress.ratio * 100}%` }} />
-                  </div>
-                  <div className="metric-note">
-                    {snapshot.nextRank && heroUser.id === currentUser?.id
-                      ? `${formatTokens(snapshot.nextRank.gap)} until ${snapshot.nextRank.name}`
-                      : "Track burn, streak, and source mix from one surface."}
-                  </div>
-                </div>
-              ) : null}
-
-              <SourceChips user={heroUser} />
-            </div>
-          ) : (
-            <div className="empty-state">Run the CLI, sync your first logs, and this panel becomes your shareable operator snapshot.</div>
-          )}
-        </div>
-      </section>
-
-      <section className="metric-strip">
-        <div className="metric-card">
-          <div className="metric-label">Total burned</div>
-          <div className="metric-value">{formatTokens(snapshot.metrics.totalBurned)}</div>
-          <div className="metric-note">Across every connected builder in this board.</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Active burners</div>
-          <div className="metric-value">{snapshot.metrics.activeBurners}</div>
-          <div className="metric-note">Builders with non-zero burn in the last 7 days.</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Median weekly burn</div>
-          <div className="metric-value">{formatTokens(snapshot.metrics.medianWeekly)}</div>
-          <div className="metric-note">Useful sanity check against one giant outlier.</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Consistency leader</div>
-          <div className="metric-value">{snapshot.metrics.streakLeader ? `${snapshot.metrics.streakLeader.streak}d` : "0d"}</div>
-          <div className="metric-note">
-            {snapshot.metrics.streakLeader ? `Currently @${snapshot.metrics.streakLeader.username}` : "Waiting for first streak."}
-          </div>
-        </div>
-      </section>
-
-      <section className="content-grid">
-        <div className="stack">
-          <div className="panel section-panel">
-            <div className="section-header">
-              <div>
-                <div className="eyebrow">Leaderboard</div>
-                <h2 className="section-title">Main board</h2>
-                <p className="section-copy">Raw burn is visible, but the surrounding stats keep this from turning into a pure waste contest.</p>
-              </div>
-              {currentUser ? <div className="eyebrow">You rank #{snapshot.users.findIndex((user) => user.id === currentUser.id) + 1}</div> : null}
-            </div>
-
-            {snapshot.users.length ? (
-              <table className="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Builder</th>
-                    <th>Total burn</th>
-                    <th>7d burn</th>
-                    <th>Streak</th>
-                    <th>Tok / commit</th>
-                    <th>Rank</th>
+        {snapshot.users.length ? (
+          <table className="leaderboard-table comp-table">
+            <thead>
+              <tr>
+                <th>rk</th>
+                <th>user</th>
+                <th>rating</th>
+                <th>7d</th>
+                <th>streak</th>
+                <th>tok/commit</th>
+                <th>trend</th>
+                <th>tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snapshot.users.map((user, index) => {
+                const rank = getRank(user.totalTokens);
+                const isCurrent = currentUser?.id === user.id;
+                return (
+                  <tr className={`leaderboard-row ${isCurrent ? "leaderboard-current" : ""}`} key={user.id}>
+                    <td className="mono emphasis-cell">{index + 1}</td>
+                    <td>
+                      <div className="user-line">
+                        <div className="avatar compact-avatar">{user.avatar}</div>
+                        <div>
+                          <div className="user-name">{user.username}{user.username === currentUsername ? " *" : ""}</div>
+                          <div className="tiny-copy">{user.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="mono strong-cell">{formatFullTokens(user.totalTokens)}</td>
+                    <td className="mono">{formatTokens(user.weeklyTokens)}</td>
+                    <td className="mono">{user.streak}d</td>
+                    <td className="mono">{formatTokens(user.tokensPerCommit)}</td>
+                    <td><WeeklySpark values={user.weeklyHistory} /></td>
+                    <td>
+                      <span className="rank-pill compact-pill" style={{ borderColor: `${rank.color}33`, color: rank.color }}>
+                        {rank.icon} {rank.name}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {snapshot.users.map((user, index) => {
-                    const rank = getRank(user.totalTokens);
-                    const isCurrent = currentUser?.id === user.id;
-                    return (
-                      <tr className="leaderboard-row" key={user.id}>
-                        <td className="mono" style={{ color: isCurrent ? "var(--accent)" : "var(--text-muted)" }}>
-                          {index + 1}
-                        </td>
-                        <td>
-                          <div className="user-cell">
-                            <div className="avatar">{user.avatar}</div>
-                            <div>
-                              <div className="user-name">{user.name}{isCurrent ? " · you" : ""}</div>
-                              <div className="user-handle">@{user.username}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="mono" style={{ color: "var(--text)" }}>{formatFullTokens(user.totalTokens)}</td>
-                        <td className="mono">{formatTokens(user.weeklyTokens)}</td>
-                        <td className="mono">{user.streak}d</td>
-                        <td className="mono">{compareValue(user, "tokensPerCommit")}</td>
-                        <td>
-                          <span className="rank-pill" style={{ borderColor: `${rank.color}33`, color: rank.color }}>
-                            {rank.icon} {rank.name}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="empty-state">No builders are on the board yet. Connect a source from the Connect tab and sync your first logs.</div>
-            )}
-          </div>
-        </div>
-
-        <div className="stack">
-          <div className="panel section-panel">
-            <div className="eyebrow">Current profile</div>
-            <h2 className="section-title" style={{ marginTop: 8 }}>{currentUser ? currentUser.name : "Sign in to claim your profile"}</h2>
-            <p className="section-copy">
-              {currentUser
-                ? `You're sitting in the ${snapshot.percentile}th percentile with ${formatTokens(currentUser.totalTokens)} burned so far.`
-                : "Settings lets you mint an API key, connect the CLI, and turn this board into a real profile rather than anonymous leaderboard rows."}
-            </p>
-            {currentUser ? (
-              <div className="stack" style={{ gap: 10, marginTop: 18 }}>
-                <div className="stat-line"><span>Weekly burn</span><strong className="mono" style={{ color: "var(--text)" }}>{formatTokens(currentUser.weeklyTokens)}</strong></div>
-                <div className="stat-line"><span>Streak</span><strong className="mono" style={{ color: "var(--text)" }}>{currentUser.streak}d</strong></div>
-                <div className="stat-line"><span>Connected sources</span><strong className="mono" style={{ color: "var(--text)" }}>{currentUser.sources.length}</strong></div>
-                <div className="stat-line"><span>Top model</span><strong className="mono" style={{ color: "var(--text)" }}>{currentUser.topModels[0]?.model ?? "—"}</strong></div>
-              </div>
-            ) : (
-              <div className="inline-row" style={{ marginTop: 18 }}>
-                <Link className="button-primary" href="/settings">Open settings</Link>
-              </div>
-            )}
-          </div>
-
-          <div className="panel section-panel">
-            <div className="eyebrow">Provider mix</div>
-            <h2 className="section-title" style={{ marginTop: 8 }}>Where the burn lives</h2>
-            <p className="section-copy">This makes the board feel like instrumentation, not just a flex table.</p>
-            <div className="provider-bars" style={{ marginTop: 18 }}>
-              {snapshot.providerMix.map((entry) => (
-                <div className="provider-row" key={entry.label}>
-                  <span>{entry.label}</span>
-                  <div className="provider-track">
-                    <div className="provider-bar" style={{ width: `${entry.value * 100}%` }} />
-                  </div>
-                  <span className="mono">{formatPercent(entry.value)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="panel section-panel">
-            <div className="eyebrow">Challenges preview</div>
-            <h2 className="section-title" style={{ marginTop: 8 }}>What matters this week</h2>
-            <div className="stack" style={{ marginTop: 18, gap: 12 }}>
-              {snapshot.challenges.slice(0, 2).map((challenge) => (
-                <div className="panel-muted card-pad" key={challenge.id}>
-                  <div className="inline-row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
-                    <strong>{challenge.name}</strong>
-                    <span className={`status-pill ${challenge.status === "live" ? "status-live" : "status-warming"}`}>
-                      {challenge.status === "live" ? "live" : "warming up"}
-                    </span>
-                  </div>
-                  <div className="metric-note">{challenge.summary}</div>
-                  {challenge.leader ? (
-                    <div className="stat-line" style={{ marginTop: 8 }}>
-                      <span>Leader</span>
-                      <strong className="mono" style={{ color: "var(--text)" }}>@{challenge.leader.username} · {challenge.leader.value}</strong>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty-state">No rated users yet.</div>
+        )}
       </section>
-    </>
+
+      <aside className="right-rail">
+        <div className="panel section-panel rail-card">
+          <div className="eyebrow">My rating</div>
+          <div className="rail-primary mono">{currentUser ? formatTokens(currentUser.totalTokens) : "0"}</div>
+          <div className="tiny-copy">{currentUser ? `@${currentUser.username}` : "sign in to claim profile"}</div>
+          {currentRank ? (
+            <div className="inline-row compact-row" style={{ marginTop: 10 }}>
+              <span className="rank-pill compact-pill" style={{ borderColor: `${currentRank.color}33`, color: currentRank.color }}>
+                {currentRank.icon} {currentRank.name}
+              </span>
+              <span className="tiny-copy">{snapshot.percentile ? `${snapshot.percentile}th percentile` : ""}</span>
+            </div>
+          ) : null}
+          {currentProgress ? (
+            <>
+              <div className="progress-bar slim-progress" style={{ marginTop: 14 }}>
+                <div className="progress-fill" style={{ width: `${currentProgress.ratio * 100}%` }} />
+              </div>
+              <div className="tiny-copy" style={{ marginTop: 8 }}>
+                {snapshot.nextRank ? `${formatTokens(snapshot.nextRank.gap)} to ${snapshot.nextRank.name}` : "top tier reached"}
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        <div className="panel section-panel rail-card">
+          <div className="eyebrow">Live contest state</div>
+          <div className="stack compact-stack" style={{ marginTop: 10 }}>
+            <div className="stat-line compact-line"><span>rated users</span><strong className="mono strong-cell">{snapshot.totalUsers}</strong></div>
+            <div className="stat-line compact-line"><span>weekly leader</span><strong className="mono strong-cell">{snapshot.metrics.topWeeklyBurner ? `@${snapshot.metrics.topWeeklyBurner.username}` : "—"}</strong></div>
+            <div className="stat-line compact-line"><span>median 7d</span><strong className="mono strong-cell">{formatTokens(snapshot.metrics.medianWeekly)}</strong></div>
+            <div className="stat-line compact-line"><span>streak lead</span><strong className="mono strong-cell">{snapshot.metrics.streakLeader ? `${snapshot.metrics.streakLeader.streak}d` : "0d"}</strong></div>
+          </div>
+        </div>
+
+        <div className="panel section-panel rail-card">
+          <div className="eyebrow">Upcoming / active challenges</div>
+          <div className="stack compact-stack" style={{ marginTop: 10 }}>
+            {snapshot.challenges.map((challenge) => (
+              <div className="contest-card" key={challenge.id}>
+                <div className="contest-top">
+                  <strong>{challenge.name}</strong>
+                  <span className={`status-pill compact-pill ${challenge.status === "live" ? "status-live" : "status-warming"}`}>{challenge.status === "live" ? "live" : "soon"}</span>
+                </div>
+                <div className="tiny-copy">{challenge.summary}</div>
+                <div className="tiny-copy mono" style={{ marginTop: 8 }}>
+                  {challenge.leader ? `leader @${challenge.leader.username} · ${challenge.leader.value}` : "waiting for entries"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+    </div>
   );
 }
 
 function ProfilesView({ users, currentUsername }: { users: UserStats[]; currentUsername: string | null }) {
   const snapshot = buildDashboardSnapshot(users, currentUsername);
   return (
-    <div className="panel section-panel">
-      <div className="section-header">
+    <section className="panel section-panel">
+      <div className="section-head minimal-head">
         <div>
           <div className="eyebrow">Profiles</div>
-          <h2 className="section-title">Operator cards</h2>
-          <p className="section-copy">Each profile should feel credible enough to share with a teammate or recruiter, not like a game profile.</p>
+          <h2 className="section-title compact-title">Rated users</h2>
         </div>
-        <div className="eyebrow">{snapshot.totalUsers} builders indexed</div>
       </div>
-
-      {snapshot.users.length ? (
-        <div className="profile-grid">
-          {snapshot.users.map((user) => {
-            const rank = getRank(user.totalTokens);
-            const progress = getRankProgress(user.totalTokens);
-            return (
-              <div className="panel-muted card-pad" key={user.id}>
-                <div className="profile-card-top">
-                  <div className="user-cell">
-                    <div className="avatar">{user.avatar}</div>
-                    <div>
-                      <div className="user-name">{user.name}{user.username === currentUsername ? " · you" : ""}</div>
-                      <div className="user-handle">@{user.username}</div>
-                    </div>
-                  </div>
-                  <span className="rank-pill" style={{ borderColor: `${rank.color}33`, color: rank.color }}>
-                    {rank.icon} {rank.name}
-                  </span>
-                </div>
-
-                <p className="section-copy" style={{ marginTop: 0 }}>{user.bio ?? "No bio set yet. Burnlog still captures the work profile through burn, consistency, and tool mix."}</p>
-                <div style={{ margin: "14px 0" }}>
-                  <WeeklySpark values={user.weeklyHistory} />
-                </div>
-                <div className="stack" style={{ gap: 0 }}>
-                  <div className="stat-line"><span>Total burn</span><strong className="mono" style={{ color: "var(--text)" }}>{formatFullTokens(user.totalTokens)}</strong></div>
-                  <div className="stat-line"><span>7d burn</span><strong className="mono" style={{ color: "var(--text)" }}>{formatTokens(user.weeklyTokens)}</strong></div>
-                  <div className="stat-line"><span>Streak</span><strong className="mono" style={{ color: "var(--text)" }}>{user.streak}d</strong></div>
-                  <div className="stat-line"><span>Tok / commit</span><strong className="mono" style={{ color: "var(--text)" }}>{formatTokens(user.tokensPerCommit)}</strong></div>
-                </div>
-                <div style={{ marginTop: 16 }}>
-                  <div className="inline-row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-                    <span className="metric-label">rank path</span>
-                    <span className="eyebrow">{progress.next ? `${progress.current} → ${progress.next}` : `${progress.current} maxed`}</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${progress.ratio * 100}%` }} />
+      <div className="profile-grid compact-grid">
+        {snapshot.users.map((user) => {
+          const rank = getRank(user.totalTokens);
+          return (
+            <div className="panel-muted card-pad compact-card" key={user.id}>
+              <div className="profile-card-top compact-top">
+                <div className="user-line">
+                  <div className="avatar compact-avatar">{user.avatar}</div>
+                  <div>
+                    <div className="user-name">{user.username}{user.username === currentUsername ? " *" : ""}</div>
+                    <div className="tiny-copy">{user.name}</div>
                   </div>
                 </div>
-                <div style={{ marginTop: 16 }}>
-                  <SourceChips user={user} />
-                </div>
+                <span className="rank-pill compact-pill" style={{ borderColor: `${rank.color}33`, color: rank.color }}>{rank.icon} {rank.name}</span>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="empty-state">No profiles yet. Connect a source and run your first sync to make the first operator card appear.</div>
-      )}
-    </div>
+              <div className="rail-primary mono small-rating">{formatFullTokens(user.totalTokens)}</div>
+              <div className="tiny-copy">{user.bio ?? "no bio"}</div>
+              <div style={{ marginTop: 12 }}><WeeklySpark values={user.weeklyHistory} /></div>
+              <div className="stack compact-stack" style={{ marginTop: 12 }}>
+                <div className="stat-line compact-line"><span>7d</span><strong className="mono strong-cell">{formatTokens(user.weeklyTokens)}</strong></div>
+                <div className="stat-line compact-line"><span>streak</span><strong className="mono strong-cell">{user.streak}d</strong></div>
+                <div className="stat-line compact-line"><span>tok/commit</span><strong className="mono strong-cell">{formatTokens(user.tokensPerCommit)}</strong></div>
+              </div>
+              <div style={{ marginTop: 10 }}><SourceBadges user={user} /></div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -420,225 +283,128 @@ function CompareView({ users, currentUsername }: { users: UserStats[]; currentUs
   const left = snapshot.currentUser ?? snapshot.users[0] ?? null;
   const right = snapshot.users.find((user) => user.id !== left?.id) ?? null;
 
-  if (!left) {
-    return <div className="empty-state">No builders available yet. Sync at least one profile before comparing operator signal.</div>;
-  }
-
-  const cards = [
-    { label: "Total burn", left: formatFullTokens(left.totalTokens), right: right ? formatFullTokens(right.totalTokens) : "Need another builder" },
-    { label: "7d burn", left: formatTokens(left.weeklyTokens), right: right ? formatTokens(right.weeklyTokens) : "Need another builder" },
-    { label: "Streak", left: `${left.streak}d`, right: right ? `${right.streak}d` : "Need another builder" },
-    { label: "Tok / commit", left: formatTokens(left.tokensPerCommit), right: right ? formatTokens(right.tokensPerCommit) : "Need another builder" },
-  ];
-
   return (
-    <div className="stack">
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Compare</div>
-            <h2 className="section-title">Two operators, one benchmark frame</h2>
-            <p className="section-copy">This is the recruiting-friendly view: same categories, same framing, no fake productivity theatre.</p>
-          </div>
+    <section className="panel section-panel">
+      <div className="section-head minimal-head">
+        <div>
+          <div className="eyebrow">Compare</div>
+          <h2 className="section-title compact-title">Head-to-head</h2>
         </div>
-
-        <div className="profile-grid">
-          {[left, right].map((user, idx) => (
-            <div className="panel-muted card-pad" key={user?.id ?? `empty-${idx}`}>
-              {user ? (
-                <>
-                  <div className="profile-card-top">
-                    <div className="user-cell">
-                      <div className="avatar">{user.avatar}</div>
-                      <div>
-                        <div className="user-name">{user.name}{user.username === currentUsername ? " · you" : ""}</div>
-                        <div className="user-handle">@{user.username}</div>
-                      </div>
+      </div>
+      <div className="profile-grid compact-grid">
+        {[left, right].map((user, idx) => (
+          <div className="panel-muted card-pad compact-card" key={user?.id ?? `slot-${idx}`}>
+            {user ? (
+              <>
+                <div className="profile-card-top compact-top">
+                  <div className="user-line">
+                    <div className="avatar compact-avatar">{user.avatar}</div>
+                    <div>
+                      <div className="user-name">{user.username}</div>
+                      <div className="tiny-copy">{user.name}</div>
                     </div>
-                    <span className="rank-pill" style={{ borderColor: `${getRank(user.totalTokens).color}33`, color: getRank(user.totalTokens).color }}>
-                      {getRank(user.totalTokens).icon} {getRank(user.totalTokens).name}
-                    </span>
                   </div>
-                  <WeeklySpark values={user.weeklyHistory} />
-                  <div className="stack" style={{ gap: 0, marginTop: 14 }}>
-                    <div className="stat-line"><span>Top model</span><strong className="mono" style={{ color: "var(--text)" }}>{user.topModels[0]?.model ?? "—"}</strong></div>
-                    <div className="stat-line"><span>Connected sources</span><strong className="mono" style={{ color: "var(--text)" }}>{user.sources.length}</strong></div>
-                    <div className="stat-line"><span>Profile note</span><strong className="mono" style={{ color: "var(--text)" }}>{user.bio ?? "No bio"}</strong></div>
-                  </div>
-                </>
-              ) : (
-                <div className="empty-state">Need a second connected builder before Burnlog can do a real side-by-side compare.</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Signal breakdown</div>
-            <h2 className="section-title">Same metrics, cleaner story</h2>
+                  <span className="rank-pill compact-pill" style={{ borderColor: `${getRank(user.totalTokens).color}33`, color: getRank(user.totalTokens).color }}>{getRank(user.totalTokens).name}</span>
+                </div>
+                <div className="rail-primary mono small-rating">{formatFullTokens(user.totalTokens)}</div>
+                <div className="stack compact-stack" style={{ marginTop: 12 }}>
+                  <div className="stat-line compact-line"><span>7d</span><strong className="mono strong-cell">{formatTokens(user.weeklyTokens)}</strong></div>
+                  <div className="stat-line compact-line"><span>streak</span><strong className="mono strong-cell">{user.streak}d</strong></div>
+                  <div className="stat-line compact-line"><span>sources</span><strong className="mono strong-cell">{user.sources.length}</strong></div>
+                  <div className="stat-line compact-line"><span>tok/commit</span><strong className="mono strong-cell">{formatTokens(user.tokensPerCommit)}</strong></div>
+                </div>
+              </>
+            ) : (
+              <div className="empty-state">Need another rated user for head-to-head.</div>
+            )}
           </div>
-        </div>
-        <div className="info-grid">
-          {cards.map((card) => (
-            <div className="panel-muted card-pad" key={card.label}>
-              <div className="metric-label">{card.label}</div>
-              <div className="stat-line" style={{ marginTop: 10 }}><span>{left.username}</span><strong className="mono" style={{ color: "var(--text)" }}>{card.left}</strong></div>
-              <div className="stat-line"><span>{right?.username ?? "slot 2"}</span><strong className="mono" style={{ color: "var(--text)" }}>{card.right}</strong></div>
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }
 
 function TrendsView({ users, currentUsername }: { users: UserStats[]; currentUsername: string | null }) {
   const snapshot = buildDashboardSnapshot(users, currentUsername);
   const focus = snapshot.currentUser ?? snapshot.users[0] ?? null;
-
   return (
-    <div className="stack">
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Trends</div>
-            <h2 className="section-title">Movement, not just rank</h2>
-            <p className="section-copy">Trend surfaces keep Burnlog from becoming a static all-time table. They answer whether someone is accelerating, consistent, or fading.</p>
-          </div>
-        </div>
-
-        {focus ? (
-          <div className="content-grid">
-            <div className="panel-muted card-pad">
-              <div className="metric-label">28-day activity heatmap</div>
-              <div style={{ marginTop: 16 }}>
-                <Heatmap values={focus.heatmap} />
-              </div>
-              <p className="section-copy" style={{ marginBottom: 0, marginTop: 14 }}>
-                Recent cadence for @{focus.username}. This makes consistency visually obvious even before you read the numbers.
-              </p>
-            </div>
-
-            <div className="stack">
-              <div className="panel-muted card-pad">
-                <div className="metric-label">Weekly movement</div>
-                <div style={{ marginTop: 14 }}>
-                  <WeeklySpark values={focus.weeklyHistory} />
-                </div>
-                <div className="stat-line" style={{ marginTop: 12 }}><span>Current 7d burn</span><strong className="mono" style={{ color: "var(--text)" }}>{formatTokens(focus.weeklyTokens)}</strong></div>
-                <div className="stat-line"><span>Lifetime burn</span><strong className="mono" style={{ color: "var(--text)" }}>{formatFullTokens(focus.totalTokens)}</strong></div>
-              </div>
-
-              <div className="panel-muted card-pad">
-                <div className="metric-label">Model concentration</div>
-                <div className="stack" style={{ gap: 0, marginTop: 10 }}>
-                  {focus.topModels.slice(0, 4).map((model) => (
-                    <div className="stat-line" key={model.model}><span>{model.model}</span><strong className="mono" style={{ color: "var(--text)" }}>{formatTokens(model.tokens)}</strong></div>
-                  ))}
-                  {!focus.topModels.length ? <div className="empty-state">No model data yet.</div> : null}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="empty-state">No trend data yet. Sync one profile and Burnlog can start showing movement over time.</div>
-        )}
-      </div>
-
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Board narrative</div>
-            <h2 className="section-title">What the board is doing right now</h2>
-          </div>
-        </div>
-        <div className="info-grid">
-          <div className="panel-muted card-pad">
-            <strong>Top weekly burner</strong>
-            <p className="section-copy">{snapshot.metrics.topWeeklyBurner ? `@${snapshot.metrics.topWeeklyBurner.username} is pacing the board with ${formatTokens(snapshot.metrics.topWeeklyBurner.weeklyTokens)} in the last 7 days.` : "No weekly movement yet."}</p>
-          </div>
-          <div className="panel-muted card-pad">
-            <strong>Median weekly burn</strong>
-            <p className="section-copy">Median matters because it keeps one giant user from becoming the only story on the product.</p>
-            <div className="metric-value" style={{ fontSize: "2rem" }}>{formatTokens(snapshot.metrics.medianWeekly)}</div>
-          </div>
-          <div className="panel-muted card-pad">
-            <strong>Active burners</strong>
-            <p className="section-copy">Shows whether the network is actually alive right now or just carrying stale historical stats.</p>
-            <div className="metric-value" style={{ fontSize: "2rem" }}>{snapshot.metrics.activeBurners}</div>
-          </div>
-          <div className="panel-muted card-pad">
-            <strong>Consistency leader</strong>
-            <p className="section-copy">{snapshot.metrics.streakLeader ? `@${snapshot.metrics.streakLeader.username} currently owns the streak narrative at ${snapshot.metrics.streakLeader.streak} days.` : "No streak leader yet."}</p>
-          </div>
+    <section className="panel section-panel">
+      <div className="section-head minimal-head">
+        <div>
+          <div className="eyebrow">Trends</div>
+          <h2 className="section-title compact-title">Activity and form</h2>
         </div>
       </div>
-    </div>
+      {focus ? (
+        <div className="content-grid trends-grid">
+          <div className="panel-muted card-pad compact-card">
+            <div className="metric-label">28d heatmap</div>
+            <div style={{ marginTop: 14 }}><Heatmap values={focus.heatmap} /></div>
+          </div>
+          <div className="panel-muted card-pad compact-card">
+            <div className="metric-label">7d line</div>
+            <div style={{ marginTop: 14 }}><WeeklySpark values={focus.weeklyHistory} /></div>
+            <div className="stack compact-stack" style={{ marginTop: 12 }}>
+              <div className="stat-line compact-line"><span>current 7d</span><strong className="mono strong-cell">{formatTokens(focus.weeklyTokens)}</strong></div>
+              <div className="stat-line compact-line"><span>lifetime</span><strong className="mono strong-cell">{formatFullTokens(focus.totalTokens)}</strong></div>
+            </div>
+          </div>
+          <div className="panel-muted card-pad compact-card">
+            <div className="metric-label">Provider split</div>
+            <div className="provider-bars compact-stack" style={{ marginTop: 12 }}>
+              {snapshot.providerMix.map((entry) => (
+                <div className="provider-row compact-provider" key={entry.label}>
+                  <span>{entry.label}</span>
+                  <div className="provider-track"><div className="provider-bar" style={{ width: `${entry.value * 100}%` }} /></div>
+                  <span className="mono">{formatPercent(entry.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="panel-muted card-pad compact-card">
+            <div className="metric-label">Model pool</div>
+            <div className="stack compact-stack" style={{ marginTop: 12 }}>
+              {focus.topModels.slice(0, 4).map((model) => (
+                <div className="stat-line compact-line" key={model.model}><span>{model.model}</span><strong className="mono strong-cell">{formatTokens(model.tokens)}</strong></div>
+              ))}
+              {!focus.topModels.length ? <div className="tiny-copy">No model data yet</div> : null}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="empty-state">No activity yet.</div>
+      )}
+    </section>
   );
 }
 
 function ChallengesView({ users, currentUsername }: { users: UserStats[]; currentUsername: string | null }) {
   const snapshot = buildDashboardSnapshot(users, currentUsername);
   return (
-    <div className="stack">
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Challenges</div>
-            <h2 className="section-title">Competitive loops with real telemetry</h2>
-            <p className="section-copy">These stay grounded in actual board data. If the board is sparse, challenges stay honest instead of faking momentum.</p>
-          </div>
+    <section className="panel section-panel">
+      <div className="section-head minimal-head">
+        <div>
+          <div className="eyebrow">Challenges</div>
+          <h2 className="section-title compact-title">Contest board</h2>
         </div>
-        <div className="challenge-grid">
-          {snapshot.challenges.map((challenge) => (
-            <div className="panel-muted card-pad" key={challenge.id}>
-              <div className="inline-row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-                <strong>{challenge.name}</strong>
-                <span className={`status-pill ${challenge.status === "live" ? "status-live" : "status-warming"}`}>
-                  {challenge.status === "live" ? "live" : "warming up"}
-                </span>
-              </div>
-              <p className="section-copy" style={{ marginTop: 0 }}>{challenge.summary}</p>
-              <div className="stack" style={{ gap: 0, marginTop: 10 }}>
-                <div className="stat-line"><span>Metric</span><strong className="mono" style={{ color: "var(--text)" }}>{challenge.metricLabel}</strong></div>
-                <div className="stat-line"><span>Leader</span><strong className="mono" style={{ color: "var(--text)" }}>{challenge.leader ? `@${challenge.leader.username} · ${challenge.leader.value}` : "waiting"}</strong></div>
-                <div className="stat-line"><span>Runner-up</span><strong className="mono" style={{ color: "var(--text)" }}>{challenge.runnerUp ? `@${challenge.runnerUp.username} · ${challenge.runnerUp.value}` : "need 2+ burners"}</strong></div>
-              </div>
+      </div>
+      <div className="challenge-grid compact-grid">
+        {snapshot.challenges.map((challenge) => (
+          <div className="panel-muted card-pad compact-card contest-card" key={challenge.id}>
+            <div className="contest-top">
+              <strong>{challenge.name}</strong>
+              <span className={`status-pill compact-pill ${challenge.status === "live" ? "status-live" : "status-warming"}`}>{challenge.status === "live" ? "live" : "soon"}</span>
             </div>
-          ))}
-        </div>
+            <div className="tiny-copy">{challenge.summary}</div>
+            <div className="stack compact-stack" style={{ marginTop: 12 }}>
+              <div className="stat-line compact-line"><span>metric</span><strong className="mono strong-cell">{challenge.metricLabel}</strong></div>
+              <div className="stat-line compact-line"><span>leader</span><strong className="mono strong-cell">{challenge.leader ? `@${challenge.leader.username} · ${challenge.leader.value}` : "waiting"}</strong></div>
+              <div className="stat-line compact-line"><span>runner-up</span><strong className="mono strong-cell">{challenge.runnerUp ? `@${challenge.runnerUp.username} · ${challenge.runnerUp.value}` : "need 2+ users"}</strong></div>
+            </div>
+          </div>
+        ))}
       </div>
-
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Why this matters</div>
-            <h2 className="section-title">Challenges that help the product thesis</h2>
-          </div>
-        </div>
-        <div className="info-grid">
-          <div className="panel-muted card-pad">
-            <strong>Weekly burn race</strong>
-            <p className="section-copy">Keeps the board alive with a current-time story rather than one immortal all-time winner.</p>
-          </div>
-          <div className="panel-muted card-pad">
-            <strong>Streak builder</strong>
-            <p className="section-copy">Adds discipline and consistency as a first-class signal. Recruiters care more about sustained behavior than one spike.</p>
-          </div>
-          <div className="panel-muted card-pad">
-            <strong>Multi-tool operator</strong>
-            <p className="section-copy">Rewards breadth across supported coding-agent surfaces, which is closer to real-world AI-native work.</p>
-          </div>
-          <div className="panel-muted card-pad">
-            <strong>Shareable without clown energy</strong>
-            <p className="section-copy">The challenge layer stays serious enough to live inside a benchmark product rather than turning into a parody dashboard.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    </section>
   );
 }
 
@@ -646,96 +412,58 @@ function ConnectView({ users, currentUsername }: { users: UserStats[]; currentUs
   const snapshot = buildDashboardSnapshot(users, currentUsername);
   const [copied, setCopied] = useState<string | null>(null);
   const commands = [
-    { id: "install", label: "Install the CLI", command: "cd cli && npm install && npm link" },
-    { id: "key", label: "Save your API key", command: "burnlog login <api-key>" },
-    { id: "sync", label: "Upload local usage", command: "burnlog sync" },
+    { id: "install", label: "install", command: "cd cli && npm install && npm link" },
+    { id: "key", label: "login", command: "burnlog login <api-key>" },
+    { id: "sync", label: "sync", command: "burnlog sync" },
   ];
 
   async function copyCommand(command: string, id: string) {
     try {
       await navigator.clipboard.writeText(command);
       setCopied(id);
-      window.setTimeout(() => setCopied(null), 1400);
-    } catch {
-      setCopied(null);
-    }
+      window.setTimeout(() => setCopied(null), 1200);
+    } catch {}
   }
 
   return (
-    <div className="stack">
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Connect</div>
-            <h2 className="section-title">Easy path from local logs to live profile</h2>
-            <p className="section-copy">Burnlog never needs your repo contents. It only ingests tokens, model, source, and timestamp from local coding-agent session logs.</p>
-          </div>
-          <Link className="button-primary" href="/settings">Open settings</Link>
+    <section className="panel section-panel">
+      <div className="section-head minimal-head">
+        <div>
+          <div className="eyebrow">Connect</div>
+          <h2 className="section-title compact-title">Attach local agent logs</h2>
         </div>
-
-        <div className="stack">
-          {commands.map((item) => (
-            <div className="command-block" key={item.id}>
-              <div>
-                <div className="metric-label">{item.label}</div>
-                <div className="command-text" style={{ marginTop: 8 }}>{item.command}</div>
-              </div>
-              <button className="button-secondary" onClick={() => copyCommand(item.command, item.id)} type="button">
-                {copied === item.id ? "Copied" : "Copy"}
-              </button>
-            </div>
-          ))}
-        </div>
+        <Link className="action-chip" href="/settings">Open settings</Link>
       </div>
-
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Supported sources</div>
-            <h2 className="section-title">Coding-agent connectors</h2>
-            <p className="section-copy">These are the current adapters the CLI understands today. The board marks them connected once your profile has synced usage from that source.</p>
-          </div>
-        </div>
-
-        <div className="connector-grid">
-          {snapshot.connectors.map((connector) => (
-            <div className="panel-muted card-pad" key={connector.id}>
-              <div className="inline-row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-                <strong>{connector.label}</strong>
-                <span className={`status-pill ${connector.connected ? "status-live" : "status-warming"}`}>
-                  {connector.connected ? "connected" : "ready"}
-                </span>
+      <div className="connector-grid compact-grid">
+        <div className="panel-muted card-pad compact-card">
+          <div className="metric-label">Commands</div>
+          <div className="stack compact-stack" style={{ marginTop: 12 }}>
+            {commands.map((item) => (
+              <div className="command-block compact-command" key={item.id}>
+                <div>
+                  <div className="tiny-copy mono">{item.label}</div>
+                  <div className="command-text">{item.command}</div>
+                </div>
+                <button className="button-secondary compact-button" onClick={() => copyCommand(item.command, item.id)} type="button">
+                  {copied === item.id ? "copied" : "copy"}
+                </button>
               </div>
-              <div className="stack" style={{ gap: 0 }}>
-                <div className="stat-line"><span>Provider</span><strong className="mono" style={{ color: "var(--text)" }}>{connector.provider}</strong></div>
-                <div className="stat-line"><span>Local log path</span><strong className="mono" style={{ color: "var(--text)" }}>{connector.logPath}</strong></div>
-                <div className="stat-line"><span>Command</span><strong className="mono" style={{ color: "var(--text)" }}>{connector.command}</strong></div>
+            ))}
+          </div>
+        </div>
+        <div className="panel-muted card-pad compact-card">
+          <div className="metric-label">Supported sources</div>
+          <div className="stack compact-stack" style={{ marginTop: 12 }}>
+            {snapshot.connectors.map((connector) => (
+              <div className="stat-line compact-line" key={connector.id}>
+                <span>{connector.label}</span>
+                <strong className="mono strong-cell">{connector.connected ? "connected" : "ready"}</strong>
               </div>
-              <p className="section-copy" style={{ marginBottom: 0, marginTop: 12 }}>{connector.detail}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="panel section-panel">
-        <div className="section-header">
-          <div>
-            <div className="eyebrow">Privacy</div>
-            <h2 className="section-title">What Burnlog stores</h2>
-          </div>
-        </div>
-        <div className="info-grid">
-          <div className="panel-muted card-pad">
-            <strong>Stored</strong>
-            <p className="section-copy">Token counts, source, model, provider, timestamp, and opaque dedupe IDs.</p>
-          </div>
-          <div className="panel-muted card-pad">
-            <strong>Never stored</strong>
-            <p className="section-copy">Project names, prompt contents, filenames, cwd, or repo contents.</p>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -744,37 +472,18 @@ export function Burnlog({ users, currentUsername }: { users: UserStats[]; curren
   const snapshot = useMemo(() => buildDashboardSnapshot(users, currentUsername), [users, currentUsername]);
 
   return (
-    <div className="page-shell">
-      <div className="page-container">
-        <div className="topbar">
-          <div className="brand-lockup">
-            <div className="brand-mark">BL</div>
-            <div>
-              <div className="brand-title">Burnlog</div>
-              <div className="brand-subtitle">Benchmark surface for AI-native builders</div>
-            </div>
-          </div>
+    <div className="page-shell competition-shell">
+      <div className="page-container comp-container">
+        <Header
+          tab={tab}
+          setTab={setTab}
+          totalUsers={snapshot.totalUsers}
+          weeklyLeader={snapshot.metrics.topWeeklyBurner?.username ?? null}
+        />
 
-          <div className="inline-row" style={{ justifyContent: "flex-end" }}>
-            <div className="tab-row">
-              {TABS.map((item) => (
-                <button className={`tab-chip ${tab === item.id ? "active" : ""}`} key={item.id} onClick={() => setTab(item.id)} type="button">
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <Link className="action-chip" href="/settings">Settings</Link>
-          </div>
-        </div>
-
-        <div className="inline-row" style={{ justifyContent: "space-between", marginBottom: 20 }}>
+        <div className="subhead-row">
           <div className="eyebrow">{TABS.find((item) => item.id === tab)?.hint}</div>
-          <div className="inline-row">
-            <span className="status-pill status-live">{snapshot.totalUsers} builders indexed</span>
-            {snapshot.metrics.topWeeklyBurner ? (
-              <span className="status-pill status-warming">weekly leader @${snapshot.metrics.topWeeklyBurner.username}</span>
-            ) : null}
-          </div>
+          <div className="mono tiny-copy">rating = total burn · contests = derived from live board</div>
         </div>
 
         {tab === "board" ? <BoardView currentUsername={currentUsername} users={users} /> : null}
