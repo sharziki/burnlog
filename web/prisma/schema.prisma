@@ -19,10 +19,76 @@ model User {
   bio           String?
   createdAt     DateTime    @default(now())
 
-  accounts   Account[]
-  sessions   Session[]
-  apiKeys    ApiKey[]
-  burnEvents BurnEvent[]
+  accounts          Account[]
+  sessions          Session[]
+  apiKeys           ApiKey[]
+  burnEvents        BurnEvent[]
+  groupMemberships  GroupMembership[]
+  groupsCreated     Group[]          @relation("GroupCreator")
+  challengesCreated Challenge[]      @relation("ChallengeCreator")
+  challengeEntries  ChallengeEntry[]
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  inviteCode  String   @unique
+  createdAt   DateTime @default(now())
+  createdById String
+
+  createdBy   User              @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  memberships GroupMembership[]
+  challenges  Challenge[]
+}
+
+model GroupMembership {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model Challenge {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  summary     String?
+  status      String   @default("live")
+  inviteCode  String   @unique
+  startsAt    DateTime
+  endsAt      DateTime
+  createdAt   DateTime @default(now())
+  createdById String
+  hostGroupId String?
+
+  createdBy User             @relation("ChallengeCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  hostGroup Group?           @relation(fields: [hostGroupId], references: [id], onDelete: SetNull)
+  entries   ChallengeEntry[]
+
+  @@index([hostGroupId])
+  @@index([startsAt, endsAt])
+}
+
+model ChallengeEntry {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  createdAt   DateTime @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@index([userId])
 }
 
 model Account {

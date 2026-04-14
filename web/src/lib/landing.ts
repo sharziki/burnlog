@@ -1,12 +1,11 @@
+import type { ChallengeSummary, GroupSummary } from "./community";
 import type { UserStats } from "./stats";
 
 export type Announcement = {
   id: string;
   date: string;
   title: string;
-  summary: string;
   href: string;
-  cta: string;
 };
 
 export type LandingMetric = {
@@ -27,37 +26,15 @@ export type LandingSnapshot = {
   metrics: LandingMetric[];
   announcements: Announcement[];
   caseStudy: CaseStudySnapshot;
-  featuredUsers: UserStats[];
+  leaderboardUsers: UserStats[];
+  featuredGroups: GroupSummary[];
+  featuredChallenges: ChallengeSummary[];
 };
 
 const ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: "landing-and-board",
-    date: "Apr 14, 2026",
-    title: "New landing page, cleaner board split",
-    summary:
-      "Burnlog now has a proper public-facing entry point and a dedicated /board surface instead of dumping every visitor straight into the operator shell.",
-    href: "/board",
-    cta: "Open live board",
-  },
-  {
-    id: "real-data-only",
-    date: "Apr 14, 2026",
-    title: "No fake operators, no padded standings",
-    summary:
-      "The product now reads directly from real ingest history. Empty states stay honest until more builders actually connect their logs.",
-    href: "/settings",
-    cta: "Connect your setup",
-  },
-  {
-    id: "privacy-model",
-    date: "Apr 14, 2026",
-    title: "Private-by-default ingest model stays intact",
-    summary:
-      "Burnlog tracks token totals, provider, model, timestamp, and source. It does not upload source code, prompts, repo names, or cwd metadata.",
-    href: "/settings",
-    cta: "See the ingest flow",
-  },
+  { id: "board", date: "Apr 14", title: "Landing → board split", href: "/board" },
+  { id: "challenges", date: "Apr 14", title: "Real challenge system next", href: "/challenges/new" },
+  { id: "groups", date: "Apr 14", title: "Create a group, invite operators", href: "/groups/new" },
 ];
 
 function formatCompact(value: number): string {
@@ -71,72 +48,47 @@ function pluralize(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-export function buildLandingSnapshot(users: UserStats[]): LandingSnapshot {
-  const featuredUsers = [...users].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 3);
+export function buildLandingSnapshot(users: UserStats[], groups: GroupSummary[], challenges: ChallengeSummary[]): LandingSnapshot {
+  const leaderboardUsers = [...users].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 5);
   const totalTokens = users.reduce((sum, user) => sum + user.totalTokens, 0);
   const totalEvents = users.reduce((sum, user) => sum + user.commits, 0);
   const uniqueSources = new Set(users.flatMap((user) => user.sources.map((source) => source.source)));
-  const caseStudyUser =
-    users.find((user) => user.username.toLowerCase() === "sharziki") ?? featuredUsers[0] ?? null;
+  const caseStudyUser = users.find((user) => user.username.toLowerCase() === "sharziki") ?? leaderboardUsers[0] ?? null;
 
   const metrics: LandingMetric[] = [
-    {
-      label: "tracked operators",
-      value: users.length.toString(),
-      tone: users.length > 0 ? "accent" : "neutral",
-    },
-    {
-      label: "verified burn events",
-      value: formatCompact(totalEvents),
-      tone: totalEvents > 0 ? "accent" : "neutral",
-    },
-    {
-      label: "tokens ingested",
-      value: formatCompact(totalTokens),
-      tone: totalTokens > 0 ? "accent" : "neutral",
-    },
-    {
-      label: "connected sources",
-      value: uniqueSources.size.toString(),
-      tone: uniqueSources.size > 0 ? "accent" : "neutral",
-    },
+    { label: "operators", value: users.length.toString(), tone: users.length > 0 ? "accent" : "neutral" },
+    { label: "events", value: formatCompact(totalEvents), tone: totalEvents > 0 ? "accent" : "neutral" },
+    { label: "tokens", value: formatCompact(totalTokens), tone: totalTokens > 0 ? "accent" : "neutral" },
+    { label: "sources", value: uniqueSources.size.toString(), tone: uniqueSources.size > 0 ? "accent" : "neutral" },
   ];
 
   const caseStudy: CaseStudySnapshot = caseStudyUser
     ? {
-        label: "First case study",
-        title: `${caseStudyUser.name} is running Burnlog on real coding-agent history`,
-        summary:
-          "Burnlog is dogfooding on SXNA Labs usage first: one operator, real local logs, zero fake leaderboard padding. That gives the product a truthful baseline before broader invites roll out.",
+        label: "Case study 01",
+        title: `${caseStudyUser.name}`,
+        summary: "Real local logs. No filler accounts. First board is SXNA Labs dogfood.",
         bullets: [
-          `${pluralize(caseStudyUser.sources.length, "connected source", "connected sources")}: ${caseStudyUser.sources.map((source) => source.source).join(", ") || "none yet"}.`,
-          `${formatCompact(caseStudyUser.totalTokens)} tokens ingested so far with ${pluralize(caseStudyUser.commits, "verified event", "verified events")}.`,
-          caseStudyUser.topModels.length
-            ? `Current model mix is led by ${caseStudyUser.topModels[0].model}.`
-            : "Model history will appear automatically once usage lands in the ingest API.",
+          `${formatCompact(caseStudyUser.totalTokens)} total burn`,
+          `${pluralize(caseStudyUser.commits, "verified event", "verified events")}`,
+          caseStudyUser.topModels[0]?.model ?? "model mix pending",
         ],
         metrics: [
           { label: "operator", value: `@${caseStudyUser.username}` },
-          { label: "burn total", value: formatCompact(caseStudyUser.totalTokens) },
-          { label: "weekly burn", value: formatCompact(caseStudyUser.weeklyTokens) },
+          { label: "weekly", value: formatCompact(caseStudyUser.weeklyTokens) },
           { label: "sources", value: caseStudyUser.sources.length.toString() },
+          { label: "rank", value: users.length ? `#${users.findIndex((user) => user.id === caseStudyUser.id) + 1}` : "#1" },
         ],
       }
     : {
-        label: "First case study",
-        title: "Burnlog is ready for the first real operator profile",
-        summary:
-          "There is no padded sample company here. The first case study will appear as soon as a real builder connects their local logs and syncs them to the board.",
-        bullets: [
-          "Connect the CLI from Settings.",
-          "Run burnlog sync from the machine that already has local agent logs.",
-          "The case study section will update automatically from real ingest data.",
-        ],
+        label: "Case study 01",
+        title: "Waiting on the first operator",
+        summary: "Connect local logs. The board fills from real burn only.",
+        bullets: ["Generate key", "Run sync", "Claim slot"],
         metrics: [
-          { label: "operators", value: "0" },
-          { label: "burn total", value: "0" },
-          { label: "weekly burn", value: "0" },
+          { label: "operator", value: "—" },
+          { label: "weekly", value: "0" },
           { label: "sources", value: uniqueSources.size.toString() },
+          { label: "rank", value: "—" },
         ],
       };
 
@@ -144,6 +96,8 @@ export function buildLandingSnapshot(users: UserStats[]): LandingSnapshot {
     metrics,
     announcements: ANNOUNCEMENTS,
     caseStudy,
-    featuredUsers,
+    leaderboardUsers,
+    featuredGroups: groups.slice(0, 3),
+    featuredChallenges: challenges.slice(0, 3),
   };
 }

@@ -121,6 +121,8 @@ function Header({
               {item.label}
             </button>
           ))}
+          <Link className="action-chip" href="/challenges/new">New challenge</Link>
+          <Link className="action-chip" href="/groups/new">New group</Link>
           <Link className="action-chip" href="/settings">Settings</Link>
         </nav>
       </div>
