@@ -2,10 +2,11 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #050505;
-  color: #e5e5e5;
-  font-family: "JetBrains Mono", monospace;
+  background: #09090B;
+  color: #E4E4E7;
+  font-family: "Instrument Sans", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 button { font-family: inherit; }
 a { color: inherit; text-decoration: none; }
+input, textarea, select { font-family: inherit; }
