@@ -7,11 +7,13 @@ import { formatTokens } from "@/lib/format";
 import { getRank } from "@/lib/ranks";
 import type { UserStats } from "@/lib/stats";
 
-type TabId = "board" | "profiles" | "challenges" | "connect";
+type TabId = "board" | "profiles" | "compare" | "trends" | "challenges" | "connect";
 
 const TABS: { id: TabId; label: string; hint: string }[] = [
   { id: "board", label: "Board", hint: "Live benchmark" },
   { id: "profiles", label: "Profiles", hint: "Operator cards" },
+  { id: "compare", label: "Compare", hint: "Side-by-side signal" },
+  { id: "trends", label: "Trends", hint: "Movement over time" },
   { id: "challenges", label: "Challenges", hint: "Competitive loops" },
   { id: "connect", label: "Connect", hint: "Hook up sources" },
 ];
@@ -86,6 +88,38 @@ function WeeklySpark({ values }: { values: number[] }) {
         </linearGradient>
       </defs>
     </svg>
+  );
+}
+
+function Heatmap({ values }: { values: number[] }) {
+  const recent = values.slice(-28);
+  const max = Math.max(...recent, 0);
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+        gap: 6,
+      }}
+    >
+      {recent.map((value, index) => {
+        const strength = max > 0 ? value / max : 0;
+        return (
+          <div
+            key={`${index}-${value}`}
+            style={{
+              aspectRatio: "1 / 1",
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.05)",
+              background: strength
+                ? `rgba(245, 158, 11, ${0.12 + strength * 0.55})`
+                : "rgba(255,255,255,0.04)",
+            }}
+            title={`${value.toLocaleString()} tokens`}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -381,6 +415,171 @@ function ProfilesView({ users, currentUsername }: { users: UserStats[]; currentU
   );
 }
 
+function CompareView({ users, currentUsername }: { users: UserStats[]; currentUsername: string | null }) {
+  const snapshot = buildDashboardSnapshot(users, currentUsername);
+  const left = snapshot.currentUser ?? snapshot.users[0] ?? null;
+  const right = snapshot.users.find((user) => user.id !== left?.id) ?? null;
+
+  if (!left) {
+    return <div className="empty-state">No builders available yet. Sync at least one profile before comparing operator signal.</div>;
+  }
+
+  const cards = [
+    { label: "Total burn", left: formatFullTokens(left.totalTokens), right: right ? formatFullTokens(right.totalTokens) : "Need another builder" },
+    { label: "7d burn", left: formatTokens(left.weeklyTokens), right: right ? formatTokens(right.weeklyTokens) : "Need another builder" },
+    { label: "Streak", left: `${left.streak}d`, right: right ? `${right.streak}d` : "Need another builder" },
+    { label: "Tok / commit", left: formatTokens(left.tokensPerCommit), right: right ? formatTokens(right.tokensPerCommit) : "Need another builder" },
+  ];
+
+  return (
+    <div className="stack">
+      <div className="panel section-panel">
+        <div className="section-header">
+          <div>
+            <div className="eyebrow">Compare</div>
+            <h2 className="section-title">Two operators, one benchmark frame</h2>
+            <p className="section-copy">This is the recruiting-friendly view: same categories, same framing, no fake productivity theatre.</p>
+          </div>
+        </div>
+
+        <div className="profile-grid">
+          {[left, right].map((user, idx) => (
+            <div className="panel-muted card-pad" key={user?.id ?? `empty-${idx}`}>
+              {user ? (
+                <>
+                  <div className="profile-card-top">
+                    <div className="user-cell">
+                      <div className="avatar">{user.avatar}</div>
+                      <div>
+                        <div className="user-name">{user.name}{user.username === currentUsername ? " · you" : ""}</div>
+                        <div className="user-handle">@{user.username}</div>
+                      </div>
+                    </div>
+                    <span className="rank-pill" style={{ borderColor: `${getRank(user.totalTokens).color}33`, color: getRank(user.totalTokens).color }}>
+                      {getRank(user.totalTokens).icon} {getRank(user.totalTokens).name}
+                    </span>
+                  </div>
+                  <WeeklySpark values={user.weeklyHistory} />
+                  <div className="stack" style={{ gap: 0, marginTop: 14 }}>
+                    <div className="stat-line"><span>Top model</span><strong className="mono" style={{ color: "var(--text)" }}>{user.topModels[0]?.model ?? "—"}</strong></div>
+                    <div className="stat-line"><span>Connected sources</span><strong className="mono" style={{ color: "var(--text)" }}>{user.sources.length}</strong></div>
+                    <div className="stat-line"><span>Profile note</span><strong className="mono" style={{ color: "var(--text)" }}>{user.bio ?? "No bio"}</strong></div>
+                  </div>
+                </>
+              ) : (
+                <div className="empty-state">Need a second connected builder before Burnlog can do a real side-by-side compare.</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel section-panel">
+        <div className="section-header">
+          <div>
+            <div className="eyebrow">Signal breakdown</div>
+            <h2 className="section-title">Same metrics, cleaner story</h2>
+          </div>
+        </div>
+        <div className="info-grid">
+          {cards.map((card) => (
+            <div className="panel-muted card-pad" key={card.label}>
+              <div className="metric-label">{card.label}</div>
+              <div className="stat-line" style={{ marginTop: 10 }}><span>{left.username}</span><strong className="mono" style={{ color: "var(--text)" }}>{card.left}</strong></div>
+              <div className="stat-line"><span>{right?.username ?? "slot 2"}</span><strong className="mono" style={{ color: "var(--text)" }}>{card.right}</strong></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrendsView({ users, currentUsername }: { users: UserStats[]; currentUsername: string | null }) {
+  const snapshot = buildDashboardSnapshot(users, currentUsername);
+  const focus = snapshot.currentUser ?? snapshot.users[0] ?? null;
+
+  return (
+    <div className="stack">
+      <div className="panel section-panel">
+        <div className="section-header">
+          <div>
+            <div className="eyebrow">Trends</div>
+            <h2 className="section-title">Movement, not just rank</h2>
+            <p className="section-copy">Trend surfaces keep Burnlog from becoming a static all-time table. They answer whether someone is accelerating, consistent, or fading.</p>
+          </div>
+        </div>
+
+        {focus ? (
+          <div className="content-grid">
+            <div className="panel-muted card-pad">
+              <div className="metric-label">28-day activity heatmap</div>
+              <div style={{ marginTop: 16 }}>
+                <Heatmap values={focus.heatmap} />
+              </div>
+              <p className="section-copy" style={{ marginBottom: 0, marginTop: 14 }}>
+                Recent cadence for @{focus.username}. This makes consistency visually obvious even before you read the numbers.
+              </p>
+            </div>
+
+            <div className="stack">
+              <div className="panel-muted card-pad">
+                <div className="metric-label">Weekly movement</div>
+                <div style={{ marginTop: 14 }}>
+                  <WeeklySpark values={focus.weeklyHistory} />
+                </div>
+                <div className="stat-line" style={{ marginTop: 12 }}><span>Current 7d burn</span><strong className="mono" style={{ color: "var(--text)" }}>{formatTokens(focus.weeklyTokens)}</strong></div>
+                <div className="stat-line"><span>Lifetime burn</span><strong className="mono" style={{ color: "var(--text)" }}>{formatFullTokens(focus.totalTokens)}</strong></div>
+              </div>
+
+              <div className="panel-muted card-pad">
+                <div className="metric-label">Model concentration</div>
+                <div className="stack" style={{ gap: 0, marginTop: 10 }}>
+                  {focus.topModels.slice(0, 4).map((model) => (
+                    <div className="stat-line" key={model.model}><span>{model.model}</span><strong className="mono" style={{ color: "var(--text)" }}>{formatTokens(model.tokens)}</strong></div>
+                  ))}
+                  {!focus.topModels.length ? <div className="empty-state">No model data yet.</div> : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="empty-state">No trend data yet. Sync one profile and Burnlog can start showing movement over time.</div>
+        )}
+      </div>
+
+      <div className="panel section-panel">
+        <div className="section-header">
+          <div>
+            <div className="eyebrow">Board narrative</div>
+            <h2 className="section-title">What the board is doing right now</h2>
+          </div>
+        </div>
+        <div className="info-grid">
+          <div className="panel-muted card-pad">
+            <strong>Top weekly burner</strong>
+            <p className="section-copy">{snapshot.metrics.topWeeklyBurner ? `@${snapshot.metrics.topWeeklyBurner.username} is pacing the board with ${formatTokens(snapshot.metrics.topWeeklyBurner.weeklyTokens)} in the last 7 days.` : "No weekly movement yet."}</p>
+          </div>
+          <div className="panel-muted card-pad">
+            <strong>Median weekly burn</strong>
+            <p className="section-copy">Median matters because it keeps one giant user from becoming the only story on the product.</p>
+            <div className="metric-value" style={{ fontSize: "2rem" }}>{formatTokens(snapshot.metrics.medianWeekly)}</div>
+          </div>
+          <div className="panel-muted card-pad">
+            <strong>Active burners</strong>
+            <p className="section-copy">Shows whether the network is actually alive right now or just carrying stale historical stats.</p>
+            <div className="metric-value" style={{ fontSize: "2rem" }}>{snapshot.metrics.activeBurners}</div>
+          </div>
+          <div className="panel-muted card-pad">
+            <strong>Consistency leader</strong>
+            <p className="section-copy">{snapshot.metrics.streakLeader ? `@${snapshot.metrics.streakLeader.username} currently owns the streak narrative at ${snapshot.metrics.streakLeader.streak} days.` : "No streak leader yet."}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChallengesView({ users, currentUsername }: { users: UserStats[]; currentUsername: string | null }) {
   const snapshot = buildDashboardSnapshot(users, currentUsername);
   return (
@@ -580,6 +779,8 @@ export function Burnlog({ users, currentUsername }: { users: UserStats[]; curren
 
         {tab === "board" ? <BoardView currentUsername={currentUsername} users={users} /> : null}
         {tab === "profiles" ? <ProfilesView currentUsername={currentUsername} users={users} /> : null}
+        {tab === "compare" ? <CompareView currentUsername={currentUsername} users={users} /> : null}
+        {tab === "trends" ? <TrendsView currentUsername={currentUsername} users={users} /> : null}
         {tab === "challenges" ? <ChallengesView currentUsername={currentUsername} users={users} /> : null}
         {tab === "connect" ? <ConnectView currentUsername={currentUsername} users={users} /> : null}
       </div>
