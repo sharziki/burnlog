@@ -8,6 +8,16 @@ export type IngestResponse = {
   error?: string;
 };
 
+export type RankResponse = {
+  ok: boolean;
+  username: string;
+  rank: string;
+  rankIcon: string;
+  totalTokens: number;
+  position: number;
+  totalUsers: number;
+};
+
 export async function ingest(
   apiUrl: string,
   apiKey: string,
@@ -30,4 +40,19 @@ export async function ingest(
   }
   if (!res.ok) throw new Error(data.error ?? `ingest failed: ${res.status}`);
   return data;
+}
+
+export async function fetchRank(
+  apiUrl: string,
+  apiKey: string,
+): Promise<RankResponse | null> {
+  try {
+    const res = await fetch(`${apiUrl}/api/me/rank`, {
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as RankResponse;
+  } catch {
+    return null;
+  }
 }

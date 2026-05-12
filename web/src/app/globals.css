@@ -6,7 +6,30 @@ html, body {
   color: #E4E4E7;
   font-family: "Instrument Sans", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 button { font-family: inherit; }
 a { color: inherit; text-decoration: none; }
 input, textarea, select { font-family: inherit; }
+img { max-width: 100%; height: auto; }
+
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #09090B; }
+::-webkit-scrollbar-thumb { background: #27272A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid #D97706;
+  outline-offset: 2px;
+}
+
+/* Selection color */
+::selection {
+  background: #D9770644;
+  color: #FAFAFA;
+}

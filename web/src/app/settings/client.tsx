@@ -5,10 +5,12 @@ import { useState } from "react";
 export function SettingsClient({
   username,
   name,
+  image,
   signOutAction,
 }: {
   username: string;
   name: string;
+  image: string | null;
   signOutAction: () => Promise<void>;
 }) {
   const [key, setKey] = useState<string | null>(null);
@@ -67,11 +69,24 @@ export function SettingsClient({
           marginBottom: 16,
         }}
       >
-        <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>
           signed in as
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{name}</div>
-        <div style={{ fontSize: 12, color: "#6B7280" }}>@{username}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {image && (
+            <img
+              src={image}
+              alt={username}
+              width={48}
+              height={48}
+              style={{ borderRadius: "50%", border: "2px solid #D9770644" }}
+            />
+          )}
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{name}</div>
+            <div style={{ fontSize: 12, color: "#6B7280" }}>@{username}</div>
+          </div>
+        </div>
       </div>
 
       <div

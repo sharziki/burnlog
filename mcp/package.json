@@ -1,0 +1,52 @@
+{
+  "name": "@sxna/burnlog-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for burnlog — query your AI token burn, rank, and leaderboard from inside Claude Code / Cursor / any MCP host.",
+  "keywords": [
+    "mcp",
+    "burnlog",
+    "claude",
+    "model-context-protocol",
+    "sxna",
+    "leaderboard"
+  ],
+  "author": "Sharvil Saxena <sharvilsaxena@gmail.com> (https://github.com/sharziki)",
+  "license": "MIT",
+  "homepage": "https://github.com/sharziki/burnlog/tree/master/mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sharziki/burnlog.git",
+    "directory": "mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/sharziki/burnlog/issues"
+  },
+  "type": "module",
+  "bin": {
+    "burnlog-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

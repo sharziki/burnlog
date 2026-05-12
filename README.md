@@ -1,72 +1,125 @@
 # burnlog
 
-Private leaderboard for AI token burn. Tracks every token you push through Claude
-Code (and eventually OpenAI / Google) across projects, and ranks you against
-anyone else who points the CLI at their logs.
+> Private leaderboard for AI token burn. A [SXNA Labs](https://github.com/sharziki) product.
 
 ```
-┌─────────────┐   scan ~/.claude   ┌──────────┐   POST /ingest   ┌───────────┐
-│  burnlog    │ ─────────────────▶ │  parser  │ ────────────────▶│  web API  │
-│     CLI     │                    └──────────┘                  └─────┬─────┘
-└─────────────┘                                                        │
-                                                                       ▼
-                                                                 ┌───────────┐
-                                                                 │  SQLite   │
-                                                                 └─────┬─────┘
-                                                                       │
-                                                                       ▼
-                                                                 ┌───────────┐
-                                                                 │ Next.js UI│
-                                                                 └───────────┘
+┌──────────────┐                                          ┌───────────┐
+│  burnlog CLI │──┐                                       │           │
+│  (log reader)│  │                                       │           │
+└──────────────┘  │                                       │           │
+                  │                                       │           │
+┌──────────────┐  │    POST /api/ingest (bearer key)      │  web API  │
+│ @sxna/       │  ├──────────────────────────────────────▶│  (Next.js)│
+│ burnlog-sdk  │  │                                       │           │
+│ (in-agent)   │  │                                       │           │
+└──────────────┘  │                                       │           │
+                  │                                       │           │
+┌──────────────┐  │                                       │           │
+│ @sxna/       │  │    GET /api/me/*  (bearer key)        │           │
+│ burnlog-mcp  │──┘◀──────────────────────────────────────│           │
+│ (readback)   │                                          └─────┬─────┘
+└──────────────┘                                                │
+                                                                ▼
+                                                          ┌───────────┐
+                                                          │ Postgres  │
+                                                          └───────────┘
 ```
 
-## Layout
+## What it is
+
+burnlog tracks every token you push through AI coding agents (Claude Code,
+Codex, custom agents, …) across all your projects, and ranks you against
+anyone else plugged in. Tokens only — **never prompts, filenames, or working
+directories**. See [privacy model](web/src/app/privacy/page.tsx) for exactly
+what we do and don't store.
+
+## Three ways to plug in
+
+Pick the one that matches how your tokens are produced.
+
+| You have…                           | Use              | Package              |
+| ----------------------------------- | ---------------- | -------------------- |
+| Claude Code, Codex, or similar CLI  | **CLI**          | `@sxna/burnlog`      |
+| Your own agent calling an LLM SDK   | **SDK**          | `@sxna/burnlog-sdk`  |
+| Claude Code / Cursor and want to ask it about your rank | **MCP server** | `@sxna/burnlog-mcp` |
+
+### CLI — for agents that write logs to disk
+
+```bash
+npm install -g @sxna/burnlog
+burnlog login <api-key>      # grab one at https://burnlog.sxna.dev/settings
+burnlog install              # auto-sync on every Claude Code session end
+```
+
+Reads `~/.claude/projects/*/*.jsonl`, `~/.codex/sessions/**/*.jsonl`, etc.
+Nothing besides token counts leaves your machine. Run `burnlog sync` any
+time, or `burnlog daemon` for a background watcher. See [cli/README](cli/README.md).
+
+### SDK — for your own agents
+
+```bash
+npm install @sxna/burnlog-sdk
+```
+
+```ts
+import { Burnlog } from "@sxna/burnlog-sdk";
+
+const burnlog = new Burnlog({
+  apiKey: process.env.BURNLOG_API_KEY!,
+  source: "my-agent",
+});
+
+const res = await anthropic.messages.create({ /* ... */ });
+burnlog.trackAnthropic(res);   // batches + flushes in the background
+```
+
+Zero runtime dependencies. `track()` never throws. See [sdk/README](sdk/README.md).
+
+### MCP — query your rank from inside an agent
+
+Drop this into `~/.claude.json` (Claude Code) or `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "burnlog": {
+      "command": "npx",
+      "args": ["-y", "@sxna/burnlog-mcp"],
+      "env": { "BURNLOG_API_KEY": "blg_your_key_here" }
+    }
+  }
+}
+```
+
+Then ask your agent *"what's my rank"* or *"who's top of the leaderboard"*.
+Tools: `get_my_rank`, `get_my_stats`, `get_leaderboard`, `find_user`. See
+[mcp/README](mcp/README.md).
+
+## Self-host the web app
+
+```bash
+git clone https://github.com/sharziki/burnlog
+cd burnlog
+cp web/.env.example web/.env
+# fill in AUTH_SECRET, AUTH_GITHUB_ID, AUTH_GITHUB_SECRET
+docker compose up -d
+```
+
+Open <http://localhost:3000>. Point any of the three surfaces at it by
+setting `BURNLOG_API_URL=http://localhost:3000` (or `baseUrl` for the SDK).
+
+## Repo layout
 
 ```
 burnlog/
-├── web/   # Next.js 15 app router — leaderboard UI, auth, ingest API, SQLite
-└── cli/   # TS CLI — parses Claude Code JSONL logs and syncs to web
+├── web/      Next.js 15 + Prisma + NextAuth GitHub + Postgres
+├── cli/      @sxna/burnlog      — multi-adapter log reader
+├── sdk/      @sxna/burnlog-sdk  — in-agent tracker, zero deps
+├── mcp/      @sxna/burnlog-mcp  — MCP server for readback
+└── .github/  CI + per-package release workflows
 ```
 
-## Quick start
-
-### Web
-
-```bash
-cd web
-cp .env.example .env        # fill in GitHub OAuth creds (optional for dev)
-npm install
-npx prisma migrate dev
-npm run dev                 # http://localhost:3000
-```
-
-### CLI
-
-```bash
-cd cli
-npm install
-npm run build
-npm link                    # exposes `burnlog` globally
-
-burnlog login <api-key>     # grab key from /settings
-burnlog scan                # dry-run — show what would sync
-burnlog sync                # upload to web
-burnlog status              # show local totals
-```
-
-## How it measures burn
-
-The CLI walks `~/.claude/projects/*/*.jsonl` — Claude Code's session logs. Every
-assistant message has a `message.usage` block. burnlog sums:
-
-```
-input_tokens + output_tokens + cache_creation_input_tokens + cache_read_input_tokens
-```
-
-Dedupes by `requestId` so retries don't double-count. Groups by `cwd` for the
-"top projects" column.
-
-## Rank system
+## Ranks
 
 | Rank      | Tokens         |
 | --------- | -------------- |
@@ -75,3 +128,22 @@ Dedupes by `requestId` so retries don't double-count. Groups by `cwd` for the
 | Blaze     | 500K – 2M      |
 | Inferno   | 2M – 10M       |
 | Supernova | 10M+           |
+
+## How token counts are collected
+
+The CLI walks local log files written by your agents and extracts `usage`
+blocks. Dedup is keyed by a request id from the source (e.g. Anthropic
+`requestId`, Codex session `id`). Nothing else leaves your machine.
+
+| Agent        | Path                                   | Status     |
+| ------------ | -------------------------------------- | ---------- |
+| Claude Code  | `~/.claude/projects/*/*.jsonl`         | live       |
+| OpenAI Codex | `~/.codex/sessions/**/*.jsonl`         | live       |
+| Hermes       | `~/.hermes/`                           | stub       |
+| openclaw     | `~/.openclaw/`                         | stub       |
+
+For anything not on this list, reach for the SDK.
+
+## License
+
+MIT © [Sharvil Saxena](https://github.com/sharziki) / SXNA Labs.
