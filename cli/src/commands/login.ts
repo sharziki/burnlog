@@ -45,4 +45,5 @@ export async function login(args: string[]): Promise<void> {
   console.log(pc.dim("next:"));
   console.log("  " + pc.bold("burnlog sync") + pc.dim("     upload your existing burn history"));
   console.log("  " + pc.bold("burnlog install") + pc.dim("  install Claude Code auto-sync hook"));
+  console.log("  " + pc.bold("Hermes/custom agents") + pc.dim("  use @sxna/burnlog-sdk for explicit tracking"));
 }

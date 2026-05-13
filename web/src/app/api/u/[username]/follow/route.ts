@@ -60,7 +60,8 @@ export async function POST(_: Request, context: { params: Promise<{ username: st
   const session = await auth();
   const viewerId = (session?.user as { id?: string } | undefined)?.id;
   if (!viewerId) {
-    return NextResponse.json({ message: "Sign in required" }, { status: 401 });
+    const { username } = await context.params;
+    return NextResponse.json({ message: "Sign in required", loginUrl: `/login?next=/u/${username}` }, { status: 401 });
   }
 
   const { username } = await context.params;
@@ -76,32 +77,38 @@ export async function POST(_: Request, context: { params: Promise<{ username: st
     return NextResponse.json({ message: "You can't follow yourself" }, { status: 400 });
   }
 
-  await prisma.follow.upsert({
+  const existingFollow = await prisma.follow.findUnique({
     where: { followerId_followingId: { followerId: viewer.id, followingId: target.id } },
-    update: {},
-    create: { followerId: viewer.id, followingId: target.id },
+    select: { id: true },
   });
 
-  await prisma.notification.create({
-    data: {
-      userId: target.id,
-      type: "follow",
-      message: `@${viewer.username ?? viewer.name ?? "someone"} followed you.`,
-      link: viewer.username ? `/u/${viewer.username}` : null,
-      meta: JSON.stringify({ followerUsername: viewer.username ?? null }),
-    },
-  }).catch(() => undefined);
+  if (!existingFollow) {
+    await prisma.follow.create({
+      data: { followerId: viewer.id, followingId: target.id },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: target.id,
+        type: "follow",
+        message: `@${viewer.username ?? viewer.name ?? "someone"} followed you.`,
+        link: viewer.username ? `/u/${viewer.username}` : null,
+        meta: JSON.stringify({ followerUsername: viewer.username ?? null }),
+      },
+    }).catch(() => undefined);
+  }
 
   const followersCount = await prisma.follow.count({ where: { followingId: target.id } });
 
-  return NextResponse.json({ success: true, isFollowing: true, followersCount });
+  return NextResponse.json({ success: true, isFollowing: true, followersCount, created: !existingFollow });
 }
 
 export async function DELETE(_: Request, context: { params: Promise<{ username: string }> }) {
   const session = await auth();
   const viewerId = (session?.user as { id?: string } | undefined)?.id;
   if (!viewerId) {
-    return NextResponse.json({ message: "Sign in required" }, { status: 401 });
+    const { username } = await context.params;
+    return NextResponse.json({ message: "Sign in required", loginUrl: `/login?next=/u/${username}` }, { status: 401 });
   }
 
   const { username } = await context.params;

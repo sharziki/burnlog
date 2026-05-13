@@ -10,7 +10,7 @@ burnlog install             # Claude Code only: auto-sync on session end
 
 `burnlog install` only wires a Claude Code hook today. Codex logs are still read by
 `burnlog scan`, `burnlog sync`, and `burnlog daemon`, but there is no Codex-specific
-hook installer yet.
+hook installer yet. Hermes should use the SDK/manual path for now.
 
 ## What it reads
 
@@ -21,12 +21,13 @@ counts and a random dedup id.
 
 - Claude Code: `~/.claude/projects/*/*.jsonl`
 - OpenAI Codex: `~/.codex/sessions/**/*.jsonl`
-- Hermes: detection stub only; parser not implemented yet
+- Hermes: no passive CLI log ingestion yet; use the SDK/manual integration path
 - openclaw: detection stub only; parser not implemented yet
 
 Override roots with environment variables such as `BURNLOG_CLAUDE_DIR` and
-`BURNLOG_CODEX_DIR`. `BURNLOG_HERMES_DIR` and `BURNLOG_OPENCLAW_DIR` are only
-useful once those adapters support real usage logs.
+`BURNLOG_CODEX_DIR`. `BURNLOG_HERMES_DIR` and `BURNLOG_OPENCLAW_DIR` are
+reserved for future passive adapters once those runtimes expose stable usage
+logs.
 
 ## Commands
 
@@ -47,7 +48,7 @@ burnlog logout                delete the stored api key
 BURNLOG_API_URL        override the api url (default https://burnlog.net)
 BURNLOG_CLAUDE_DIR     override ~/.claude/projects
 BURNLOG_CODEX_DIR      override ~/.codex/sessions
-BURNLOG_HERMES_DIR     reserved for a future Hermes adapter
+BURNLOG_HERMES_DIR     reserved for a future passive Hermes adapter
 BURNLOG_OPENCLAW_DIR   reserved for a future openclaw adapter
 ```
 

@@ -172,15 +172,30 @@ type ProfileSocialState = {
   followersCount: number;
   followingCount: number;
   isFollowing: boolean;
-  canFollow: boolean;
+  isAuthenticated: boolean;
+  isOwnProfile: boolean;
   viewerUsername: string | null;
 };
 
-function copyText(text: string) {
+async function copyText(text: string): Promise<boolean> {
   if (typeof navigator !== "undefined" && navigator.clipboard) {
-    return navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
   }
-  return Promise.resolve();
+
+  if (typeof document === "undefined") return false;
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "true");
+  area.style.position = "absolute";
+  area.style.left = "-9999px";
+  document.body.appendChild(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(area);
+  return ok;
 }
 
 function FollowButton({
@@ -195,16 +210,25 @@ function FollowButton({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  if (!social.canFollow) return null;
+  if (social.isOwnProfile) return null;
 
   const run = async () => {
+    if (!social.isAuthenticated) {
+      window.location.href = `/login?next=/u/${username}`;
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
     try {
       const res = await fetch(`/api/u/${username}/follow`, {
         method: social.isFollowing ? "DELETE" : "POST",
       });
-      const data = (await res.json()) as { message?: string; isFollowing?: boolean; followersCount?: number };
+      const data = (await res.json()) as { message?: string; isFollowing?: boolean; followersCount?: number; loginUrl?: string };
+      if (res.status === 401 && data.loginUrl) {
+        window.location.href = data.loginUrl;
+        return;
+      }
       if (!res.ok) {
         setMessage(data.message ?? "Could not update follow");
         return;
@@ -213,14 +237,16 @@ function FollowButton({
         isFollowing: Boolean(data.isFollowing),
         followersCount: typeof data.followersCount === "number" ? data.followersCount : social.followersCount,
       });
-      setMessage(data.isFollowing ? "Following" : "Unfollowed");
-      setTimeout(() => setMessage(null), 1600);
+      setMessage(data.isFollowing ? "Following — challenge them now." : "Unfollowed");
+      setTimeout(() => setMessage(null), 1800);
     } catch {
       setMessage("Network error");
     } finally {
       setLoading(false);
     }
   };
+
+  const ctaLabel = !social.isAuthenticated ? "Sign In to Follow" : loading ? "Updating..." : social.isFollowing ? "Following" : "Follow";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
@@ -230,9 +256,9 @@ function FollowButton({
         style={{
           padding: "10px 16px",
           borderRadius: 8,
-          border: `1px solid ${social.isFollowing ? "#27272A" : "#D97706"}`,
-          background: social.isFollowing ? "#111113" : "#D97706",
-          color: social.isFollowing ? "#E4E4E7" : "#09090B",
+          border: `1px solid ${!social.isAuthenticated ? "#27272A" : social.isFollowing ? "#27272A" : "#D97706"}`,
+          background: !social.isAuthenticated ? "#111113" : social.isFollowing ? "#111113" : "#D97706",
+          color: !social.isAuthenticated ? "#E4E4E7" : social.isFollowing ? "#E4E4E7" : "#09090B",
           fontFamily: MONO,
           fontSize: 11,
           fontWeight: 700,
@@ -242,7 +268,7 @@ function FollowButton({
           opacity: loading ? 0.7 : 1,
         }}
       >
-        {loading ? "Updating..." : social.isFollowing ? "Following" : "Follow"}
+        {ctaLabel}
       </button>
       {message && <div style={{ fontSize: 10, color: "#D97706", fontFamily: MONO }}>{message}</div>}
     </div>
@@ -265,16 +291,37 @@ export function ProfileClient({ user, joinedAt, social: initialSocial }: { user:
 
   const copyProfileLink = async () => {
     const origin = window.location.origin;
-    await copyText(`${origin}/u/${user.username}`);
-    setCopied("profile");
+    const ok = await copyText(`${origin}/u/${user.username}`);
+    setCopied(ok ? "profile" : "profile-failed");
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  const shareProfileLink = async () => {
+    const origin = window.location.origin;
+    const absoluteUrl = `${origin}/u/${user.username}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `@${user.username} — burnlog`,
+          text: `${user.name} is tracking token burn on burnlog.`,
+          url: absoluteUrl,
+        });
+        setCopied("profile-shared");
+      } else {
+        const ok = await copyText(absoluteUrl);
+        setCopied(ok ? "profile" : "profile-failed");
+      }
+    } catch {
+      return;
+    }
     setTimeout(() => setCopied(null), 1500);
   };
 
   const copyChallengeLink = async () => {
     if (!matchupPath) return;
     const origin = window.location.origin;
-    await copyText(`${origin}${matchupPath}`);
-    setCopied("challenge");
+    const ok = await copyText(`${origin}${matchupPath}`);
+    setCopied(ok ? "challenge" : "challenge-failed");
     setTimeout(() => setCopied(null), 1500);
   };
 
@@ -428,12 +475,18 @@ export function ProfileClient({ user, joinedAt, social: initialSocial }: { user:
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <button
-                  onClick={copyProfileLink}
-                  style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: copied === "profile" ? "#D97706" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+                  onClick={shareProfileLink}
+                  style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #D97706", background: copied === "profile-shared" ? "#F59E0B" : "#D97706", color: "#09090B", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
                 >
-                  {copied === "profile" ? "Copied Profile" : "Copy Profile"}
+                  {copied === "profile-shared" ? "Profile Shared" : "Share Profile"}
                 </button>
-                {matchupPath && (
+                <button
+                  onClick={copyProfileLink}
+                  style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: copied === "profile" ? "#D97706" : copied === "profile-failed" ? "#EF4444" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+                >
+                  {copied === "profile" ? "Copied Profile" : copied === "profile-failed" ? "Copy Failed" : "Copy Profile"}
+                </button>
+                {matchupPath ? (
                   <>
                     <a
                       href={matchupPath}
@@ -443,12 +496,19 @@ export function ProfileClient({ user, joinedAt, social: initialSocial }: { user:
                     </a>
                     <button
                       onClick={copyChallengeLink}
-                      style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: copied === "challenge" ? "#D97706" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+                      style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: copied === "challenge" ? "#D97706" : copied === "challenge-failed" ? "#EF4444" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
                     >
-                      {copied === "challenge" ? "Copied Matchup" : "Copy Matchup"}
+                      {copied === "challenge" ? "Copied Matchup" : copied === "challenge-failed" ? "Copy Failed" : "Copy Matchup"}
                     </button>
                   </>
-                )}
+                ) : !social.isAuthenticated && !social.isOwnProfile ? (
+                  <a
+                    href={`/login?next=/u/${user.username}`}
+                    style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: "#E4E4E7", textDecoration: "none", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}
+                  >
+                    Sign In to Challenge
+                  </a>
+                ) : null}
                 <FollowButton
                   username={user.username}
                   social={social}

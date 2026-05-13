@@ -85,7 +85,8 @@ export default async function ProfilePage({ params }: Props) {
         followersCount,
         followingCount,
         isFollowing: Boolean(existingFollow),
-        canFollow: Boolean(viewerId && viewerId !== user.id),
+        isAuthenticated: Boolean(viewerId),
+        isOwnProfile: Boolean(viewerId && viewerId === user.id),
         viewerUsername,
       }}
     />

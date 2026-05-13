@@ -32,6 +32,27 @@ function relativeTime(iso: string | null): string {
   return `${years}y ago`;
 }
 
+async function copyText(text: string): Promise<boolean> {
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
+  }
+
+  if (typeof document === "undefined") return false;
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "true");
+  area.style.position = "absolute";
+  area.style.left = "-9999px";
+  document.body.appendChild(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(area);
+  return ok;
+}
+
 function cardStyle(accent = false) {
   return {
     background: accent
@@ -157,6 +178,9 @@ export function SettingsClient({
   const [key, setKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [profileAction, setProfileAction] = useState<string | null>(null);
+
+  const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/u/${username}` : `/u/${username}`;
 
   async function createKey() {
     setLoading(true);
@@ -171,6 +195,30 @@ export function SettingsClient({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function copyProfileLink() {
+    const ok = await copyText(profileUrl);
+    setProfileAction(ok ? "Profile link copied" : "Copy failed");
+    setTimeout(() => setProfileAction(null), 1800);
+  }
+
+  async function shareProfile() {
+    if (typeof window === "undefined") return;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `@${username} on burnlog`,
+          text: `${name} is tracking token burn on burnlog.`,
+          url: profileUrl,
+        });
+        setProfileAction("Profile shared");
+      } else {
+        const ok = await copyText(profileUrl);
+        setProfileAction(ok ? "Profile link copied" : "Copy failed");
+      }
+      setTimeout(() => setProfileAction(null), 1800);
+    } catch {}
   }
 
   const statusTone = usage.hasSyncedData ? "#10B981" : "#F59E0B";
@@ -453,9 +501,16 @@ export function SettingsClient({
             </div>
 
             <div style={{ padding: "14px 16px", borderRadius: 12, background: "#0D0D0D", border: "1px solid #1F1F1F" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#FAFAFA", marginBottom: 4 }}>Hermes / openclaw</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#FAFAFA", marginBottom: 4 }}>Hermes</div>
               <div style={{ fontSize: 12, color: "#A1A1AA", lineHeight: 1.65 }}>
-                Not ready for real onboarding yet. Those adapters are still stubs, so this page does not present them as working tracking paths.
+                Use the SDK/manual integration path today. Hermes is supported for explicit tracking, but passive local log ingestion is not ready yet.
+              </div>
+            </div>
+
+            <div style={{ padding: "14px 16px", borderRadius: 12, background: "#0D0D0D", border: "1px solid #1F1F1F" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#FAFAFA", marginBottom: 4 }}>openclaw</div>
+              <div style={{ fontSize: 12, color: "#A1A1AA", lineHeight: 1.65 }}>
+                Still a stub today. Do not expect burnlog to parse local openclaw usage logs yet.
               </div>
             </div>
           </div>
@@ -468,22 +523,69 @@ export function SettingsClient({
           <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
             Share your burnlog page, challenge people head-to-head, and keep your public metadata sharp once your first sync is live.
           </div>
-          <a
-            href={`/u/${username}`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: "1px solid #1F1F1F",
-              color: "#E5E7EB",
-              textDecoration: "none",
-              fontSize: 12,
-            }}
-          >
-            View public profile →
-          </a>
+          {usage.hasSyncedData ? (
+            <>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <a
+                  href={`/u/${username}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #1F1F1F",
+                    color: "#E5E7EB",
+                    textDecoration: "none",
+                    fontSize: 12,
+                  }}
+                >
+                  View public profile →
+                </a>
+                <button
+                  onClick={copyProfileLink}
+                  style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #1F1F1F", background: "#0D0D0D", color: "#E5E7EB", fontSize: 12, cursor: "pointer" }}
+                >
+                  Copy profile link
+                </button>
+                <button
+                  onClick={shareProfile}
+                  style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #D97706", background: "#D97706", color: "#090909", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Share profile
+                </button>
+              </div>
+              {profileAction ? <div style={{ marginTop: 12, fontSize: 12, color: "#D97706" }}>{profileAction}</div> : null}
+            </>
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ fontSize: 12, color: "#A1A1AA", lineHeight: 1.7 }}>
+                Complete your first sync to unlock a profile that is actually worth sharing.
+              </div>
+              <a
+                href="#cli-key"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "fit-content",
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #D97706",
+                  background: "#D97706",
+                  color: "#090909",
+                  textDecoration: "none",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                Generate key and sync first ↓
+              </a>
+              <div style={{ fontSize: 11, color: "#71717A", lineHeight: 1.7 }}>
+                Fast path: <code style={{ color: "#F59E0B" }}>burnlog login &lt;key&gt;</code> → <code style={{ color: "#F59E0B" }}>burnlog sync</code>
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={cardStyle()}>

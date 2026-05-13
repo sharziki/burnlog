@@ -53,7 +53,8 @@ burnlog install              # Claude Code only: auto-sync on session end
 
 Today, `burnlog install` only sets up a Claude Code hook. Codex logs are still
 read by `burnlog scan`, `burnlog sync`, and `burnlog daemon`, but there is no
-Codex/Hermes/openclaw auto-installer yet.
+Codex auto-installer yet. Hermes should use the SDK/manual integration path for
+now, and openclaw is still stubbed.
 
 Reads `~/.claude/projects/*/*.jsonl`, `~/.codex/sessions/**/*.jsonl`, etc.
 Nothing besides token counts leaves your machine. Run `burnlog sync` any time,
@@ -143,7 +144,7 @@ blocks. Dedup is keyed by a request id from the source (e.g. Anthropic
 | ------------ | ------------------------------ | ------ |
 | Claude Code  | `~/.claude/projects/*/*.jsonl` | live   |
 | OpenAI Codex | `~/.codex/sessions/**/*.jsonl` | live   |
-| Hermes       | n/a                            | detection stub only |
+| Hermes       | n/a                            | use SDK/manual integration today |
 | openclaw     | n/a                            | detection stub only |
 
 For anything not on this list, reach for the SDK.

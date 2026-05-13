@@ -45,11 +45,35 @@ If you also use Claude Code on the same machine, you can optionally run
 
 ---
 
-## For Hermes or openclaw
+## For Hermes
 
-Detection stubs exist, but burnlog does not yet support parsing Hermes or
-openclaw token usage logs. If your agent can call an SDK directly, use the SDK
-section below instead.
+burnlog does not yet support passive parsing of Hermes usage logs. Today the
+working path is explicit tracking via the SDK (or another direct integration)
+inside the runtime that makes the model calls.
+
+If you want a copy-paste prompt for a Hermes-powered workflow, use this:
+
+```text
+Set up burnlog tracking for this Hermes workflow using the SDK, not local log parsing.
+
+1. Install the package: npm install @sxna/burnlog-sdk
+2. Set BURNLOG_API_KEY=blg_PASTE_YOUR_KEY_HERE in the runtime environment.
+3. Wrap the model-call path so burnlog records usage after each provider response.
+4. Use burnlog.trackAnthropic(...) or burnlog.trackOpenAI(...) when possible.
+5. If the provider response shape is custom, call burnlog.track({...}) manually.
+
+Do not attempt to install burnlog CLI hooks for Hermes. Hermes local log ingestion is not supported yet.
+```
+
+If your Hermes agent should read back leaderboard context inside the runtime,
+add the MCP server section below too.
+
+---
+
+## For openclaw
+
+burnlog does not yet support parsing openclaw token usage logs. If your agent
+can call an SDK directly, use the SDK section below instead.
 
 ---
 
