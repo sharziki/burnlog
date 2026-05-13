@@ -1,4 +1,4 @@
-import { auth, signIn } from "@/auth";
+import { auth } from "@/auth";
 import { NotificationBell } from "./NotificationBell";
 
 const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -111,31 +111,26 @@ export async function Nav() {
           </a>
         </div>
       ) : (
-        <form
-          action={async () => {
-            "use server";
-            await signIn("github");
+        <a
+          href="/login"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 11,
+            color: "#09090B",
+            padding: "9px 13px",
+            border: "1px solid #D97706",
+            borderRadius: 8,
+            fontFamily: MONO,
+            background: "#D97706",
+            cursor: "pointer",
+            fontWeight: 700,
+            textDecoration: "none",
           }}
         >
-          <button
-            type="submit"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 11,
-              color: "#D97706",
-              padding: "8px 12px",
-              border: "1px solid #18181B",
-              borderRadius: 6,
-              fontFamily: MONO,
-              background: "transparent",
-              cursor: "pointer",
-            }}
-          >
-            Sign in
-          </button>
-        </form>
+          Sign in with GitHub
+        </a>
       )}
     </header>
   );

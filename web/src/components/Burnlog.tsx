@@ -1217,63 +1217,67 @@ export function Burnlog({
       <div style={styles.container}>
         {/* Hero landing section for unauthenticated visitors */}
         {!currentUsername && (
-          <div style={{ paddingTop: 48, paddingBottom: 40, borderBottom: "1px solid #18181B" }}>
-            <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto" }}>
+          <div className="burnlog-landing-shell" style={{ paddingTop: 48, paddingBottom: 40, borderBottom: "1px solid #18181B" }}>
+            <div className="burnlog-landing-hero" style={{ textAlign: "center", maxWidth: 720, margin: "0 auto" }}>
               <div style={{ fontSize: 48, fontWeight: 800, color: "#FAFAFA", letterSpacing: -1.5, lineHeight: 1.1, fontFamily: SANS, marginBottom: 16 }}>
                 Track the burn.
               </div>
-              <div style={{ fontSize: 16, color: "#71717A", lineHeight: 1.6, marginBottom: 32, fontFamily: SANS }}>
-                The competitive leaderboard for AI token usage. See how hard you ship with AI.
+              <div style={{ fontSize: 18, color: "#A1A1AA", lineHeight: 1.65, marginBottom: 18, fontFamily: SANS }}>
+                Track AI token usage across Claude Code, Codex, and local agents. Compete with your team, climb the
+                leaderboard, and earn a GitHub badge without sending prompt content off-machine.
               </div>
-              <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
-                {signInAction && (
-                  <form action={signInAction}>
-                    <button
-                      type="submit"
-                      style={{
-                        padding: "14px 28px",
-                        background: "#D97706",
-                        color: "#09090B",
-                        border: "none",
-                        borderRadius: 8,
-                        fontSize: 14,
-                        fontWeight: 700,
-                        fontFamily: MONO,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="#09090B">
-                        <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
-                      </svg>
-                      Sign in with GitHub
-                    </button>
-                  </form>
-                )}
+              <div style={{ fontSize: 12, color: "#71717A", marginBottom: 28, fontFamily: MONO }}>
+                Local-first · Open source CLI · 30-second setup
+              </div>
+              <div className="burnlog-landing-cta-row" style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+                <a
+                  href="/login"
+                  style={{
+                    padding: "14px 28px",
+                    background: "#D97706",
+                    color: "#09090B",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    fontFamily: MONO,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    textDecoration: "none",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#09090B">
+                    <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+                  </svg>
+                  Sign in with GitHub
+                </a>
                 <a
                   href="#leaderboard"
                   style={{
                     fontSize: 13,
-                    color: "#71717A",
+                    color: "#E4E4E7",
                     fontFamily: MONO,
                     textDecoration: "none",
                     padding: "14px 20px",
-                    border: "1px solid #27272A",
+                    border: "1px solid #3F3F46",
                     borderRadius: 8,
+                    background: "#111113",
                     transition: "border-color 0.15s",
                   }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#52525B"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#27272A"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#3F3F46"; }}
                 >
-                  View Leaderboard
+                  See Live Leaderboard
                 </a>
               </div>
             </div>
 
             {/* How it works */}
             <div
+              className="burnlog-landing-steps"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(3, 1fr)",
@@ -1284,21 +1288,21 @@ export function Burnlog({
               {[
                 {
                   step: "01",
-                  title: "Install",
-                  code: "npm i -g @sxnalabs/burnlog",
-                  desc: "One command. Works with Claude Code, Codex, and more.",
+                  title: "Claim your profile",
+                  code: "Open /login",
+                  desc: "Start with GitHub so your profile, badge, and rivalries are instantly ready.",
                 },
                 {
                   step: "02",
-                  title: "Sync",
-                  code: "burnlog auth && burnlog sync",
-                  desc: "Reads your local agent logs. Your prompts never leave your machine.",
+                  title: "Install CLI",
+                  code: "npm i -g @sxnalabs/burnlog",
+                  desc: "One command. Works with Claude Code, Codex, and other local agent workflows.",
                 },
                 {
                   step: "03",
-                  title: "Compete",
-                  code: null,
-                  desc: "Climb the ranks. Challenge friends. Show off your badge on GitHub.",
+                  title: "Login + sync",
+                  code: "burnlog login <key> && burnlog sync",
+                  desc: "Ship, sync your counts, challenge friends, and show off your badge on GitHub.",
                 },
               ].map((item) => (
                 <div
@@ -1333,7 +1337,7 @@ export function Burnlog({
                       <span style={{ color: "#3F3F46" }}>$ </span>{item.code}
                     </div>
                   )}
-                  <div style={{ fontSize: 12, color: "#71717A", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 13, color: "#A1A1AA", lineHeight: 1.6 }}>
                     {item.desc}
                   </div>
                 </div>
@@ -1342,7 +1346,7 @@ export function Burnlog({
 
             {/* Social proof */}
             {globalStats.totalBurned > 0 && (
-              <div style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "#3F3F46", fontFamily: MONO }}>
+              <div style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "#71717A", fontFamily: MONO }}>
                 <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> developer{globalStats.activeUsers === 1 ? "" : "s"} tracking{" "}
                 <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> tokens burned
               </div>
@@ -1350,6 +1354,7 @@ export function Burnlog({
 
             {/* Privacy callout */}
             <div
+              className="burnlog-trust-row"
               style={{
                 marginTop: 24,
                 padding: "16px 20px",
@@ -1360,19 +1365,19 @@ export function Burnlog({
                 alignItems: "center",
                 gap: 12,
                 fontSize: 12,
-                color: "#71717A",
+                color: "#A1A1AA",
                 fontFamily: MONO,
               }}
             >
-              <span style={{ fontSize: 16, color: "#52525B" }}>&#9670;</span>
+              <span style={{ fontSize: 16, color: "#D97706" }}>&#9670;</span>
               <span>
-                Your prompts stay local. We only track token counts.{" "}
+                Your prompts stay local. We only sync token counts, never prompt content.{" "}
                 <a href="https://github.com/sharziki/burnlog" target="_blank" rel="noopener noreferrer" style={{ color: "#D97706", textDecoration: "none" }}>
                   Open source CLI
                 </a>
                 {" "}&mdash; audit it yourself.
               </span>
-              <a href="/privacy" style={{ color: "#52525B", marginLeft: "auto", textDecoration: "none", whiteSpace: "nowrap" }}>
+              <a href="/privacy" style={{ color: "#E4E4E7", marginLeft: "auto", textDecoration: "none", whiteSpace: "nowrap" }}>
                 Privacy &rarr;
               </a>
             </div>

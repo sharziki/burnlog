@@ -33,3 +33,45 @@ html { scroll-behavior: smooth; }
   background: #D9770644;
   color: #FAFAFA;
 }
+
+.burnlog-landing-shell {
+  display: grid;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .burnlog-landing-steps {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .burnlog-landing-hero {
+    text-align: left !important;
+  }
+
+  .burnlog-landing-cta-row {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .burnlog-landing-cta-row > * {
+    width: 100%;
+  }
+
+  .burnlog-landing-cta-row form,
+  .burnlog-landing-cta-row a {
+    width: 100%;
+  }
+
+  .burnlog-landing-cta-row button,
+  .burnlog-landing-cta-row a {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .burnlog-trust-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+}
