@@ -1374,19 +1374,19 @@ export function Burnlog({
                   {
                     step: "Claude Code",
                     title: "Install hook · autosync",
-                    code: "burnlog hook claude-code && burnlog daemon",
+                    code: "burnlog install && burnlog daemon",
                     desc: "Best path today. Install the Claude Code hook, keep the local daemon running, and burnlog syncs usage automatically as sessions land.",
                   },
                   {
                     step: "Codex",
                     title: "Scan · sync · daemon",
-                    code: "burnlog scan codex && burnlog sync",
+                    code: "burnlog scan && burnlog sync",
                     desc: "Codex is supported through a manual log scan/sync flow today. Use the daemon if you want a local process watching for new logs between syncs.",
                   },
                   {
                     step: "Custom agents",
                     title: "SDK instrumentation",
-                    code: "import { burnlog } from '@sxnalabs/burnlog'",
+                    code: "import { Burnlog } from '@sxna/burnlog-sdk'",
                     desc: "Use the SDK to emit token usage from your own agent loops, background jobs, or internal tooling without changing the landing surface your team already sees.",
                   },
                   {
