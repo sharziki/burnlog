@@ -21,6 +21,7 @@ const TYPE_ICONS: Record<string, string> = {
   milestone: "*",
   streak: "~",
   welcome: "+",
+  follow: "@",
 };
 
 function relativeTime(iso: string): string {
@@ -40,6 +41,7 @@ function typeColor(type: string): string {
     case "overtake": return "#3B82F6";
     case "milestone": return "#10B981";
     case "streak": return "#F97316";
+    case "follow": return "#D97706";
     default: return "#52525B";
   }
 }

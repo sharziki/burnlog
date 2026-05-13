@@ -163,26 +163,36 @@ function copyText(text: string) {
   return Promise.resolve();
 }
 
-function FollowButton({ username, initialState }: { username: string; initialState: ProfileSocialState }) {
-  const [isFollowing, setIsFollowing] = useState(initialState.isFollowing);
+function FollowButton({
+  username,
+  social,
+  onChange,
+}: {
+  username: string;
+  social: ProfileSocialState;
+  onChange: (next: Partial<Pick<ProfileSocialState, "isFollowing" | "followersCount">>) => void;
+}) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  if (!initialState.canFollow) return null;
+  if (!social.canFollow) return null;
 
   const run = async () => {
     setLoading(true);
     setMessage(null);
     try {
       const res = await fetch(`/api/u/${username}/follow`, {
-        method: isFollowing ? "DELETE" : "POST",
+        method: social.isFollowing ? "DELETE" : "POST",
       });
-      const data = (await res.json()) as { message?: string; isFollowing?: boolean };
+      const data = (await res.json()) as { message?: string; isFollowing?: boolean; followersCount?: number };
       if (!res.ok) {
         setMessage(data.message ?? "Could not update follow");
         return;
       }
-      setIsFollowing(Boolean(data.isFollowing));
+      onChange({
+        isFollowing: Boolean(data.isFollowing),
+        followersCount: typeof data.followersCount === "number" ? data.followersCount : social.followersCount,
+      });
       setMessage(data.isFollowing ? "Following" : "Unfollowed");
       setTimeout(() => setMessage(null), 1600);
     } catch {
@@ -200,9 +210,9 @@ function FollowButton({ username, initialState }: { username: string; initialSta
         style={{
           padding: "10px 16px",
           borderRadius: 8,
-          border: `1px solid ${isFollowing ? "#27272A" : "#D97706"}`,
-          background: isFollowing ? "#111113" : "#D97706",
-          color: isFollowing ? "#E4E4E7" : "#09090B",
+          border: `1px solid ${social.isFollowing ? "#27272A" : "#D97706"}`,
+          background: social.isFollowing ? "#111113" : "#D97706",
+          color: social.isFollowing ? "#E4E4E7" : "#09090B",
           fontFamily: MONO,
           fontSize: 11,
           fontWeight: 700,
@@ -212,19 +222,20 @@ function FollowButton({ username, initialState }: { username: string; initialSta
           opacity: loading ? 0.7 : 1,
         }}
       >
-        {loading ? "Updating..." : isFollowing ? "Following" : "Follow"}
+        {loading ? "Updating..." : social.isFollowing ? "Following" : "Follow"}
       </button>
       {message && <div style={{ fontSize: 10, color: "#D97706", fontFamily: MONO }}>{message}</div>}
     </div>
   );
 }
 
-export function ProfileClient({ user, joinedAt, social }: { user: UserStats; joinedAt: string; social: ProfileSocialState }) {
+export function ProfileClient({ user, joinedAt, social: initialSocial }: { user: UserStats; joinedAt: string; social: ProfileSocialState }) {
   const rank = getRank(user.totalTokens);
   const rankProgress = getRankProgress(user.totalTokens);
   const climate = estimateClimateImpact(user.totalTokens);
   const spend = user.totalTokens * DOLLARS_PER_TOKEN;
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const [social, setSocial] = useState(initialSocial);
   const matchupPath = useMemo(() => {
     if (!social.viewerUsername || social.viewerUsername === user.username) return null;
     return buildMatchupPath(social.viewerUsername, user.username);
@@ -417,7 +428,11 @@ export function ProfileClient({ user, joinedAt, social }: { user: UserStats; joi
                     </button>
                   </>
                 )}
-                <FollowButton username={user.username} initialState={social} />
+                <FollowButton
+                  username={user.username}
+                  social={social}
+                  onChange={(next) => setSocial((prev) => ({ ...prev, ...next }))}
+                />
               </div>
             </div>
           </div>

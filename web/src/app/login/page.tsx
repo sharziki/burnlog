@@ -2,7 +2,14 @@ import { signIn } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{ next?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const next = params?.next && params.next.startsWith("/") ? params.next : "/";
+
   return (
     <div
       style={{
@@ -30,10 +37,15 @@ export default function LoginPage() {
         <p style={{ margin: "14px 0 24px", fontSize: 15, lineHeight: 1.65, color: "#A1A1AA" }}>
           Connect GitHub, install the CLI, sync your local token counts, and join the live leaderboard without uploading prompt content.
         </p>
+        {next !== "/" && (
+          <div style={{ marginBottom: 18, fontSize: 12, color: "#71717A", lineHeight: 1.6 }}>
+            Sign in to continue to <code style={{ color: "#E4E4E7" }}>{next}</code>.
+          </div>
+        )}
         <form
           action={async () => {
             "use server";
-            await signIn("github", { redirectTo: "/" });
+            await signIn("github", { redirectTo: next });
           }}
         >
           <button

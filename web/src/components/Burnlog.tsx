@@ -680,6 +680,7 @@ export function Burnlog({
   // Clubs state
   const [clubs, setClubs] = useState<ClubData[]>([]);
   const [clubsLoading, setClubsLoading] = useState(false);
+  const [clubsRequiresAuth, setClubsRequiresAuth] = useState(false);
   const [showCreateClub, setShowCreateClub] = useState(false);
   const [newClubName, setNewClubName] = useState("");
   const [newClubDesc, setNewClubDesc] = useState("");
@@ -705,8 +706,11 @@ export function Burnlog({
     setKeyLoading(true);
     try {
       const res = await fetch("/api/me/key", { method: "POST" });
-      const data = (await res.json()) as { key?: string };
-      if (data.key) setApiKey(data.key);
+      const data = (await res.json()) as { key?: string; message?: string };
+      if (data.key) {
+        setApiKey(data.key);
+        setCopied(null);
+      }
     } finally {
       setKeyLoading(false);
     }
@@ -761,12 +765,23 @@ export function Burnlog({
   // Clubs fetch + actions
   async function fetchClubs() {
     setClubsLoading(true);
+    setClubError(null);
     try {
       const res = await fetch("/api/clubs");
+      if (res.status === 401) {
+        setClubsRequiresAuth(true);
+        setClubs([]);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
+        setClubsRequiresAuth(false);
         setClubs(data.clubs ?? []);
+      } else {
+        setClubError("Could not load clubs right now.");
       }
+    } catch {
+      setClubError("Could not load clubs right now.");
     } finally {
       setClubsLoading(false);
     }
@@ -921,7 +936,15 @@ export function Burnlog({
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (tab === "clubs") fetchClubs(); }, [tab]);
+  useEffect(() => {
+    if (tab !== "clubs") return;
+    if (!currentUsername) {
+      setClubsRequiresAuth(true);
+      setClubs([]);
+      return;
+    }
+    fetchClubs();
+  }, [tab, currentUsername]);
 
   useEffect(() => {
     if (chatPollRef.current) { clearInterval(chatPollRef.current); chatPollRef.current = null; }
@@ -1815,15 +1838,30 @@ export function Burnlog({
               </div>
             )}
 
+            {/* Auth required */}
+            {!activeClub && clubsRequiresAuth && (
+              <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#A1A1AA", fontFamily: MONO, fontSize: 12 }}>
+                <div style={{ fontSize: 15, color: "#FAFAFA", fontFamily: SANS, fontWeight: 700, marginBottom: 10 }}>
+                  Sign in to browse clubs.
+                </div>
+                <div style={{ marginBottom: 18, lineHeight: 1.7 }}>
+                  Clubs are private-by-default community spaces for comparing team burn, announcements, and intra-club rankings.
+                </div>
+                <a href="/login?next=%2F" style={{ ...primaryBtn, display: "inline-flex", textDecoration: "none" }}>
+                  Continue with GitHub
+                </a>
+              </div>
+            )}
+
             {/* Loading */}
-            {!activeClub && clubsLoading && clubs.length === 0 && (
+            {!activeClub && !clubsRequiresAuth && clubsLoading && clubs.length === 0 && (
               <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
                 Loading clubs...
               </div>
             )}
 
             {/* Empty */}
-            {!activeClub && !clubsLoading && clubs.length === 0 && (
+            {!activeClub && !clubsRequiresAuth && !clubsLoading && clubs.length === 0 && (
               <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
                 No clubs yet. Create the first one.
               </div>
@@ -2672,7 +2710,7 @@ export function Burnlog({
                       disabled={keyLoading}
                       style={{ ...primaryBtn, cursor: keyLoading ? "wait" : "pointer", opacity: keyLoading ? 0.6 : 1 }}
                     >
-                      {keyLoading ? "generating..." : "generate new key"}
+                      {keyLoading ? "rotating..." : apiKey ? "rotate CLI key" : "generate CLI key"}
                     </button>
                     {apiKey && (
                       <div style={{ marginTop: 12 }}>
@@ -2681,7 +2719,7 @@ export function Burnlog({
                           style={{ padding: "14px 16px", background: "#0F0F11", border: "1px solid #D9770644", borderRadius: 8, fontSize: 12, color: "#D97706", wordBreak: "break-all", fontFamily: MONO, cursor: "pointer", position: "relative" }}
                         >
                           <div style={{ fontSize: 10, color: "#52525B", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                            {copied === "apikey" ? "copied!" : "click to copy — won’t be shown again"}
+                            {copied === "apikey" ? "copied!" : "click to copy — previous CLI key revoked"}
                           </div>
                           {apiKey}
                         </div>

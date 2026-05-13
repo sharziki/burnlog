@@ -188,7 +188,20 @@ export async function POST(req: Request) {
   }
 
   let inserted = 0;
+  let insertedTokenTotal = 0;
   if (rows.length) {
+    const existing = await prisma.burnEvent.findMany({
+      where: {
+        userId: keyRow.userId,
+        OR: rows.map((row) => ({ source: row.source, requestId: row.requestId })),
+      },
+      select: { source: true, requestId: true },
+    });
+    const existingKeys = new Set(existing.map((row) => `${row.source}:${row.requestId}`));
+    insertedTokenTotal = rows
+      .filter((row) => !existingKeys.has(`${row.source}:${row.requestId}`))
+      .reduce((sum, row) => sum + row.totalTokens, 0);
+
     // createMany + skipDuplicates leverages the (userId, source, requestId)
     // unique index. One round-trip instead of N.
     const res = await prisma.burnEvent.createMany({
@@ -209,7 +222,7 @@ export async function POST(req: Request) {
     await updateStreak(keyRow.userId);
 
     // Fire-and-forget notification checks (non-blocking)
-    const newTotal = oldTotal + rows.reduce((s, r) => s + r.totalTokens, 0);
+    const newTotal = oldTotal + insertedTokenTotal;
     const user = await prisma.user.findUnique({
       where: { id: keyRow.userId },
       select: { username: true, currentStreak: true },

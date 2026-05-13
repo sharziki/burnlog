@@ -1,14 +1,32 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(
-    {
-      ok: true,
-      service: "burnlog-web",
-      timestamp: new Date().toISOString(),
-    },
-    { status: 200 },
-  );
+  const timestamp = new Date().toISOString();
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+
+    return NextResponse.json(
+      {
+        ok: true,
+        service: "burnlog-web",
+        database: "ok",
+        timestamp,
+      },
+      { status: 200 },
+    );
+  } catch {
+    return NextResponse.json(
+      {
+        ok: true,
+        service: "burnlog-web",
+        database: "degraded",
+        timestamp,
+      },
+      { status: 200 },
+    );
+  }
 }

@@ -15,13 +15,18 @@ export function SettingsClient({
 }) {
   const [key, setKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function createKey() {
     setLoading(true);
+    setMessage(null);
     try {
       const res = await fetch("/api/me/key", { method: "POST" });
-      const data = (await res.json()) as { key?: string };
-      if (data.key) setKey(data.key);
+      const data = (await res.json()) as { key?: string; message?: string };
+      if (data.key) {
+        setKey(data.key);
+        setMessage(data.message ?? "New CLI key created.");
+      }
     } finally {
       setLoading(false);
     }
@@ -36,7 +41,7 @@ export function SettingsClient({
         fontFamily: "'JetBrains Mono', monospace",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32, gap: 16, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 10, color: "#6B7280", letterSpacing: 2, textTransform: "uppercase" }}>burnlog</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginTop: 2 }}>settings</div>
@@ -95,11 +100,42 @@ export function SettingsClient({
           border: "1px solid #141414",
           borderRadius: 14,
           padding: 28,
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>Public profile</div>
+        <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
+          Share your burnlog page, challenge people head-to-head, and keep your public metadata sharp.
+        </div>
+        <a
+          href={`/u/${username}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #1F1F1F",
+            color: "#E5E7EB",
+            textDecoration: "none",
+            fontSize: 12,
+          }}
+        >
+          View public profile →
+        </a>
+      </div>
+
+      <div
+        style={{
+          background: "#0A0A0A",
+          border: "1px solid #141414",
+          borderRadius: 14,
+          padding: 28,
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>CLI API key</div>
         <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
-          The burnlog CLI uses this key to upload token usage parsed from your ~/.claude logs. Generate one, run <code style={{ color: "#D97706" }}>burnlog login &lt;key&gt;</code> on your machine, then <code style={{ color: "#D97706" }}>burnlog sync</code>.
+          The burnlog CLI uses this key to upload local token counts. Generating a new CLI key revokes the previous one, so your latest key is always the only active CLI credential.
         </div>
         <button
           onClick={createKey}
@@ -116,8 +152,14 @@ export function SettingsClient({
             fontFamily: "'JetBrains Mono', monospace",
           }}
         >
-          {loading ? "generating..." : "generate new key"}
+          {loading ? "rotating..." : key ? "rotate CLI key" : "generate CLI key"}
         </button>
+
+        {message && (
+          <div style={{ marginTop: 12, fontSize: 12, color: "#D97706", lineHeight: 1.6 }}>
+            {message}
+          </div>
+        )}
 
         {key && (
           <div
@@ -138,6 +180,18 @@ export function SettingsClient({
             {key}
           </div>
         )}
+
+        <div style={{ marginTop: 18, fontSize: 12, color: "#9CA3AF", lineHeight: 1.7 }}>
+          <div>
+            <code style={{ color: "#D97706" }}>npm install -g @sxnalabs/burnlog</code>
+          </div>
+          <div>
+            <code style={{ color: "#D97706" }}>burnlog login &lt;key&gt;</code>
+          </div>
+          <div>
+            <code style={{ color: "#D97706" }}>burnlog install</code> for Claude Code auto-sync or <code style={{ color: "#D97706" }}>burnlog sync</code> anytime.
+          </div>
+        </div>
       </div>
     </div>
   );
