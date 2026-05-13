@@ -37,23 +37,27 @@ what we do and don't store.
 
 Pick the one that matches how your tokens are produced.
 
-| You have…                           | Use              | Package              |
-| ----------------------------------- | ---------------- | -------------------- |
-| Claude Code, Codex, or similar CLI  | **CLI**          | `@sxna/burnlog`      |
-| Your own agent calling an LLM SDK   | **SDK**          | `@sxna/burnlog-sdk`  |
+| You have…                           | Use              | Package                 |
+| ----------------------------------- | ---------------- | ----------------------- |
+| Claude Code, Codex, or similar CLI  | **CLI**          | `@sxnalabs/burnlog`     |
+| Your own agent calling an LLM SDK   | **SDK**          | `@sxna/burnlog-sdk`     |
 | Claude Code / Cursor and want to ask it about your rank | **MCP server** | `@sxna/burnlog-mcp` |
 
 ### CLI — for agents that write logs to disk
 
 ```bash
-npm install -g @sxna/burnlog
-burnlog login <api-key>      # grab one at https://burnlog.sxna.dev/settings
-burnlog install              # auto-sync on every Claude Code session end
+npm install -g @sxnalabs/burnlog
+burnlog login <api-key>      # grab one at https://burnlog.net/settings
+burnlog install              # Claude Code only: auto-sync on session end
 ```
 
+Today, `burnlog install` only sets up a Claude Code hook. Codex logs are still
+read by `burnlog scan`, `burnlog sync`, and `burnlog daemon`, but there is no
+Codex/Hermes/openclaw auto-installer yet.
+
 Reads `~/.claude/projects/*/*.jsonl`, `~/.codex/sessions/**/*.jsonl`, etc.
-Nothing besides token counts leaves your machine. Run `burnlog sync` any
-time, or `burnlog daemon` for a background watcher. See [cli/README](cli/README.md).
+Nothing besides token counts leaves your machine. Run `burnlog sync` any time,
+or `burnlog daemon` for a background watcher. See [cli/README](cli/README.md).
 
 ### SDK — for your own agents
 
@@ -113,9 +117,9 @@ setting `BURNLOG_API_URL=http://localhost:3000` (or `baseUrl` for the SDK).
 ```
 burnlog/
 ├── web/      Next.js 15 + Prisma + NextAuth GitHub + Postgres
-├── cli/      @sxna/burnlog      — multi-adapter log reader
-├── sdk/      @sxna/burnlog-sdk  — in-agent tracker, zero deps
-├── mcp/      @sxna/burnlog-mcp  — MCP server for readback
+├── cli/      @sxnalabs/burnlog   — multi-adapter log reader
+├── sdk/      @sxna/burnlog-sdk   — in-agent tracker, zero deps
+├── mcp/      @sxna/burnlog-mcp   — MCP server for readback
 └── .github/  CI + per-package release workflows
 ```
 
@@ -135,12 +139,12 @@ The CLI walks local log files written by your agents and extracts `usage`
 blocks. Dedup is keyed by a request id from the source (e.g. Anthropic
 `requestId`, Codex session `id`). Nothing else leaves your machine.
 
-| Agent        | Path                                   | Status     |
-| ------------ | -------------------------------------- | ---------- |
-| Claude Code  | `~/.claude/projects/*/*.jsonl`         | live       |
-| OpenAI Codex | `~/.codex/sessions/**/*.jsonl`         | live       |
-| Hermes       | `~/.hermes/`                           | stub       |
-| openclaw     | `~/.openclaw/`                         | stub       |
+| Agent        | Path                           | Status |
+| ------------ | ------------------------------ | ------ |
+| Claude Code  | `~/.claude/projects/*/*.jsonl` | live   |
+| OpenAI Codex | `~/.codex/sessions/**/*.jsonl` | live   |
+| Hermes       | n/a                            | detection stub only |
+| openclaw     | n/a                            | detection stub only |
 
 For anything not on this list, reach for the SDK.
 

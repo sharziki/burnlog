@@ -12,9 +12,16 @@ type ClaudeSettings = {
 
 const BURNLOG_MARK = "burnlog sync";
 
-function settingsPath(): string {
+export function claudeSettingsPath(): string {
   return join(homedir(), ".claude", "settings.json");
 }
+
+export type ClaudeHookStatus = {
+  path: string;
+  exists: boolean;
+  installed: boolean;
+  error?: string;
+};
 
 function loadSettings(path: string): ClaudeSettings {
   if (!existsSync(path)) return {};
@@ -42,10 +49,34 @@ function hasBurnlogHook(groups: ClaudeHookGroup[] | undefined): boolean {
   );
 }
 
+export function getClaudeHookStatus(): ClaudeHookStatus {
+  const path = claudeSettingsPath();
+  if (!existsSync(path)) {
+    return { path, exists: false, installed: false };
+  }
+
+  try {
+    const settings = loadSettings(path);
+    const groups = Object.values(settings.hooks ?? {}).flat();
+    return {
+      path,
+      exists: true,
+      installed: hasBurnlogHook(groups),
+    };
+  } catch (error) {
+    return {
+      path,
+      exists: true,
+      installed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 export function install(args: string[]): void {
   const event =
     args.includes("--on-stop") ? "Stop" : "SessionEnd";
-  const path = settingsPath();
+  const path = claudeSettingsPath();
   const settings = loadSettings(path);
 
   settings.hooks ??= {};
@@ -78,7 +109,7 @@ export function install(args: string[]): void {
 }
 
 export function uninstall(_args: string[]): void {
-  const path = settingsPath();
+  const path = claudeSettingsPath();
   if (!existsSync(path)) {
     console.log(pc.yellow("no ~/.claude/settings.json — nothing to remove"));
     return;

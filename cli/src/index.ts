@@ -25,14 +25,14 @@ ${pc.bold("usage")}
   burnlog <command> [args]
 
 ${pc.bold("commands")}
-  ${pc.cyan("login")}  <api-key>   save your api key (alias: ${pc.cyan("auth")})
+  ${pc.cyan("login")}  <api-key>   validate and save your api key (alias: ${pc.cyan("auth")})
   ${pc.cyan("logout")}             clear your api key
   ${pc.cyan("scan")}               parse logs locally, show totals (dry run)
   ${pc.cyan("sync")}    [--quiet]  upload new burn events to the leaderboard
   ${pc.cyan("install")}            install a Claude Code hook (auto-sync on session end)
   ${pc.cyan("uninstall")}          remove the Claude Code hook
   ${pc.cyan("daemon")}             run a background watcher that syncs every 30s
-  ${pc.cyan("status")}             show config + leaderboard rank
+  ${pc.cyan("status")}             show config, adapter detection, hook state, and api status
   ${pc.cyan("help")}               show this
 
 ${pc.bold("env")}
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   switch (cmd) {
     case "login":
     case "auth":
-      login(rest);
+      await login(rest);
       break;
     case "logout":
       logout(rest);
