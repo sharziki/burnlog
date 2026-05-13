@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { RANKS, getRank } from "@/lib/ranks";
+import { estimateClimateImpact, formatCo2eEstimateRange, formatEnergyEstimateRange } from "@/lib/climate";
 import { formatTokens } from "@/lib/format";
+import { RANKS, getRank, getRankProgress } from "@/lib/ranks";
 import type { UserStats } from "@/lib/stats";
 
 type ClubData = {
@@ -347,6 +348,84 @@ function SourcesStrip({ sources }: { sources: UserStats["sources"] }) {
           <span style={{ color: "#3F3F46" }}>({Math.round((s.tokens / total) * 100)}%)</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ProgressMeter({ progress, color }: { progress: number; color: string }) {
+  return (
+    <div style={{ height: 10, borderRadius: 999, background: "#111114", overflow: "hidden", border: "1px solid #18181B" }}>
+      <div
+        style={{
+          width: `${progress === 0 ? 0 : Math.max(progress * 100, 3)}%`,
+          height: "100%",
+          borderRadius: 999,
+          background: `linear-gradient(90deg, ${color}AA 0%, ${color} 100%)`,
+          boxShadow: `0 0 24px ${color}33`,
+          transition: "width 0.5s ease",
+        }}
+      />
+    </div>
+  );
+}
+
+function ProgressionPanel({ tokens, color }: { tokens: number; color: string }) {
+  const progress = getRankProgress(tokens);
+  return (
+    <div style={{ background: "#0F0F11", border: "1px solid #18181B", borderRadius: 10, padding: 16 }}>
+      <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
+        Progression
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: MONO }}>
+            {progress.rank.icon} {progress.rank.name}
+          </div>
+          <div style={{ fontSize: 11, color: "#3F3F46", marginTop: 4, fontFamily: MONO }}>
+            Floor {formatTokens(progress.rank.min)}
+            {progress.nextRankAt ? ` · next ${formatTokens(progress.nextRankAt)}` : " · apex tier"}
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>{progress.progressPercent}%</div>
+          <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>tier progress</div>
+        </div>
+      </div>
+      <ProgressMeter progress={progress.progress} color={color} />
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 10, fontSize: 11, color: "#71717A", fontFamily: MONO }}>
+        <span>{formatTokens(progress.tokensIntoRank)} in tier</span>
+        <span>
+          {progress.tokensRemainingToNextRank !== null
+            ? `${formatTokens(progress.tokensRemainingToNextRank)} to ${progress.nextRank?.name}`
+            : "No next rank"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ClimateImpactPanel({ tokens }: { tokens: number }) {
+  const climate = estimateClimateImpact(tokens);
+  return (
+    <div style={{ background: "#0F0F11", border: "1px solid #18181B", borderRadius: 10, padding: 16 }}>
+      <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
+        Estimated Climate Impact
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 4, fontFamily: MONO }}>Energy</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
+            {formatEnergyEstimateRange(climate.energyKwh.low, climate.energyKwh.high)}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 4, fontFamily: MONO }}>CO2e</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
+            {formatCo2eEstimateRange(climate.co2eKg.low, climate.co2eKg.high)}
+          </div>
+        </div>
+      </div>
+      <div style={{ fontSize: 10, color: "#52525B", lineHeight: 1.5, fontFamily: MONO }}>{climate.caveat}</div>
     </div>
   );
 }
@@ -873,6 +952,7 @@ export function Burnlog({
   }, [activeClub?.id, clubSubTab, clubAnnouncements.length]);
 
   const rank = selectedUser ? getRank(selectedUser.totalTokens) : RANKS[0];
+  const selectedProgress = selectedUser ? getRankProgress(selectedUser.totalTokens) : getRankProgress(0);
 
   const sortedUsers = [...activeUsers].sort((a, b) => {
     if (timeframe === "weekly") return b.weeklyTokens - a.weeklyTokens;
@@ -1417,6 +1497,7 @@ export function Burnlog({
 
             {sortedUsers.map((user, i) => {
               const r = getRank(user.totalTokens);
+              const progress = getRankProgress(user.totalTokens);
               const tokens = timeframe === "weekly" ? user.weeklyTokens : user.totalTokens;
               const isEmpty = user.totalTokens === 0;
               return (
@@ -1443,6 +1524,9 @@ export function Burnlog({
                           <span style={{ color: user.streak >= 7 ? "#D97706" : "#52525B" }}>
                             {user.streak >= 7 ? "\u{1F525}" : "\u25CF"} {user.streak}d streak
                           </span>
+                        )}
+                        {progress.nextRank && !isEmpty && (
+                          <span>next {progress.nextRank.name} in {formatTokens(progress.tokensRemainingToNextRank ?? 0)}</span>
                         )}
                       </div>
                     </div>
@@ -2253,6 +2337,11 @@ export function Burnlog({
                   <div style={{ fontSize: 12, color: "#52525B", marginBottom: 8, fontFamily: MONO }}>
                     @{selectedUser.username}
                   </div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8, fontFamily: MONO }}>
+                    {selectedProgress.nextRank
+                      ? `${selectedProgress.progressPercent}% to ${selectedProgress.nextRank.icon} ${selectedProgress.nextRank.name} · ${formatTokens(selectedProgress.tokensRemainingToNextRank ?? 0)} to go`
+                      : "Top ladder reached · no further ceiling yet"}
+                  </div>
                   <div style={{ fontSize: 13, color: "#E4E4E7" }}>
                     {selectedUser.bio ?? "—"}
                   </div>
@@ -2294,6 +2383,11 @@ export function Burnlog({
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 24 }}>
+                <ProgressionPanel tokens={selectedUser.totalTokens} color={rank.color} />
+                <ClimateImpactPanel tokens={selectedUser.totalTokens} />
               </div>
 
               {/* Sources strip */}
@@ -2612,7 +2706,23 @@ export function Burnlog({
                 Rank System
               </div>
               <div style={{ fontSize: 12, color: "#52525B", marginBottom: 20, fontFamily: MONO }}>
-                Your rank evolves as you burn more tokens.
+                Your rank evolves in smaller steps now — no early mega-ceiling.
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 16 }}>
+                <ProgressionPanel tokens={selectedUser.totalTokens} color={rank.color} />
+                <div style={{ background: "#0F0F11", border: "1px solid #18181B", borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
+                    Next Unlock
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: rank.color, fontFamily: MONO, marginBottom: 4 }}>
+                    {selectedProgress.nextRank ? `${selectedProgress.nextRank.icon} ${selectedProgress.nextRank.name}` : "Apex tier"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#71717A", lineHeight: 1.6, fontFamily: MONO }}>
+                    {selectedProgress.nextRank
+                      ? `${formatTokens(selectedProgress.tokensRemainingToNextRank ?? 0)} more tokens to promote into ${selectedProgress.nextRank.name}.`
+                      : "You are already sitting at the top of the current ladder."}
+                  </div>
+                </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {RANKS.map((r) => {
@@ -2678,6 +2788,7 @@ export function Burnlog({
       {/* Viewing user profile modal */}
       {viewingUser && (() => {
         const vRank = getRank(viewingUser.totalTokens);
+        const vProgress = getRankProgress(viewingUser.totalTokens);
         const vTopModelMax = Math.max(...viewingUser.topModels.map((m) => m.tokens), 1);
         return (
           <div
@@ -2751,6 +2862,11 @@ export function Burnlog({
                   <div style={{ fontSize: 12, color: "#52525B", marginBottom: 8, fontFamily: MONO }}>
                     @{viewingUser.username}
                   </div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8, fontFamily: MONO }}>
+                    {vProgress.nextRank
+                      ? `${vProgress.progressPercent}% to ${vProgress.nextRank.icon} ${vProgress.nextRank.name} · ${formatTokens(vProgress.tokensRemainingToNextRank ?? 0)} to go`
+                      : "Top ladder reached · no further ceiling yet"}
+                  </div>
                   <div style={{ fontSize: 13, color: "#E4E4E7" }}>
                     {viewingUser.bio ?? "—"}
                   </div>
@@ -2792,6 +2908,11 @@ export function Burnlog({
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 24 }}>
+                <ProgressionPanel tokens={viewingUser.totalTokens} color={vRank.color} />
+                <ClimateImpactPanel tokens={viewingUser.totalTokens} />
               </div>
 
               {viewingUser.sources.length > 0 && (

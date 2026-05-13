@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { authFromBearer } from "@/lib/bearerAuth";
+import { estimateClimateImpact } from "@/lib/climate";
 import { getUserStats } from "@/lib/stats";
-import { getRank } from "@/lib/ranks";
+import { getRank, getRankProgress } from "@/lib/ranks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,8 @@ export async function GET(req: Request) {
   }
 
   const rank = getRank(stats.totalTokens);
+  const rankProgress = getRankProgress(stats.totalTokens);
+  const climate = estimateClimateImpact(stats.totalTokens);
   return NextResponse.json({
     ok: true,
     user: {
@@ -26,7 +29,21 @@ export async function GET(req: Request) {
       name: stats.name,
       bio: stats.bio,
     },
-    rank: { name: rank.name, icon: rank.icon, min: rank.min, max: rank.max },
+    rank: {
+      name: rank.name,
+      icon: rank.icon,
+      min: rank.min,
+      max: rank.max,
+      next: rankProgress.nextRank
+        ? {
+            name: rankProgress.nextRank.name,
+            icon: rankProgress.nextRank.icon,
+            at: rankProgress.nextRankAt,
+            remaining: rankProgress.tokensRemainingToNextRank,
+            progressPercent: rankProgress.progressPercent,
+          }
+        : null,
+    },
     totals: {
       allTime: stats.totalTokens,
       weekly: stats.weeklyTokens,
@@ -38,5 +55,6 @@ export async function GET(req: Request) {
     sources: stats.sources,
     topModels: stats.topModels,
     weeklyHistory: stats.weeklyHistory,
+    climate,
   });
 }

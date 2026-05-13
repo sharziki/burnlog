@@ -1,7 +1,8 @@
 "use client";
 
-import { getRank } from "@/lib/ranks";
+import { estimateClimateImpact, formatCo2eEstimateRange, formatEnergyEstimateRange } from "@/lib/climate";
 import { formatTokens } from "@/lib/format";
+import { getRank, getRankProgress } from "@/lib/ranks";
 import type { UserStats } from "@/lib/stats";
 
 const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -34,6 +35,23 @@ function formatUSD(n: number): string {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
   if (n >= 1) return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;
+}
+
+function ProgressMeter({ progress, color }: { progress: number; color: string }) {
+  return (
+    <div style={{ height: 10, borderRadius: 999, background: "#111114", overflow: "hidden", border: "1px solid #18181B" }}>
+      <div
+        style={{
+          width: `${progress === 0 ? 0 : Math.max(progress * 100, 3)}%`,
+          height: "100%",
+          borderRadius: 999,
+          background: `linear-gradient(90deg, ${color}AA 0%, ${color} 100%)`,
+          boxShadow: `0 0 24px ${color}33`,
+          transition: "width 0.5s ease",
+        }}
+      />
+    </div>
+  );
 }
 
 // --- Sparkline ---
@@ -130,6 +148,8 @@ function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
 
 export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: string }) {
   const rank = getRank(user.totalTokens);
+  const rankProgress = getRankProgress(user.totalTokens);
+  const climate = estimateClimateImpact(user.totalTokens);
   const spend = user.totalTokens * DOLLARS_PER_TOKEN;
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
@@ -216,6 +236,11 @@ export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: s
               </span>
             </div>
             <div style={{ fontSize: 13, color: "#52525B", fontFamily: MONO, marginTop: 4 }}>@{user.username}</div>
+            <div style={{ fontSize: 11, color: "#71717A", fontFamily: MONO, marginTop: 8 }}>
+              {rankProgress.nextRank
+                ? `${rankProgress.progressPercent}% to ${rankProgress.nextRank.icon} ${rankProgress.nextRank.name} · ${formatTokens(rankProgress.tokensRemainingToNextRank ?? 0)} to go`
+                : "Top ladder reached · no further ceiling yet"}
+            </div>
 
             {user.bio && (
               <p style={{ fontSize: 14, color: "#A1A1AA", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>{user.bio}</p>
@@ -293,6 +318,59 @@ export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: s
               {s.sub && <div style={{ fontSize: 11, color: "#3F3F46", marginTop: 4, fontFamily: MONO }}>{s.sub}</div>}
             </div>
           ))}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 12, marginBottom: 24 }}>
+          <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
+            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
+              Progression
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: rank.color, fontFamily: MONO }}>
+                  {rank.icon} {rank.name}
+                </div>
+                <div style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO, marginTop: 4 }}>
+                  Tier floor {formatTokens(rank.min)}
+                  {rankProgress.nextRankAt ? ` · next unlock ${formatTokens(rankProgress.nextRankAt)}` : " · apex tier"}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>{rankProgress.progressPercent}%</div>
+                <div style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO }}>within current tier</div>
+              </div>
+            </div>
+            <ProgressMeter progress={rankProgress.progress} color={rank.color} />
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 10, fontSize: 11, fontFamily: MONO, color: "#71717A" }}>
+              <span>{formatTokens(rankProgress.tokensIntoRank)} banked in {rank.name}</span>
+              <span>
+                {rankProgress.tokensRemainingToNextRank !== null
+                  ? `${formatTokens(rankProgress.tokensRemainingToNextRank)} to ${rankProgress.nextRank?.name}`
+                  : "No next rank"}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
+            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
+              Estimated Climate Impact
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 5, fontFamily: MONO }}>Energy</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
+                  {formatEnergyEstimateRange(climate.energyKwh.low, climate.energyKwh.high)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 5, fontFamily: MONO }}>CO2e</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
+                  {formatCo2eEstimateRange(climate.co2eKg.low, climate.co2eKg.high)}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: "#52525B", lineHeight: 1.5, fontFamily: MONO }}>{climate.caveat}</div>
+          </div>
         </div>
 
         {/* ─── Heatmap ─── */}
