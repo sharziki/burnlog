@@ -61,7 +61,7 @@ export async function Nav() {
               fontFamily: MONO,
             }}
           >
-            token burn tracker
+private AI coding telemetry
           </div>
         </div>
       </a>

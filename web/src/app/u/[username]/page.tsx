@@ -23,10 +23,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!stats) return { title: "User not found" };
 
   const rank = getRank(stats.totalTokens);
-  const title = `@${username} — ${rank.name} · ${formatTokens(stats.totalTokens)} tokens`;
+  const topSource = stats.sources[0]?.source ? stats.sources[0].source : null;
+  const title = `@${username} — ${rank.name} · ${formatTokens(stats.totalTokens)} tracked tokens`;
   const description = stats.bio
-    ? `${stats.bio} — ${formatTokens(stats.totalTokens)} tokens burned, ${stats.streak}d streak`
-    : `${formatTokens(stats.totalTokens)} tokens burned across ${stats.commits} sessions. Rank: ${rank.name}. ${stats.streak}d streak.`;
+    ? `${stats.bio} — ${formatTokens(stats.totalTokens)} tracked tokens across ${stats.commits} sessions${topSource ? ` · top source: ${topSource}` : ""}`
+    : `${formatTokens(stats.totalTokens)} tracked tokens across ${stats.commits} sessions${topSource ? ` · top source: ${topSource}` : ""}. Rank: ${rank.name}. ${stats.streak}d streak.`;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://burnlog.net";
 

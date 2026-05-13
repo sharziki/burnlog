@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { estimateClimateImpact, formatCo2eEstimateRange, formatEnergyEstimateRange } from "@/lib/climate";
 import { buildMatchupPath } from "@/lib/h2h";
 import { formatTokens } from "@/lib/format";
 import { RANKS, getRank, getRankProgress } from "@/lib/ranks";
@@ -76,6 +75,16 @@ function relativeTime(iso: string | null): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+function formatActivityStamp(iso: string | null): string {
+  if (!iso) return "No activity yet";
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   "claude-code": "Claude Code",
   codex: "Codex",
@@ -84,6 +93,17 @@ const SOURCE_LABELS: Record<string, string> = {
   "anthropic-api": "Anthropic API",
   "openai-api": "OpenAI API",
 };
+
+function getWeeklyMomentum(history: number[]): string {
+  if (!history.length) return "No weekly trend yet";
+  const earlier = history.slice(0, 3).reduce((sum, value) => sum + value, 0);
+  const recent = history.slice(-3).reduce((sum, value) => sum + value, 0);
+  if (earlier === 0 && recent === 0) return "No weekly trend yet";
+  if (earlier === 0) return "New activity this week";
+  const delta = ((recent - earlier) / earlier) * 100;
+  if (Math.abs(delta) < 5) return "Stable week over week";
+  return `${delta > 0 ? "+" : ""}${Math.round(delta)}% vs start of week`;
+}
 
 // Avatar helper — shows GitHub image or initials fallback
 function UserAvatar({ user, size = 36, color }: { user: UserStats; size?: number; color: string }) {
@@ -405,28 +425,45 @@ function ProgressionPanel({ tokens, color }: { tokens: number; color: string }) 
   );
 }
 
-function ClimateImpactPanel({ tokens }: { tokens: number }) {
-  const climate = estimateClimateImpact(tokens);
+function OperationalPanel({ user }: { user: UserStats }) {
+  const topSource = user.sources[0];
+  const sourceShare = topSource ? `${Math.round((topSource.tokens / Math.max(user.totalTokens, 1)) * 100)}%` : null;
+  const spend = estSpend(user.weeklyTokens);
+  const momentum = getWeeklyMomentum(user.weeklyHistory);
+  const items = [
+    { label: "Last active", value: relativeTime(user.lastActive), sub: formatActivityStamp(user.lastActive) },
+    {
+      label: "Burn events",
+      value: user.commits.toLocaleString(),
+      sub: user.commits > 0 ? `${formatTokens(user.tokensPerCommit)} tok / event` : "No synced events yet",
+    },
+    {
+      label: "Top source",
+      value: topSource ? SOURCE_LABELS[topSource.source] ?? topSource.source : "No source data",
+      sub: topSource ? `${formatTokens(topSource.tokens)} · ${sourceShare}` : "Waiting for first sync",
+    },
+    {
+      label: "Weekly momentum",
+      value: momentum,
+      sub: `7d total ${formatTokens(user.weeklyTokens)} · ${formatUSD(spend)} est. spend`,
+    },
+  ];
   return (
     <div style={{ background: "#0F0F11", border: "1px solid #18181B", borderRadius: 10, padding: 16 }}>
       <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
-        Estimated Climate Impact
+        Ops Snapshot
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
-        <div>
-          <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 4, fontFamily: MONO }}>Energy</div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
-            {formatEnergyEstimateRange(climate.energyKwh.low, climate.energyKwh.high)}
+      <div style={{ display: "grid", gap: 12 }}>
+        {items.map((item, index) => (
+          <div key={item.label} style={{ paddingBottom: index === items.length - 1 ? 0 : 12, borderBottom: index === items.length - 1 ? "none" : "1px solid #18181B" }}>
+            <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 4, fontFamily: MONO, letterSpacing: 1.1, textTransform: "uppercase" }}>
+              {item.label}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>{item.value}</div>
+            <div style={{ fontSize: 10, color: "#52525B", lineHeight: 1.5, fontFamily: MONO, marginTop: 4 }}>{item.sub}</div>
           </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 4, fontFamily: MONO }}>CO2e</div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
-            {formatCo2eEstimateRange(climate.co2eKg.low, climate.co2eKg.high)}
-          </div>
-        </div>
+        ))}
       </div>
-      <div style={{ fontSize: 10, color: "#52525B", lineHeight: 1.5, fontFamily: MONO }}>{climate.caveat}</div>
     </div>
   );
 }
@@ -1241,16 +1278,38 @@ export function Burnlog({
         {/* Hero landing section for unauthenticated visitors */}
         {!currentUsername && (
           <div className="burnlog-landing-shell" style={{ paddingTop: 48, paddingBottom: 40, borderBottom: "1px solid #18181B" }}>
-            <div className="burnlog-landing-hero" style={{ textAlign: "center", maxWidth: 720, margin: "0 auto" }}>
+            <div className="burnlog-landing-hero" style={{ textAlign: "center", maxWidth: 820, margin: "0 auto" }}>
+              <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 18 }}>
+                {[
+                  "Private AI coding telemetry",
+                  "Claude Code autosync today",
+                  "Codex manual sync supported",
+                  "SDK + MCP for custom agents",
+                ].map((pill) => (
+                  <span
+                    key={pill}
+                    style={{
+                      padding: "7px 10px",
+                      borderRadius: 999,
+                      border: "1px solid #27272A",
+                      background: "rgba(217,119,6,0.08)",
+                      color: "#D4D4D8",
+                      fontSize: 11,
+                      fontFamily: MONO,
+                    }}
+                  >
+                    {pill}
+                  </span>
+                ))}
+              </div>
               <div style={{ fontSize: 48, fontWeight: 800, color: "#FAFAFA", letterSpacing: -1.5, lineHeight: 1.1, fontFamily: SANS, marginBottom: 16 }}>
-                Track the burn.
+                Private telemetry for how your team actually uses AI coding tools.
               </div>
               <div style={{ fontSize: 18, color: "#A1A1AA", lineHeight: 1.65, marginBottom: 18, fontFamily: SANS }}>
-                Track AI token usage across Claude Code, Codex, and local agents. Compete with your team, climb the
-                leaderboard, and earn a GitHub badge without sending prompt content off-machine.
+                burnlog gives teams a shared view of token usage, source mix, models, sessions, and estimated spend across Claude Code and other local agents without shipping prompt content off-machine.
               </div>
               <div style={{ fontSize: 12, color: "#71717A", marginBottom: 28, fontFamily: MONO }}>
-                Local-first · Open source CLI · 30-second setup
+                Claude Code works now · Codex logs can be scanned and synced manually · SDK + MCP available for custom workflows
               </div>
               <div className="burnlog-landing-cta-row" style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                 <a
@@ -1293,89 +1352,132 @@ export function Burnlog({
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#52525B"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#3F3F46"; }}
                 >
-                  See Live Leaderboard
+                  See live usage board
                 </a>
               </div>
             </div>
 
-            {/* How it works */}
-            <div
-              className="burnlog-landing-steps"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 16,
-                marginTop: 48,
-              }}
-            >
-              {[
-                {
-                  step: "01",
-                  title: "Claim your profile",
-                  code: "Open /login",
-                  desc: "Start with GitHub so your profile, badge, and rivalries are instantly ready.",
-                },
-                {
-                  step: "02",
-                  title: "Install CLI",
-                  code: "npm i -g @sxnalabs/burnlog",
-                  desc: "One command. Works with Claude Code, Codex, and other local agent workflows.",
-                },
-                {
-                  step: "03",
-                  title: "Login + sync",
-                  code: "burnlog login <key> && burnlog sync",
-                  desc: "Ship, sync your counts, challenge friends, and show off your badge on GitHub.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.step}
-                  style={{
-                    background: "#0C0C0E",
-                    border: "1px solid #18181B",
-                    borderRadius: 12,
-                    padding: 24,
-                  }}
-                >
-                  <div style={{ fontSize: 10, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 10 }}>
-                    {item.step}
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA", marginBottom: 8, fontFamily: SANS }}>
-                    {item.title}
-                  </div>
-                  {item.code && (
-                    <div
-                      style={{
-                        padding: "8px 12px",
-                        background: "#0F0F11",
-                        border: "1px solid #18181B",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        color: "#D97706",
-                        fontFamily: MONO,
-                        marginBottom: 10,
-                        overflowX: "auto",
-                      }}
-                    >
-                      <span style={{ color: "#3F3F46" }}>$ </span>{item.code}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 13, color: "#A1A1AA", lineHeight: 1.6 }}>
-                    {item.desc}
-                  </div>
+            <div className="burnlog-landing-steps" style={{ marginTop: 52 }}>
+              <div style={{ textAlign: "center", marginBottom: 18 }}>
+                <div style={{ fontSize: 12, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>
+                  WORKS TODAY
                 </div>
-              ))}
+                <div style={{ fontSize: 28, fontWeight: 800, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>
+                  Choose your setup
+                </div>
+                <div style={{ fontSize: 14, color: "#A1A1AA", lineHeight: 1.65, maxWidth: 760, margin: "0 auto", fontFamily: SANS }}>
+                  Start with the path that matches your stack today. burnlog supports native Claude Code autosync, a truthful manual Codex flow, and tooling for teams building their own agents or in-agent readback.
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
+                {[
+                  {
+                    step: "Claude Code",
+                    title: "Install hook · autosync",
+                    code: "burnlog hook claude-code && burnlog daemon",
+                    desc: "Best path today. Install the Claude Code hook, keep the local daemon running, and burnlog syncs usage automatically as sessions land.",
+                  },
+                  {
+                    step: "Codex",
+                    title: "Scan · sync · daemon",
+                    code: "burnlog scan codex && burnlog sync",
+                    desc: "Codex is supported through a manual log scan/sync flow today. Use the daemon if you want a local process watching for new logs between syncs.",
+                  },
+                  {
+                    step: "Custom agents",
+                    title: "SDK instrumentation",
+                    code: "import { burnlog } from '@sxnalabs/burnlog'",
+                    desc: "Use the SDK to emit token usage from your own agent loops, background jobs, or internal tooling without changing the landing surface your team already sees.",
+                  },
+                  {
+                    step: "In-agent readback",
+                    title: "MCP access",
+                    code: "Connect the burnlog MCP server",
+                    desc: "Expose prior usage and profile stats inside supported agent runtimes so the agent can read back burnlog context without custom glue code.",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.step}
+                    style={{
+                      background: "#0C0C0E",
+                      border: "1px solid #18181B",
+                      borderRadius: 12,
+                      padding: 24,
+                    }}
+                  >
+                    <div style={{ fontSize: 10, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 10 }}>
+                      {item.step}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA", marginBottom: 8, fontFamily: SANS }}>
+                      {item.title}
+                    </div>
+                    {item.code && (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          background: "#0F0F11",
+                          border: "1px solid #18181B",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          color: "#D97706",
+                          fontFamily: MONO,
+                          marginBottom: 10,
+                          overflowX: "auto",
+                        }}
+                      >
+                        <span style={{ color: "#3F3F46" }}>$ </span>{item.code}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 13, color: "#A1A1AA", lineHeight: 1.6 }}>
+                      {item.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Social proof */}
+            <div style={{ marginTop: 48 }}>
+              <div style={{ textAlign: "center", marginBottom: 18 }}>
+                <div style={{ fontSize: 12, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>
+                  WHY TEAMS USE BURNLOG
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>
+                  Visibility without giving up privacy
+                </div>
+                <div style={{ fontSize: 14, color: "#A1A1AA", lineHeight: 1.65, maxWidth: 760, margin: "0 auto", fontFamily: SANS }}>
+                  burnlog helps engineering teams understand how usage shifts across tools, models, and providers while keeping collection narrow and prompt content private.
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
+                {[
+                  {
+                    title: "Cross-tool visibility",
+                    desc: "Put Claude Code, Codex scans, and custom agent telemetry on one surface so leads can compare usage patterns instead of chasing screenshots and local log files.",
+                  },
+                  {
+                    title: "Privacy-first collection",
+                    desc: "burnlog syncs token and session metadata, not prompt bodies, giving teams useful telemetry with a much smaller privacy footprint.",
+                  },
+                  {
+                    title: "Analytics that matter",
+                    desc: "See source mix, model concentration, weekly momentum, and estimated cost so you can reason about adoption, spend, and workflow changes over time.",
+                  },
+                ].map((item) => (
+                  <div key={item.title} style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 12, padding: 24 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>{item.title}</div>
+                    <div style={{ fontSize: 13, color: "#A1A1AA", lineHeight: 1.7 }}>{item.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {globalStats.totalBurned > 0 && (
               <div style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "#71717A", fontFamily: MONO }}>
-                <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> developer{globalStats.activeUsers === 1 ? "" : "s"} tracking{" "}
-                <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> tokens burned
+                <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> developer{globalStats.activeUsers === 1 ? "" : "s"} syncing{" "}
+                <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> tracked tokens
               </div>
             )}
 
-            {/* Privacy callout */}
             <div
               className="burnlog-trust-row"
               style={{
@@ -1394,7 +1496,7 @@ export function Burnlog({
             >
               <span style={{ fontSize: 16, color: "#D97706" }}>&#9670;</span>
               <span>
-                Your prompts stay local. We only sync token counts, never prompt content.{" "}
+                Your prompts stay local. burnlog syncs usage metadata and token counts, never prompt content.{" "}
                 <a href="https://github.com/sharziki/burnlog" target="_blank" rel="noopener noreferrer" style={{ color: "#D97706", textDecoration: "none" }}>
                   Open source CLI
                 </a>
@@ -2512,7 +2614,7 @@ export function Burnlog({
 
               <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 24 }}>
                 <ProgressionPanel tokens={selectedUser.totalTokens} color={rank.color} />
-                <ClimateImpactPanel tokens={selectedUser.totalTokens} />
+                <OperationalPanel user={selectedUser} />
               </div>
 
               {/* Sources strip */}
@@ -3037,7 +3139,7 @@ export function Burnlog({
 
               <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 24 }}>
                 <ProgressionPanel tokens={viewingUser.totalTokens} color={vRank.color} />
-                <ClimateImpactPanel tokens={viewingUser.totalTokens} />
+                <OperationalPanel user={viewingUser} />
               </div>
 
               {viewingUser.sources.length > 0 && (

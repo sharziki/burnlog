@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { estimateClimateImpact, formatCo2eEstimateRange, formatEnergyEstimateRange } from "@/lib/climate";
 import { formatTokens } from "@/lib/format";
 import { buildMatchupPath } from "@/lib/h2h";
 import { getRank, getRankProgress } from "@/lib/ranks";
@@ -20,6 +19,17 @@ const SOURCE_LABELS: Record<string, string> = {
   "openai-api": "OpenAI API",
 };
 
+function getWeeklyMomentum(history: number[]): string {
+  if (!history.length) return "No weekly trend yet";
+  const earlier = history.slice(0, 3).reduce((sum, value) => sum + value, 0);
+  const recent = history.slice(-3).reduce((sum, value) => sum + value, 0);
+  if (earlier === 0 && recent === 0) return "No weekly trend yet";
+  if (earlier === 0) return "New activity this week";
+  const delta = ((recent - earlier) / earlier) * 100;
+  if (Math.abs(delta) < 5) return "Stable week over week";
+  return `${delta > 0 ? "+" : ""}${Math.round(delta)}% vs start of week`;
+}
+
 function relativeTime(iso: string | null): string {
   if (!iso) return "never";
   const diff = Date.now() - new Date(iso).getTime();
@@ -31,6 +41,16 @@ function relativeTime(iso: string | null): string {
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
   return `${Math.floor(days / 30)}mo ago`;
+}
+
+function formatActivityStamp(iso: string | null): string {
+  if (!iso) return "No activity yet";
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function formatUSD(n: number): string {
@@ -232,8 +252,9 @@ function FollowButton({
 export function ProfileClient({ user, joinedAt, social: initialSocial }: { user: UserStats; joinedAt: string; social: ProfileSocialState }) {
   const rank = getRank(user.totalTokens);
   const rankProgress = getRankProgress(user.totalTokens);
-  const climate = estimateClimateImpact(user.totalTokens);
   const spend = user.totalTokens * DOLLARS_PER_TOKEN;
+  const topSource = user.sources[0];
+  const weeklyMomentum = getWeeklyMomentum(user.weeklyHistory);
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
   const [social, setSocial] = useState(initialSocial);
   const matchupPath = useMemo(() => {
@@ -497,23 +518,40 @@ export function ProfileClient({ user, joinedAt, social: initialSocial }: { user:
 
           <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
             <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
-              Estimated Climate Impact
+              Ops Snapshot
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 5, fontFamily: MONO }}>Energy</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
-                  {formatEnergyEstimateRange(climate.energyKwh.low, climate.energyKwh.high)}
+            <div style={{ display: "grid", gap: 14 }}>
+              {[
+                {
+                  label: "Last active",
+                  value: relativeTime(user.lastActive),
+                  sub: formatActivityStamp(user.lastActive),
+                },
+                {
+                  label: "Burn events",
+                  value: user.commits.toLocaleString(),
+                  sub: user.commits > 0 ? `${formatTokens(user.tokensPerCommit)} tok / event` : "No synced events yet",
+                },
+                {
+                  label: "Top source",
+                  value: topSource ? SOURCE_LABELS[topSource.source] ?? topSource.source : "No source data",
+                  sub: topSource ? `${formatTokens(topSource.tokens)} tracked here` : "Waiting for first sync",
+                },
+                {
+                  label: "Weekly momentum",
+                  value: weeklyMomentum,
+                  sub: `7d total ${formatTokens(user.weeklyTokens)} · ${formatUSD(user.weeklyTokens * DOLLARS_PER_TOKEN)} est. spend`,
+                },
+              ].map((item, index, items) => (
+                <div key={item.label} style={{ paddingBottom: index === items.length - 1 ? 0 : 12, borderBottom: index === items.length - 1 ? "none" : "1px solid #18181B" }}>
+                  <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 5, fontFamily: MONO }}>{item.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
+                    {item.value}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#52525B", lineHeight: 1.5, fontFamily: MONO, marginTop: 4 }}>{item.sub}</div>
                 </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 5, fontFamily: MONO }}>CO2e</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
-                  {formatCo2eEstimateRange(climate.co2eKg.low, climate.co2eKg.high)}
-                </div>
-              </div>
+              ))}
             </div>
-            <div style={{ fontSize: 11, color: "#52525B", lineHeight: 1.5, fontFamily: MONO }}>{climate.caveat}</div>
           </div>
         </div>
 

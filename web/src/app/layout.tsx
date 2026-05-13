@@ -10,24 +10,24 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.NODE_ENV === "p
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "burnlog — private leaderboard for AI token burn",
+    default: "burnlog — private AI coding telemetry for teams",
     template: "%s · burnlog",
   },
   description:
-    "Track every token you push through Claude Code, Codex, and other AI coding agents. Rank against friends. Private by default — we store tokens, not your prompts.",
+    "Privacy-first AI coding telemetry for teams. Works with Claude Code today, supports manual Codex log sync, and offers SDK + MCP paths for custom agents.",
   openGraph: {
-    title: "burnlog — private leaderboard for AI token burn",
+    title: "burnlog — private AI coding telemetry for teams",
     description:
-      "Track every token you push through Claude Code, Codex, and other AI coding agents.",
+      "Privacy-first AI coding telemetry across Claude Code, Codex, and custom agents.",
     url: siteUrl,
     siteName: "burnlog",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "burnlog — private leaderboard for AI token burn",
+    title: "burnlog — private AI coding telemetry for teams",
     description:
-      "Track every token you push through Claude Code, Codex, and other AI coding agents.",
+      "Privacy-first AI coding telemetry across Claude Code, Codex, and custom agents.",
     creator: "@sharziki",
   },
   icons: { icon: "/favicon.svg" },
