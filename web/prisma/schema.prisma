@@ -33,6 +33,8 @@ model User {
   clubMemberships   ClubMembership[]
   clubAnnouncements ClubAnnouncement[]
   notifications     Notification[]
+  following         Follow[]        @relation("follower")
+  followers         Follow[]        @relation("following")
 }
 
 model Account {
@@ -155,6 +157,20 @@ model ClubMembership {
 
   @@unique([clubId, userId])
   @@index([userId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@index([followerId])
 }
 
 // ---------- Notifications ----------

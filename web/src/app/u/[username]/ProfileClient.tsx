@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { estimateClimateImpact, formatCo2eEstimateRange, formatEnergyEstimateRange } from "@/lib/climate";
 import { formatTokens } from "@/lib/format";
+import { buildMatchupPath } from "@/lib/h2h";
 import { getRank, getRankProgress } from "@/lib/ranks";
 import type { UserStats } from "@/lib/stats";
 
@@ -146,12 +148,103 @@ function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
   );
 }
 
-export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: string }) {
+type ProfileSocialState = {
+  followersCount: number;
+  followingCount: number;
+  isFollowing: boolean;
+  canFollow: boolean;
+  viewerUsername: string | null;
+};
+
+function copyText(text: string) {
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    return navigator.clipboard.writeText(text);
+  }
+  return Promise.resolve();
+}
+
+function FollowButton({ username, initialState }: { username: string; initialState: ProfileSocialState }) {
+  const [isFollowing, setIsFollowing] = useState(initialState.isFollowing);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  if (!initialState.canFollow) return null;
+
+  const run = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/u/${username}/follow`, {
+        method: isFollowing ? "DELETE" : "POST",
+      });
+      const data = (await res.json()) as { message?: string; isFollowing?: boolean };
+      if (!res.ok) {
+        setMessage(data.message ?? "Could not update follow");
+        return;
+      }
+      setIsFollowing(Boolean(data.isFollowing));
+      setMessage(data.isFollowing ? "Following" : "Unfollowed");
+      setTimeout(() => setMessage(null), 1600);
+    } catch {
+      setMessage("Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+      <button
+        onClick={run}
+        disabled={loading}
+        style={{
+          padding: "10px 16px",
+          borderRadius: 8,
+          border: `1px solid ${isFollowing ? "#27272A" : "#D97706"}`,
+          background: isFollowing ? "#111113" : "#D97706",
+          color: isFollowing ? "#E4E4E7" : "#09090B",
+          fontFamily: MONO,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+          cursor: loading ? "wait" : "pointer",
+          opacity: loading ? 0.7 : 1,
+        }}
+      >
+        {loading ? "Updating..." : isFollowing ? "Following" : "Follow"}
+      </button>
+      {message && <div style={{ fontSize: 10, color: "#D97706", fontFamily: MONO }}>{message}</div>}
+    </div>
+  );
+}
+
+export function ProfileClient({ user, joinedAt, social }: { user: UserStats; joinedAt: string; social: ProfileSocialState }) {
   const rank = getRank(user.totalTokens);
   const rankProgress = getRankProgress(user.totalTokens);
   const climate = estimateClimateImpact(user.totalTokens);
   const spend = user.totalTokens * DOLLARS_PER_TOKEN;
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const matchupPath = useMemo(() => {
+    if (!social.viewerUsername || social.viewerUsername === user.username) return null;
+    return buildMatchupPath(social.viewerUsername, user.username);
+  }, [social.viewerUsername, user.username]);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyProfileLink = async () => {
+    const origin = window.location.origin;
+    await copyText(`${origin}/u/${user.username}`);
+    setCopied("profile");
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  const copyChallengeLink = async () => {
+    if (!matchupPath) return;
+    const origin = window.location.origin;
+    await copyText(`${origin}${matchupPath}`);
+    setCopied("challenge");
+    setTimeout(() => setCopied(null), 1500);
+  };
 
   return (
     <div style={{ fontFamily: SANS, background: "#09090B", color: "#E4E4E7", minHeight: "100vh", position: "relative", overflow: "hidden" }}>
@@ -290,6 +383,42 @@ export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: s
               )}
               <span style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO }}>joined {joinDate}</span>
               <span style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO }}>active {relativeTime(user.lastActive)}</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 18 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ padding: "8px 12px", borderRadius: 999, background: "#0F0F11", border: "1px solid #18181B", fontSize: 11, color: "#A1A1AA", fontFamily: MONO }}>
+                  <span style={{ color: "#FAFAFA", fontWeight: 700 }}>{social.followersCount}</span> followers
+                </div>
+                <div style={{ padding: "8px 12px", borderRadius: 999, background: "#0F0F11", border: "1px solid #18181B", fontSize: 11, color: "#A1A1AA", fontFamily: MONO }}>
+                  <span style={{ color: "#FAFAFA", fontWeight: 700 }}>{social.followingCount}</span> following
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  onClick={copyProfileLink}
+                  style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: copied === "profile" ? "#D97706" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+                >
+                  {copied === "profile" ? "Copied Profile" : "Copy Profile"}
+                </button>
+                {matchupPath && (
+                  <>
+                    <a
+                      href={matchupPath}
+                      style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #D97706", background: "#D97706", color: "#09090B", textDecoration: "none", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}
+                    >
+                      Challenge @{user.username}
+                    </a>
+                    <button
+                      onClick={copyChallengeLink}
+                      style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: copied === "challenge" ? "#D97706" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+                    >
+                      {copied === "challenge" ? "Copied Matchup" : "Copy Matchup"}
+                    </button>
+                  </>
+                )}
+                <FollowButton username={user.username} initialState={social} />
+              </div>
             </div>
           </div>
         </div>

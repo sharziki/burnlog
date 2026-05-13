@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
+import { buildMatchupPath } from "@/lib/h2h";
 import type { UserStats } from "@/lib/stats";
 
 const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -55,10 +57,19 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
   );
 }
 
+function copyText(text: string) {
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    return navigator.clipboard.writeText(text);
+  }
+  return Promise.resolve();
+}
+
 export function H2HClient({ left, right }: { left: UserStats; right: UserStats }) {
   const leftRank = getRank(left.totalTokens);
   const rightRank = getRank(right.totalTokens);
   const metrics = buildMetrics(left, right);
+  const matchupPath = useMemo(() => buildMatchupPath(left.username, right.username), [left.username, right.username]);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   let leftWins = 0;
   let rightWins = 0;
@@ -69,6 +80,35 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
     else if (rb) rightWins++;
   }
 
+  const summary = leftWins === rightWins
+    ? `Dead even: @${left.username} and @${right.username} are tied ${leftWins}-${rightWins} on burnlog.`
+    : leftWins > rightWins
+      ? `@${left.username} is ahead ${leftWins}-${rightWins} over @${right.username} on burnlog.`
+      : `@${right.username} is ahead ${rightWins}-${leftWins} over @${left.username} on burnlog.`;
+
+  const handleCopy = async () => {
+    const absoluteUrl = `${window.location.origin}${matchupPath}`;
+    await copyText(absoluteUrl);
+    setFeedback("Matchup link copied");
+    setTimeout(() => setFeedback(null), 1800);
+  };
+
+  const handleShare = async () => {
+    const absoluteUrl = `${window.location.origin}${matchupPath}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: `@${left.username} vs @${right.username} — burnlog`, text: summary, url: absoluteUrl });
+        setFeedback("Shared");
+      } else {
+        await copyText(absoluteUrl);
+        setFeedback("Matchup link copied");
+      }
+    } catch {
+      setFeedback(null);
+    }
+    setTimeout(() => setFeedback(null), 1800);
+  };
+
   return (
     <div style={{ fontFamily: SANS, background: "#09090B", color: "#E4E4E7", minHeight: "100vh", position: "relative", overflow: "hidden" }}>
       <div
@@ -76,14 +116,55 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
       />
       <div style={{ position: "fixed", top: -200, right: -200, width: 600, height: 600, background: "radial-gradient(circle, rgba(217,119,6,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px 80px", position: "relative", zIndex: 1 }}>
+      <div style={{ maxWidth: 880, margin: "0 auto", padding: "48px 24px 80px", position: "relative", zIndex: 1 }}>
         <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 2, textTransform: "uppercase", fontFamily: MONO, marginBottom: 24 }}>
           HEAD-TO-HEAD
         </div>
 
-        {/* Matchup header */}
+        <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 14, padding: 24, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#FAFAFA", marginBottom: 8 }}>
+                @{left.username} vs @{right.username}
+              </div>
+              <div style={{ fontSize: 12, color: "#A1A1AA", lineHeight: 1.6, maxWidth: 520 }}>
+                {summary} Share the matchup, then jump back into burnlog to throw your own challenge.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                onClick={handleShare}
+                style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #D97706", background: "#D97706", color: "#09090B", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+              >
+                Share Matchup
+              </button>
+              <button
+                onClick={handleCopy}
+                style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: feedback === "Matchup link copied" ? "#D97706" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+              >
+                {feedback === "Matchup link copied" ? "Copied" : "Copy Link"}
+              </button>
+            </div>
+          </div>
+          <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 10, background: "#09090B", border: "1px solid #18181B", fontFamily: MONO, fontSize: 11, color: "#71717A", wordBreak: "break-all" }}>
+            {typeof window === "undefined" ? matchupPath : `${window.location.origin}${matchupPath}`}
+          </div>
+          <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <a href="/" style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: "#E4E4E7", textDecoration: "none", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+              Build Your Own H2H
+            </a>
+            <a href={`/u/${left.username}`} style={{ fontSize: 11, color: "#71717A", textDecoration: "none", fontFamily: MONO }}>
+              View @{left.username}
+            </a>
+            <span style={{ color: "#27272A", fontFamily: MONO }}>•</span>
+            <a href={`/u/${right.username}`} style={{ fontSize: 11, color: "#71717A", textDecoration: "none", fontFamily: MONO }}>
+              View @{right.username}
+            </a>
+            {feedback && feedback !== "Matchup link copied" && <span style={{ fontSize: 11, color: "#D97706", fontFamily: MONO }}>{feedback}</span>}
+          </div>
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 24, alignItems: "center", marginBottom: 40 }}>
-          {/* Left */}
           <a href={`/u/${left.username}`} style={{ textDecoration: "none", textAlign: "center" }}>
             {left.image ? (
               <img src={left.image} alt={left.username} width={72} height={72} style={{ borderRadius: 16, border: `3px solid ${leftRank.color}44`, objectFit: "cover", display: "block", margin: "0 auto 12px" }} />
@@ -97,14 +178,12 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
             <div style={{ fontSize: 11, color: leftRank.color, fontFamily: MONO, marginTop: 4 }}>{leftRank.icon} {leftRank.name}</div>
           </a>
 
-          {/* VS */}
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 48, fontWeight: 800, color: leftWins > rightWins ? "#D97706" : "#3F3F46", fontFamily: MONO, lineHeight: 1 }}>{leftWins}</div>
             <div style={{ fontSize: 16, color: "#18181B", fontFamily: MONO, margin: "4px 0" }}>—</div>
             <div style={{ fontSize: 48, fontWeight: 800, color: rightWins > leftWins ? "#D97706" : "#3F3F46", fontFamily: MONO, lineHeight: 1 }}>{rightWins}</div>
           </div>
 
-          {/* Right */}
           <a href={`/u/${right.username}`} style={{ textDecoration: "none", textAlign: "center" }}>
             {right.image ? (
               <img src={right.image} alt={right.username} width={72} height={72} style={{ borderRadius: 16, border: `3px solid ${rightRank.color}44`, objectFit: "cover", display: "block", margin: "0 auto 12px" }} />
@@ -119,7 +198,6 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
           </a>
         </div>
 
-        {/* Metric rows */}
         <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 14, padding: 28, marginBottom: 24 }}>
           {metrics.map((m) => {
             const leftWin = m.lowerIsBetter ? m.left < m.right : m.left > m.right;
@@ -144,7 +222,6 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
           })}
         </div>
 
-        {/* Provider breakdown */}
         <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 14, padding: 28, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
           <div>
             <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
@@ -160,7 +237,6 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
           </div>
         </div>
 
-        {/* Back link */}
         <div style={{ textAlign: "center" }}>
           <a href="/" style={{ fontSize: 12, color: "#52525B", textDecoration: "none", fontFamily: MONO, padding: "8px 16px", border: "1px solid #18181B", borderRadius: 6 }}>
             ← back to leaderboard

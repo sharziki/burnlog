@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
@@ -51,6 +52,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProfilePage({ params }: Props) {
   const { username } = await params;
+  const session = await auth();
+  const viewerId = (session?.user as { id?: string } | undefined)?.id;
+  const viewerUsername = (session?.user as { username?: string } | undefined)?.username ?? null;
+
   const user = await prisma.user.findFirst({
     where: { username },
     select: { id: true, createdAt: true },
@@ -60,5 +65,28 @@ export default async function ProfilePage({ params }: Props) {
   const stats = await getUserStats(user.id);
   if (!stats) notFound();
 
-  return <ProfileClient user={stats} joinedAt={user.createdAt.toISOString()} />;
+  const [followersCount, followingCount, existingFollow] = await Promise.all([
+    prisma.follow.count({ where: { followingId: user.id } }),
+    prisma.follow.count({ where: { followerId: user.id } }),
+    viewerId && viewerId !== user.id
+      ? prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: viewerId, followingId: user.id } },
+          select: { id: true },
+        })
+      : null,
+  ]);
+
+  return (
+    <ProfileClient
+      user={stats}
+      joinedAt={user.createdAt.toISOString()}
+      social={{
+        followersCount,
+        followingCount,
+        isFollowing: Boolean(existingFollow),
+        canFollow: Boolean(viewerId && viewerId !== user.id),
+        viewerUsername,
+      }}
+    />
+  );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { estimateClimateImpact, formatCo2eEstimateRange, formatEnergyEstimateRange } from "@/lib/climate";
+import { buildMatchupPath } from "@/lib/h2h";
 import { formatTokens } from "@/lib/format";
 import { RANKS, getRank, getRankProgress } from "@/lib/ranks";
 import type { UserStats } from "@/lib/stats";
@@ -1176,6 +1177,37 @@ export function Burnlog({
   // H2H metrics
   const h2hMetrics = h2hLeft && h2hRight ? buildMetrics(h2hLeft, h2hRight) : [];
   const h2hWins = countWins(h2hMetrics);
+  const h2hPath = h2hLeft && h2hRight ? buildMatchupPath(h2hLeft.username, h2hRight.username) : null;
+  const h2hSummary = h2hLeft && h2hRight
+    ? h2hWins.left === h2hWins.right
+      ? `@${h2hLeft.username} and @${h2hRight.username} are tied ${h2hWins.left}-${h2hWins.right} on burnlog.`
+      : h2hWins.left > h2hWins.right
+        ? `@${h2hLeft.username} leads @${h2hRight.username} ${h2hWins.left}-${h2hWins.right} on burnlog.`
+        : `@${h2hRight.username} leads @${h2hLeft.username} ${h2hWins.right}-${h2hWins.left} on burnlog.`
+    : null;
+
+  const openMatchup = () => {
+    if (!h2hPath || typeof window === "undefined") return;
+    window.location.href = h2hPath;
+  };
+
+  const shareMatchup = async () => {
+    if (!h2hPath || typeof window === "undefined") return;
+    const absoluteUrl = `${window.location.origin}${h2hPath}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${h2hLeft?.username} vs ${h2hRight?.username} — burnlog`,
+          text: h2hSummary ?? undefined,
+          url: absoluteUrl,
+        });
+        setCopied("h2h-share");
+        setTimeout(() => setCopied(null), 1500);
+      } else {
+        copyToClip("h2h-share", absoluteUrl);
+      }
+    } catch {}
+  };
 
   return (
     <div style={styles.app}>
@@ -2072,16 +2104,27 @@ export function Burnlog({
               </div>
             ) : (<>
             <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>Head-to-Head</div>
-              <button
-                style={primaryBtn}
-                onClick={() => {
-                  // challenges coming soon
-
-                }}
-              >
-                Challenge Them
-              </button>
+              <div>
+                <div style={styles.sectionTitle}>Head-to-Head</div>
+                <div style={{ fontSize: 12, color: "#52525B", fontFamily: MONO, marginTop: 4 }}>
+                  Pick any two builders, then share the live matchup.
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <button style={primaryBtn} onClick={openMatchup}>
+                  Challenge Them
+                </button>
+                <button
+                  style={{ ...primaryBtn, background: "#0F0F11", color: copied === "h2h-share" ? "#D97706" : "#E4E4E7", border: "1px solid #18181B" }}
+                  onClick={() => {
+                    if (h2hPath && typeof window !== "undefined") {
+                      copyToClip("h2h-share", `${window.location.origin}${h2hPath}`);
+                    }
+                  }}
+                >
+                  {copied === "h2h-share" ? "Copied Link" : "Copy Link"}
+                </button>
+              </div>
             </div>
 
             {/* Matchup selector */}
@@ -2133,6 +2176,45 @@ export function Burnlog({
                 }}
               />
             </div>
+
+            {h2hPath && (
+              <div style={{ ...styles.card, marginBottom: 20, padding: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.2, textTransform: "uppercase", fontFamily: MONO, marginBottom: 6 }}>
+                      Shareable matchup
+                    </div>
+                    <div style={{ fontSize: 13, color: "#A1A1AA", maxWidth: 540 }}>
+                      {h2hSummary}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={shareMatchup}
+                      style={{ ...primaryBtn, padding: "10px 14px" }}
+                    >
+                      Share
+                    </button>
+                    <a
+                      href={h2hPath}
+                      style={{ ...primaryBtn, padding: "10px 14px", background: "#0F0F11", color: "#E4E4E7", border: "1px solid #18181B", textDecoration: "none" }}
+                    >
+                      Open Page
+                    </a>
+                  </div>
+                </div>
+                <div
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      copyToClip("h2h-share", `${window.location.origin}${h2hPath}`);
+                    }
+                  }}
+                  style={{ marginTop: 14, padding: "12px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 11, color: copied === "h2h-share" ? "#D97706" : "#71717A", wordBreak: "break-all", fontFamily: MONO, cursor: "pointer" }}
+                >
+                  {typeof window === "undefined" ? h2hPath : `${window.location.origin}${h2hPath}`}
+                </div>
+              </div>
+            )}
 
             {/* Score summary */}
             <div

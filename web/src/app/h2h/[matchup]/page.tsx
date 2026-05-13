@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { parseMatchupSlug } from "@/lib/h2h";
 import { getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
@@ -10,17 +11,9 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ matchup: string }> };
 
-function parseMatchup(slug: string): { left: string; right: string } | null {
-  const parts = slug.split("-vs-");
-  if (parts.length !== 2) return null;
-  const [left, right] = parts;
-  if (!left || !right) return null;
-  return { left, right };
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { matchup } = await params;
-  const parsed = parseMatchup(matchup);
+  const parsed = parseMatchupSlug(matchup);
   if (!parsed) return { title: "H2H — burnlog" };
 
   const [leftUser, rightUser] = await Promise.all([
@@ -62,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function H2HPage({ params }: Props) {
   const { matchup } = await params;
-  const parsed = parseMatchup(matchup);
+  const parsed = parseMatchupSlug(matchup);
   if (!parsed) notFound();
 
   const [leftUser, rightUser] = await Promise.all([
