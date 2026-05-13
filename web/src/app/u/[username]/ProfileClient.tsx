@@ -416,7 +416,7 @@ export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: s
                 wordBreak: "break-all",
               }}
             >
-              {`![burnlog](https://burnlog.net/badge/${user.username})`}
+              {`[![burnlog](https://burnlog.net/badge/${user.username})](https://burnlog.net/u/${user.username})`}
             </code>
           </div>
         </div>

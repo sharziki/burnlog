@@ -70,6 +70,20 @@ export async function Nav() {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <NotificationBell />
           <a
+            href="/settings"
+            style={{
+              fontSize: 11,
+              color: "#D97706",
+              padding: "8px 12px",
+              border: "1px solid #18181B",
+              borderRadius: 6,
+              fontFamily: MONO,
+              textDecoration: "none",
+            }}
+          >
+            Settings
+          </a>
+          <a
             href={`/u/${user.username}`}
             style={{
               display: "flex",

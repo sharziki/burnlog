@@ -2598,12 +2598,12 @@ export function Burnlog({
 
               <div style={styles.codeBlock}>
                 <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 6 }}>Markdown</div>
-                {`[![burnlog](https://burnlog.net/badge/${selectedUser.username}.svg)](https://burnlog.net/@${selectedUser.username})`}
+                {`[![burnlog](https://burnlog.net/badge/${selectedUser.username})](https://burnlog.net/u/${selectedUser.username})`}
               </div>
 
               <div style={styles.codeBlock}>
                 <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 6 }}>HTML</div>
-                {`<a href="https://burnlog.net/@${selectedUser.username}"><img src="https://burnlog.net/badge/${selectedUser.username}.svg" alt="burnlog" /></a>`}
+                {`<a href="https://burnlog.net/u/${selectedUser.username}"><img src="https://burnlog.net/badge/${selectedUser.username}" alt="burnlog" /></a>`}
               </div>
             </div>
 

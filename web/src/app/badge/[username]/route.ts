@@ -45,7 +45,8 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ username: string }> },
 ) {
-  const { username } = await params;
+  const { username: rawUsername } = await params;
+  const username = rawUsername.endsWith(".svg") ? rawUsername.slice(0, -4) : rawUsername;
 
   const user = await prisma.user.findFirst({
     where: { username },
