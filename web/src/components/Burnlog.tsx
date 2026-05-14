@@ -960,11 +960,26 @@ export function Burnlog({
 
   // Copy-to-clip feedback
   const [copied, setCopied] = useState<string | null>(null);
-  const copyToClip = (key: string, text: string) => {
+  const copyToClip = async (key: string, text: string) => {
+    let ok = false;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(text).catch(() => {});
+      try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } catch {}
     }
-    setCopied(key);
+    if (!ok && typeof document !== "undefined") {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "true");
+      area.style.position = "absolute";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      ok = document.execCommand("copy");
+      document.body.removeChild(area);
+    }
+    setCopied(ok ? key : `${key}-failed`);
     setTimeout(() => setCopied(null), 1500);
   };
 
@@ -1307,6 +1322,9 @@ export function Burnlog({
               </div>
               <div style={{ fontSize: 18, color: "#A1A1AA", lineHeight: 1.65, marginBottom: 18, fontFamily: SANS }}>
                 burnlog gives teams a shared view of token usage, source mix, models, sessions, and estimated spend across Claude Code and other local agents without shipping prompt content off-machine.
+              </div>
+              <div style={{ margin: "0 auto 18px", maxWidth: 760, padding: "12px 14px", borderRadius: 10, border: "1px solid #27272A", background: "#0F0F11", fontSize: 11, color: "#A1A1AA", lineHeight: 1.7, fontFamily: MONO }}>
+                Burnlog is best used as workflow telemetry and monitoring. Public leaderboard/challenge numbers are self-reported unless your team wires burnlog into a trusted runtime, so use them as signals for applicants and teams — not standalone proof.
               </div>
               <div style={{ fontSize: 12, color: "#71717A", marginBottom: 28, fontFamily: MONO }}>
                 Claude Code works now · Codex logs can be scanned and synced manually · SDK + MCP available for custom workflows

@@ -523,6 +523,9 @@ export function SettingsClient({
           <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
             Share your burnlog page, challenge people head-to-head, and keep your public metadata sharp once your first sync is live.
           </div>
+          <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 10, border: "1px solid #1F1F1F", background: "#0D0D0D", fontSize: 11, color: "#A1A1AA", lineHeight: 1.7 }}>
+            If you use burnlog for applicants or performance conversations, treat public burn as workflow telemetry rather than audited proof unless you control the runtime that submits the events.
+          </div>
           {usage.hasSyncedData ? (
             <>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

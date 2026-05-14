@@ -17,10 +17,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     where: { username },
     select: { id: true, name: true, image: true, bio: true },
   });
-  if (!user) return { title: "User not found" };
+  if (!user) notFound();
 
   const stats = await getUserStats(user.id);
-  if (!stats) return { title: "User not found" };
+  if (!stats) notFound();
 
   const rank = getRank(stats.totalTokens);
   const topSource = stats.sources[0]?.source ? stats.sources[0].source : null;

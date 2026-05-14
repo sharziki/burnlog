@@ -14,19 +14,19 @@ type Props = { params: Promise<{ matchup: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { matchup } = await params;
   const parsed = parseMatchupSlug(matchup);
-  if (!parsed) return { title: "H2H — burnlog" };
+  if (!parsed) notFound();
 
   const [leftUser, rightUser] = await Promise.all([
     prisma.user.findFirst({ where: { username: parsed.left }, select: { id: true } }),
     prisma.user.findFirst({ where: { username: parsed.right }, select: { id: true } }),
   ]);
-  if (!leftUser || !rightUser) return { title: "H2H — burnlog" };
+  if (!leftUser || !rightUser) notFound();
 
   const [leftStats, rightStats] = await Promise.all([
     getUserStats(leftUser.id),
     getUserStats(rightUser.id),
   ]);
-  if (!leftStats || !rightStats) return { title: "H2H — burnlog" };
+  if (!leftStats || !rightStats) notFound();
 
   const leftRank = getRank(leftStats.totalTokens);
   const rightRank = getRank(rightStats.totalTokens);

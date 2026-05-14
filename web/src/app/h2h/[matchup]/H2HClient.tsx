@@ -57,11 +57,25 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
   );
 }
 
-function copyText(text: string) {
+async function copyText(text: string): Promise<boolean> {
   if (typeof navigator !== "undefined" && navigator.clipboard) {
-    return navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
   }
-  return Promise.resolve();
+
+  if (typeof document === "undefined") return false;
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "true");
+  area.style.position = "absolute";
+  area.style.left = "-9999px";
+  document.body.appendChild(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(area);
+  return ok;
 }
 
 export function H2HClient({ left, right }: { left: UserStats; right: UserStats }) {
@@ -88,8 +102,8 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
 
   const handleCopy = async () => {
     const absoluteUrl = `${window.location.origin}${matchupPath}`;
-    await copyText(absoluteUrl);
-    setFeedback("Matchup link copied");
+    const ok = await copyText(absoluteUrl);
+    setFeedback(ok ? "Matchup link copied" : "Copy failed");
     setTimeout(() => setFeedback(null), 1800);
   };
 
@@ -100,8 +114,8 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
         await navigator.share({ title: `@${left.username} vs @${right.username} — burnlog`, text: summary, url: absoluteUrl });
         setFeedback("Shared");
       } else {
-        await copyText(absoluteUrl);
-        setFeedback("Matchup link copied");
+        const ok = await copyText(absoluteUrl);
+        setFeedback(ok ? "Matchup link copied" : "Copy failed");
       }
     } catch {
       setFeedback(null);
@@ -130,6 +144,9 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
               <div style={{ fontSize: 12, color: "#A1A1AA", lineHeight: 1.6, maxWidth: 520 }}>
                 {summary} Share the matchup, then jump back into burnlog to throw your own challenge.
               </div>
+              <div style={{ marginTop: 10, fontSize: 11, color: "#71717A", lineHeight: 1.7, maxWidth: 560, fontFamily: MONO }}>
+                Burn is workflow telemetry, not hiring proof. Treat public matchups as self-reported usage signals unless your org wires burnlog into a trusted runtime.
+              </div>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <button
@@ -140,9 +157,9 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
               </button>
               <button
                 onClick={handleCopy}
-                style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: feedback === "Matchup link copied" ? "#D97706" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
+                style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #18181B", background: "#0F0F11", color: feedback === "Matchup link copied" ? "#D97706" : feedback === "Copy failed" ? "#EF4444" : "#E4E4E7", fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", cursor: "pointer" }}
               >
-                {feedback === "Matchup link copied" ? "Copied" : "Copy Link"}
+                {feedback === "Matchup link copied" ? "Copied" : feedback === "Copy failed" ? "Copy Failed" : "Copy Link"}
               </button>
             </div>
           </div>
