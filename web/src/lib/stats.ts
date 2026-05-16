@@ -1,14 +1,21 @@
 import { prisma } from "./db";
 
+const hasDatabase = Boolean(process.env.DATABASE_URL);
+
 export type UserStats = {
   id: string;
   username: string;
   name: string;
   avatar: string;
+  image: string | null;
   bio: string | null;
+  github: string | null;
+  twitter: string | null;
+  website: string | null;
   totalTokens: number;
   weeklyTokens: number;
   streak: number;
+  longestStreak: number;
   providers: { anthropic: number; openai: number; google: number; other: number };
   sources: { source: string; tokens: number }[];
   topModels: { model: string; tokens: number }[];
@@ -16,6 +23,7 @@ export type UserStats = {
   heatmap: number[]; // 84 buckets = 12 weeks x 7 days, chronological oldest→newest
   tokensPerCommit: number;
   commits: number;
+  lastActive: string | null; // ISO timestamp of most recent burn event
 };
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -32,6 +40,8 @@ function initials(name: string): string {
 }
 
 export async function getUserStats(userId: string): Promise<UserStats | null> {
+  if (!hasDatabase) return null;
+
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return null;
 
@@ -120,15 +130,23 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
   const commits = events.length;
   const tokensPerCommit = commits ? Math.round(total / commits) : 0;
 
+  // Use DB-stored longestStreak if available, otherwise fall back to computed streak
+  const longestStreak = Math.max(user.longestStreak ?? 0, streak);
+
   return {
     id: user.id,
     username: user.username ?? user.id,
     name: user.name ?? user.username ?? "anon",
     avatar: initials(user.name ?? user.username ?? "A"),
+    image: user.image,
     bio: user.bio,
+    github: user.github ?? user.username,
+    twitter: user.twitter,
+    website: user.website,
     totalTokens: total,
     weeklyTokens: weekly,
     streak,
+    longestStreak,
     providers,
     sources,
     topModels,
@@ -136,10 +154,13 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     heatmap,
     tokensPerCommit,
     commits,
+    lastActive: events.length > 0 ? events[0].timestamp.toISOString() : null,
   };
 }
 
 export async function getLeaderboard(): Promise<UserStats[]> {
+  if (!hasDatabase) return [];
+
   const users = await prisma.user.findMany({ where: { username: { not: null } } });
   const stats = await Promise.all(users.map((u) => getUserStats(u.id)));
   return stats

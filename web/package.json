@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "next start",
-    "lint": "next lint",
+    "start": "HOSTNAME=0.0.0.0 AUTH_SECRET=${AUTH_SECRET:-dev-insecure-auth-secret-change-me} node .next/standalone/server.js",
+    "lint": "eslint .",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
@@ -15,15 +15,18 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
     "@prisma/client": "^5.22.0",
-    "next": "15.0.3",
+    "next": "15.5.15",
     "next-auth": "5.0.0-beta.25",
-    "react": "19.0.0-rc-66855b96-20241106",
-    "react-dom": "19.0.0-rc-66855b96-20241106"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
     "prisma": "^5.22.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"

@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -17,12 +17,24 @@ model User {
   image         String?
   username      String?     @unique // github login
   bio           String?
+  github        String?
+  twitter       String?
+  website       String?
+  currentStreak Int         @default(0)
+  longestStreak Int         @default(0)
+  lastBurnDate  String?     // "YYYY-MM-DD" UTC, for fast streak calc
   createdAt     DateTime    @default(now())
 
-  accounts   Account[]
-  sessions   Session[]
-  apiKeys    ApiKey[]
-  burnEvents BurnEvent[]
+  accounts         Account[]
+  sessions         Session[]
+  apiKeys          ApiKey[]
+  burnEvents       BurnEvent[]
+  ownedClubs        Club[]             @relation("clubOwner")
+  clubMemberships   ClubMembership[]
+  clubAnnouncements ClubAnnouncement[]
+  notifications     Notification[]
+  following         Follow[]        @relation("follower")
+  followers         Follow[]        @relation("following")
 }
 
 model Account {
@@ -103,4 +115,81 @@ model BurnEvent {
   @@index([userId, timestamp])
   @@index([userId, source])
   @@index([userId, model])
+}
+
+// ---------- Clubs ----------
+
+model Club {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  description String?
+  image       String?
+  ownerId     String
+  createdAt   DateTime         @default(now())
+
+  owner         User               @relation("clubOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships   ClubMembership[]
+  announcements ClubAnnouncement[]
+}
+
+model ClubAnnouncement {
+  id        String   @id @default(cuid())
+  clubId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([clubId, createdAt])
+}
+
+model ClubMembership {
+  id       String   @id @default(cuid())
+  clubId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+  @@index([userId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@index([followerId])
+}
+
+// ---------- Notifications ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  /// Type tag for rendering: "rank_up" | "overtake" | "streak" | "milestone" | "welcome"
+  type      String
+  /// Human-readable notification body (plain text, max ~200 chars)
+  message   String
+  /// Optional JSON metadata (e.g. {"rank":"Blaze","icon":"●"} or {"by":"alice"})
+  meta      String?
+  /// Optional link target (e.g. "/u/alice", "/h2h/alice-vs-bob")
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
 }

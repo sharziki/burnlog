@@ -1,4 +1,6 @@
-import { auth, signIn, signOut } from "@/auth";
+import { auth, signOut } from "@/auth";
+import { getUserStats } from "@/lib/stats";
+import { redirect } from "next/navigation";
 import { SettingsClient } from "./client";
 
 export const dynamic = "force-dynamic";
@@ -6,56 +8,36 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const session = await auth();
   const user = session?.user as
-    | { id?: string; username?: string; name?: string; image?: string }
+    | { id?: string; username?: string; name?: string; image?: string | null }
     | undefined;
 
   if (!user?.id) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: 16,
-          fontFamily: "'JetBrains Mono', monospace",
-        }}
-      >
-        <div style={{ fontSize: 13, color: "#6B7280", letterSpacing: 2, textTransform: "uppercase" }}>
-          burnlog · settings
-        </div>
-        <form
-          action={async () => {
-            "use server";
-            await signIn("github");
-          }}
-        >
-          <button
-            type="submit"
-            style={{
-              padding: "12px 24px",
-              background: "#D97706",
-              color: "#000",
-              border: "none",
-              borderRadius: 8,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 13,
-            }}
-          >
-            Sign in with GitHub
-          </button>
-        </form>
-      </div>
-    );
+    redirect("/login?next=%2Fsettings");
   }
+
+  const stats = await getUserStats(user.id);
+  const usage = stats
+    ? {
+        totalTokens: stats.totalTokens,
+        weeklyTokens: stats.weeklyTokens,
+        events: stats.commits,
+        lastActive: stats.lastActive,
+        hasSyncedData: stats.commits > 0,
+      }
+    : {
+        totalTokens: 0,
+        weeklyTokens: 0,
+        events: 0,
+        lastActive: null,
+        hasSyncedData: false,
+      };
 
   return (
     <SettingsClient
-      username={user.username ?? ""}
-      name={user.name ?? ""}
+      username={user.username ?? "anon"}
+      name={user.name ?? user.username ?? "burnlog user"}
+      image={user.image ?? null}
+      usage={usage}
       signOutAction={async () => {
         "use server";
         await signOut({ redirectTo: "/" });

@@ -9,8 +9,16 @@ export async function POST() {
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { raw, hash } = generateApiKey();
-  await prisma.apiKey.create({
-    data: { userId, keyHash: hash, label: "cli" },
+  await prisma.$transaction([
+    prisma.apiKey.deleteMany({ where: { userId, label: "cli" } }),
+    prisma.apiKey.create({
+      data: { userId, keyHash: hash, label: "cli" },
+    }),
+  ]);
+
+  return NextResponse.json({
+    key: raw,
+    rotated: true,
+    message: "New CLI key created. Previous CLI keys were revoked.",
   });
-  return NextResponse.json({ key: raw });
 }

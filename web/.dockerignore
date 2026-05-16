@@ -1,0 +1,14 @@
+node_modules
+.next
+.env
+.env.local
+.env.*.local
+!.env.example
+*.tsbuildinfo
+prisma/dev.db*
+npm-debug.log*
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+.dockerignore

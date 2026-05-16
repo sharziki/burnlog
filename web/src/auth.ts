@@ -3,8 +3,13 @@ import GitHub from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 
+const authSecret =
+  process.env.AUTH_SECRET ??
+  (process.env.NODE_ENV !== "production" ? "dev-insecure-auth-secret-change-me" : undefined);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  secret: authSecret,
   providers: [
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,

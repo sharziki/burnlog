@@ -1,14 +1,90 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { RANKS, getRank } from "@/lib/ranks";
+import { buildMatchupPath } from "@/lib/h2h";
 import { formatTokens } from "@/lib/format";
+import { RANKS, getRank, getRankProgress } from "@/lib/ranks";
 import type { UserStats } from "@/lib/stats";
+
+type ClubData = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  image: string | null;
+  memberCount: number;
+  totalTokens: number;
+  isMember: boolean;
+  isOwner: boolean;
+  owner: { username: string | null; name: string | null; image: string | null };
+  topMembers: {
+    id: string;
+    username: string | null;
+    name: string | null;
+    image: string | null;
+    totalTokens: number;
+  }[];
+};
+
+type ClubDetail = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  image: string | null;
+  memberCount: number;
+  totalTokens: number;
+  weeklyTokens: number;
+  isMember: boolean;
+  isOwner: boolean;
+  owner: { id: string; username: string | null; name: string | null; image: string | null };
+  members: {
+    id: string;
+    username: string | null;
+    name: string | null;
+    image: string | null;
+    bio: string | null;
+    totalTokens: number;
+    weeklyTokens: number;
+    joinedAt: string;
+  }[];
+};
+
+type ClubAnnouncement = {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: { id: string; username: string | null; name: string | null; image: string | null };
+};
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = '"Instrument Sans", system-ui, -apple-system, sans-serif';
 const DOLLARS_PER_TOKEN = 0.00001;
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "never";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+function formatActivityStamp(iso: string | null): string {
+  if (!iso) return "No activity yet";
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 const SOURCE_LABELS: Record<string, string> = {
   "claude-code": "Claude Code",
@@ -19,291 +95,58 @@ const SOURCE_LABELS: Record<string, string> = {
   "openai-api": "OpenAI API",
 };
 
-// ---------- Mock data for gamification tabs ----------
-type Club = {
-  id: string;
-  name: string;
-  tag: string;
-  tagline: string;
-  members: string[]; // usernames
-  totalBurned: number;
-  weeklyBurned: number;
-  minRank: string; // rank name floor for eligibility
-  isPrivate: boolean;
-};
-
-type Challenge = {
-  id: string;
-  name: string;
-  tagline: string;
-  prize: string;
-  endsAt: string;
-  status: "active" | "completed";
-  participants: { username: string; progress: number }[]; // progress = tokens in challenge
-  target: number;
-  winner?: string;
-};
-
-const CLUBS: Club[] = [
-  {
-    id: "c1",
-    name: "Midnight Burners",
-    tag: "MDN",
-    tagline: "3am > 3pm",
-    members: ["sharziki", "zara.dev", "codex_kai"],
-    totalBurned: 412_000_000,
-    weeklyBurned: 48_000_000,
-    minRank: "Blaze",
-    isPrivate: false,
-  },
-  {
-    id: "c2",
-    name: "Token Tycoons",
-    tag: "TYC",
-    tagline: "money is a language, we speak fluent burn",
-    members: ["byte_marcus", "luna_build", "devraj_s"],
-    totalBurned: 890_000_000,
-    weeklyBurned: 102_000_000,
-    minRank: "Inferno",
-    isPrivate: true,
-  },
-  {
-    id: "c3",
-    name: "Rubber Duck Collective",
-    tag: "RDC",
-    tagline: "we ask the duck first, then claude",
-    members: ["sharziki", "luna_build"],
-    totalBurned: 156_000_000,
-    weeklyBurned: 19_000_000,
-    minRank: "Ember",
-    isPrivate: false,
-  },
-  {
-    id: "c4",
-    name: "Inference Cartel",
-    tag: "INF",
-    tagline: "we don't sleep, the gpus do",
-    members: ["zara.dev", "byte_marcus", "devraj_s", "codex_kai"],
-    totalBurned: 1_240_000_000,
-    weeklyBurned: 188_000_000,
-    minRank: "Supernova",
-    isPrivate: true,
-  },
-  {
-    id: "c5",
-    name: "Frontend First Responders",
-    tag: "FFR",
-    tagline: "tailwind or death",
-    members: ["luna_build"],
-    totalBurned: 74_000_000,
-    weeklyBurned: 11_000_000,
-    minRank: "Spark",
-    isPrivate: false,
-  },
-];
-
-const CHALLENGES: Challenge[] = [
-  {
-    id: "ch1",
-    name: "Weekly Burn Sprint",
-    tagline: "most tokens burned in 7 days wins",
-    prize: "Custom rank flair + bragging rights",
-    endsAt: "2026-04-20",
-    status: "active",
-    target: 100_000_000,
-    participants: [
-      { username: "sharziki", progress: 48_000_000 },
-      { username: "zara.dev", progress: 62_000_000 },
-      { username: "codex_kai", progress: 41_000_000 },
-      { username: "byte_marcus", progress: 73_000_000 },
-    ],
-  },
-  {
-    id: "ch2",
-    name: "Haiku Marathon",
-    tagline: "who can squeeze the most out of Haiku 4.5",
-    prize: "✦ Supernova badge preview for 7 days",
-    endsAt: "2026-04-27",
-    status: "active",
-    target: 50_000_000,
-    participants: [
-      { username: "sharziki", progress: 12_000_000 },
-      { username: "luna_build", progress: 31_000_000 },
-      { username: "devraj_s", progress: 28_000_000 },
-    ],
-  },
-  {
-    id: "ch3",
-    name: "Streak Duel",
-    tagline: "longest consecutive-day burn streak",
-    prize: "Club channel highlight",
-    endsAt: "2026-05-04",
-    status: "active",
-    target: 30,
-    participants: [
-      { username: "sharziki", progress: 14 },
-      { username: "codex_kai", progress: 22 },
-      { username: "zara.dev", progress: 9 },
-    ],
-  },
-  {
-    id: "ch4",
-    name: "March Madness Burn",
-    tagline: "full-month cumulative burn battle",
-    prize: "Pinned leaderboard mention · Mar 2026",
-    endsAt: "2026-03-31",
-    status: "completed",
-    target: 300_000_000,
-    winner: "byte_marcus",
-    participants: [
-      { username: "byte_marcus", progress: 312_000_000 },
-      { username: "zara.dev", progress: 288_000_000 },
-      { username: "sharziki", progress: 197_000_000 },
-    ],
-  },
-];
-
-// ---------- Mock peers (UserStats-shaped) for clubs/h2h since real DB may have 1 user ----------
-function mkPeer(partial: {
-  username: string;
-  name: string;
-  bio: string;
-  totalTokens: number;
-  weeklyTokens: number;
-  streak: number;
-  providers: UserStats["providers"];
-  topModels: UserStats["topModels"];
-  tokensPerCommit: number;
-  commits: number;
-  avatar: string;
-}): UserStats {
-  const heatmap = Array.from({ length: 84 }, (_, i) => {
-    const base = partial.weeklyTokens / 7;
-    const noise = Math.sin((i + partial.username.length) * 1.7) * 0.5 + 0.5;
-    const trend = (i / 84) * 0.4 + 0.6;
-    return Math.floor(base * noise * trend);
-  });
-  const weeklyHistory = Array.from({ length: 7 }, (_, i) => {
-    const base = partial.weeklyTokens / 7;
-    const noise = Math.sin((i + partial.username.length) * 2.3) * 0.35 + 0.65;
-    return Math.floor(base * noise);
-  });
-  return {
-    id: `mock-${partial.username}`,
-    username: partial.username,
-    name: partial.name,
-    avatar: partial.avatar,
-    bio: partial.bio,
-    totalTokens: partial.totalTokens,
-    weeklyTokens: partial.weeklyTokens,
-    streak: partial.streak,
-    providers: partial.providers,
-    sources: [
-      { source: "claude-code", tokens: Math.floor(partial.totalTokens * 0.7) },
-      { source: "codex", tokens: Math.floor(partial.totalTokens * 0.3) },
-    ],
-    topModels: partial.topModels,
-    weeklyHistory,
-    heatmap,
-    tokensPerCommit: partial.tokensPerCommit,
-    commits: partial.commits,
-  };
+function getWeeklyMomentum(history: number[]): string {
+  if (!history.length) return "No weekly trend yet";
+  const earlier = history.slice(0, 3).reduce((sum, value) => sum + value, 0);
+  const recent = history.slice(-3).reduce((sum, value) => sum + value, 0);
+  if (earlier === 0 && recent === 0) return "No weekly trend yet";
+  if (earlier === 0) return "New activity this week";
+  const delta = ((recent - earlier) / earlier) * 100;
+  if (Math.abs(delta) < 5) return "Stable week over week";
+  return `${delta > 0 ? "+" : ""}${Math.round(delta)}% vs start of week`;
 }
 
-const MOCK_PEERS: UserStats[] = [
-  mkPeer({
-    username: "zara.dev",
-    name: "Zara",
-    bio: "shipping prod from a kitchen counter",
-    totalTokens: 184_000_000,
-    weeklyTokens: 22_000_000,
-    streak: 19,
-    providers: { anthropic: 0.72, openai: 0.2, google: 0.05, other: 0.03 },
-    topModels: [
-      { model: "claude-opus-4-6", tokens: 92_000_000 },
-      { model: "claude-sonnet-4-6", tokens: 48_000_000 },
-      { model: "gpt-5", tokens: 22_000_000 },
-    ],
-    tokensPerCommit: 14_200,
-    commits: 12_950,
-    avatar: "ZA",
-  }),
-  mkPeer({
-    username: "codex_kai",
-    name: "Kai",
-    bio: "codex cli lifer",
-    totalTokens: 126_000_000,
-    weeklyTokens: 16_500_000,
-    streak: 31,
-    providers: { anthropic: 0.12, openai: 0.83, google: 0.03, other: 0.02 },
-    topModels: [
-      { model: "gpt-5", tokens: 71_000_000 },
-      { model: "gpt-5-mini", tokens: 34_000_000 },
-      { model: "o4-mini", tokens: 12_000_000 },
-    ],
-    tokensPerCommit: 9_800,
-    commits: 12_850,
-    avatar: "KA",
-  }),
-  mkPeer({
-    username: "byte_marcus",
-    name: "Marcus",
-    bio: "refactoring legacy at 3am",
-    totalTokens: 412_000_000,
-    weeklyTokens: 54_000_000,
-    streak: 47,
-    providers: { anthropic: 0.58, openai: 0.32, google: 0.08, other: 0.02 },
-    topModels: [
-      { model: "claude-opus-4-6", tokens: 188_000_000 },
-      { model: "gpt-5", tokens: 96_000_000 },
-      { model: "claude-sonnet-4-6", tokens: 72_000_000 },
-    ],
-    tokensPerCommit: 18_400,
-    commits: 22_390,
-    avatar: "MA",
-  }),
-  mkPeer({
-    username: "luna_build",
-    name: "Luna",
-    bio: "frontend framework of the week enthusiast",
-    totalTokens: 68_000_000,
-    weeklyTokens: 9_200_000,
-    streak: 8,
-    providers: { anthropic: 0.82, openai: 0.1, google: 0.05, other: 0.03 },
-    topModels: [
-      { model: "claude-sonnet-4-6", tokens: 41_000_000 },
-      { model: "claude-haiku-4-5", tokens: 19_000_000 },
-    ],
-    tokensPerCommit: 7_100,
-    commits: 9_580,
-    avatar: "LU",
-  }),
-  mkPeer({
-    username: "devraj_s",
-    name: "Devraj",
-    bio: "infra > ui",
-    totalTokens: 298_000_000,
-    weeklyTokens: 38_000_000,
-    streak: 24,
-    providers: { anthropic: 0.45, openai: 0.4, google: 0.12, other: 0.03 },
-    topModels: [
-      { model: "claude-opus-4-6", tokens: 128_000_000 },
-      { model: "gpt-5", tokens: 96_000_000 },
-      { model: "gemini-2.5-pro", tokens: 42_000_000 },
-    ],
-    tokensPerCommit: 16_800,
-    commits: 17_730,
-    avatar: "DE",
-  }),
-];
-
-function resolvePeer(username: string, users: UserStats[]): UserStats | null {
+// Avatar helper — shows GitHub image or initials fallback
+function UserAvatar({ user, size = 36, color }: { user: UserStats; size?: number; color: string }) {
+  if (user.image) {
+    return (
+      <img
+        src={user.image}
+        alt={user.username}
+        width={size}
+        height={size}
+        style={{
+          borderRadius: "50%",
+          border: `2px solid ${color}44`,
+          objectFit: "cover",
+        }}
+      />
+    );
+  }
   return (
-    users.find((u) => u.username === username) ??
-    MOCK_PEERS.find((u) => u.username === username) ??
-    null
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: `${color}22`,
+        border: `2px solid ${color}44`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.35,
+        fontWeight: 700,
+        color,
+        fontFamily: MONO,
+      }}
+    >
+      {user.avatar}
+    </div>
   );
 }
+
+
+
 
 type Metric = {
   label: string;
@@ -390,6 +233,154 @@ function AnimCount({ value, duration = 1200 }: { value: number; duration?: numbe
   return <>{formatTokens(display)}</>;
 }
 
+function HeroConstellation() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof window === "undefined") return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const nodeCount = Math.min(28, Math.max(16, Math.round(window.innerWidth / 70)));
+    let width = 0;
+    let height = 0;
+    let animationFrame = 0;
+    let reducedMotion = mediaQuery.matches;
+
+    const nodes = Array.from({ length: nodeCount }, (_, index) => ({
+      x: 0,
+      y: 0,
+      vx: ((index % 2 === 0 ? 1 : -1) * (0.08 + (index % 5) * 0.015)),
+      vy: ((index % 3 === 0 ? 1 : -1) * (0.05 + (index % 7) * 0.012)),
+      radius: 1.5 + (index % 4) * 0.8,
+      tint: index % 5 === 0 ? "217,119,6" : index % 3 === 0 ? "250,250,250" : "244,114,182",
+    }));
+
+    const resize = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+
+      width = parent.clientWidth;
+      height = parent.clientHeight;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.floor(width * ratio));
+      canvas.height = Math.max(1, Math.floor(height * ratio));
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      nodes.forEach((node, index) => {
+        node.x = (((index * 97) % 1000) / 1000) * width;
+        node.y = (((index * 57) % 1000) / 1000) * height;
+      });
+    };
+
+    const draw = () => {
+      context.clearRect(0, 0, width, height);
+
+      const wash = context.createRadialGradient(width * 0.78, height * 0.24, 0, width * 0.78, height * 0.24, Math.max(width, height) * 0.8);
+      wash.addColorStop(0, "rgba(217,119,6,0.18)");
+      wash.addColorStop(0.45, "rgba(244,114,182,0.08)");
+      wash.addColorStop(1, "rgba(9,9,11,0)");
+      context.fillStyle = wash;
+      context.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance > 150) continue;
+          context.beginPath();
+          context.strokeStyle = `rgba(250,250,250,${0.12 * (1 - distance / 150)})`;
+          context.lineWidth = 1;
+          context.moveTo(a.x, a.y);
+          context.lineTo(b.x, b.y);
+          context.stroke();
+        }
+      }
+
+      nodes.forEach((node) => {
+        context.beginPath();
+        context.fillStyle = `rgba(${node.tint},0.88)`;
+        context.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        context.fill();
+
+        context.beginPath();
+        context.fillStyle = `rgba(${node.tint},0.12)`;
+        context.arc(node.x, node.y, node.radius * 6, 0, Math.PI * 2);
+        context.fill();
+
+        if (!reducedMotion) {
+          node.x += node.vx;
+          node.y += node.vy;
+
+          if (node.x < -20 || node.x > width + 20) node.vx *= -1;
+          if (node.y < -20 || node.y > height + 20) node.vy *= -1;
+        }
+      });
+
+      if (!reducedMotion) animationFrame = window.requestAnimationFrame(draw);
+    };
+
+    const handleMotionChange = (event: MediaQueryListEvent) => {
+      reducedMotion = event.matches;
+      window.cancelAnimationFrame(animationFrame);
+      draw();
+    };
+
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    const observer = new ResizeObserver(() => {
+      resize();
+      window.cancelAnimationFrame(animationFrame);
+      draw();
+    });
+
+    observer.observe(parent);
+    mediaQuery.addEventListener("change", handleMotionChange);
+    resize();
+    draw();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+      mediaQuery.removeEventListener("change", handleMotionChange);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} aria-hidden="true" className="burnlog-hero-canvas" />;
+}
+
+function LandingCard({ eyebrow, title, children }: { eyebrow?: string; title: string; children: ReactNode }) {
+  return (
+    <div
+      style={{
+        background: "linear-gradient(180deg, rgba(24,24,27,0.94) 0%, rgba(12,12,14,0.94) 100%)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 18,
+        padding: 24,
+        boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
+        backdropFilter: "blur(16px)",
+      }}
+    >
+      {eyebrow && (
+        <div style={{ fontSize: 11, color: "#F59E0B", fontFamily: MONO, fontWeight: 700, letterSpacing: 1.8, marginBottom: 10 }}>
+          {eyebrow}
+        </div>
+      )}
+      <div style={{ fontSize: 18, fontWeight: 750, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
 // --- Sparkline ---
 function Sparkline({
   data,
@@ -403,6 +394,15 @@ function Sparkline({
   width?: number;
 }) {
   if (!data.length) return <svg width={width} height={height} />;
+  const allZero = data.every((v) => v === 0);
+  if (allZero) {
+    const mid = height / 2;
+    return (
+      <svg width={width} height={height}>
+        <line x1={0} y1={mid} x2={width} y2={mid} stroke="#27272A" strokeWidth={1.5} strokeDasharray="4 4" strokeLinecap="round" />
+      </svg>
+    );
+  }
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -522,6 +522,101 @@ function SourcesStrip({ sources }: { sources: UserStats["sources"] }) {
   );
 }
 
+function ProgressMeter({ progress, color }: { progress: number; color: string }) {
+  return (
+    <div style={{ height: 10, borderRadius: 999, background: "#111114", overflow: "hidden", border: "1px solid #18181B" }}>
+      <div
+        style={{
+          width: `${progress === 0 ? 0 : Math.max(progress * 100, 3)}%`,
+          height: "100%",
+          borderRadius: 999,
+          background: `linear-gradient(90deg, ${color}AA 0%, ${color} 100%)`,
+          boxShadow: `0 0 24px ${color}33`,
+          transition: "width 0.5s ease",
+        }}
+      />
+    </div>
+  );
+}
+
+function ProgressionPanel({ tokens, color }: { tokens: number; color: string }) {
+  const progress = getRankProgress(tokens);
+  return (
+    <div style={{ background: "#0F0F11", border: "1px solid #18181B", borderRadius: 10, padding: 16 }}>
+      <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
+        Progression
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color, fontFamily: MONO }}>
+            {progress.rank.icon} {progress.rank.name}
+          </div>
+          <div style={{ fontSize: 11, color: "#3F3F46", marginTop: 4, fontFamily: MONO }}>
+            Floor {formatTokens(progress.rank.min)}
+            {progress.nextRankAt ? ` · next ${formatTokens(progress.nextRankAt)}` : " · apex tier"}
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>{progress.progressPercent}%</div>
+          <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>tier progress</div>
+        </div>
+      </div>
+      <ProgressMeter progress={progress.progress} color={color} />
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 10, fontSize: 11, color: "#71717A", fontFamily: MONO }}>
+        <span>{formatTokens(progress.tokensIntoRank)} in tier</span>
+        <span>
+          {progress.tokensRemainingToNextRank !== null
+            ? `${formatTokens(progress.tokensRemainingToNextRank)} to ${progress.nextRank?.name}`
+            : "No next rank"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function OperationalPanel({ user }: { user: UserStats }) {
+  const topSource = user.sources[0];
+  const sourceShare = topSource ? `${Math.round((topSource.tokens / Math.max(user.totalTokens, 1)) * 100)}%` : null;
+  const spend = estSpend(user.weeklyTokens);
+  const momentum = getWeeklyMomentum(user.weeklyHistory);
+  const items = [
+    { label: "Last active", value: relativeTime(user.lastActive), sub: formatActivityStamp(user.lastActive) },
+    {
+      label: "Burn events",
+      value: user.commits.toLocaleString(),
+      sub: user.commits > 0 ? `${formatTokens(user.tokensPerCommit)} tok / event` : "No synced events yet",
+    },
+    {
+      label: "Top source",
+      value: topSource ? SOURCE_LABELS[topSource.source] ?? topSource.source : "No source data",
+      sub: topSource ? `${formatTokens(topSource.tokens)} · ${sourceShare}` : "Waiting for first sync",
+    },
+    {
+      label: "Weekly momentum",
+      value: momentum,
+      sub: `7d total ${formatTokens(user.weeklyTokens)} · ${formatUSD(spend)} est. spend`,
+    },
+  ];
+  return (
+    <div style={{ background: "#0F0F11", border: "1px solid #18181B", borderRadius: 10, padding: 16 }}>
+      <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
+        Ops Snapshot
+      </div>
+      <div style={{ display: "grid", gap: 12 }}>
+        {items.map((item, index) => (
+          <div key={item.label} style={{ paddingBottom: index === items.length - 1 ? 0 : 12, borderBottom: index === items.length - 1 ? "none" : "1px solid #18181B" }}>
+            <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 4, fontFamily: MONO, letterSpacing: 1.1, textTransform: "uppercase" }}>
+              {item.label}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>{item.value}</div>
+            <div style={{ fontSize: 10, color: "#52525B", lineHeight: 1.5, fontFamily: MONO, marginTop: 4 }}>{item.sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // --- Rank Badge SVG preview ---
 function RankBadgePreview({ user }: { user: UserStats }) {
   const rank = getRank(user.totalTokens);
@@ -596,90 +691,7 @@ function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
   );
 }
 
-// ---------- Modal shell ----------
-function Modal({
-  open,
-  onClose,
-  title,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}) {
-  if (!open) return null;
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(4px)",
-        zIndex: 100,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "#0C0C0E",
-          border: "1px solid #18181B",
-          borderRadius: 12,
-          padding: 28,
-          width: "100%",
-          maxWidth: 480,
-          fontFamily: SANS,
-          color: "#E4E4E7",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-          }}
-        >
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA" }}>{title}</div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#52525B",
-              cursor: "pointer",
-              fontSize: 18,
-              padding: 4,
-            }}
-          >
-            ×
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// ---------- Input / button helpers ----------
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#0F0F11",
-  border: "1px solid #18181B",
-  borderRadius: 6,
-  padding: "10px 14px",
-  fontSize: 13,
-  color: "#E4E4E7",
-  fontFamily: MONO,
-  outline: "none",
-  transition: "border-color 0.15s ease",
-};
-
+// ---------- Button helpers ----------
 const primaryBtn: React.CSSProperties = {
   padding: "10px 18px",
   background: "#D97706",
@@ -688,20 +700,6 @@ const primaryBtn: React.CSSProperties = {
   borderRadius: 6,
   fontSize: 12,
   fontWeight: 700,
-  fontFamily: MONO,
-  letterSpacing: 0.5,
-  cursor: "pointer",
-  textTransform: "uppercase",
-};
-
-const ghostBtn: React.CSSProperties = {
-  padding: "10px 18px",
-  background: "transparent",
-  color: "#E4E4E7",
-  border: "1px solid #18181B",
-  borderRadius: 6,
-  fontSize: 12,
-  fontWeight: 600,
   fontFamily: MONO,
   letterSpacing: 0.5,
   cursor: "pointer",
@@ -741,23 +739,33 @@ function PeerDropdown({
           color: "#E4E4E7",
         }}
       >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 8,
-            background: `linear-gradient(135deg, ${rank.color}33 0%, ${rank.color}11 100%)`,
-            border: `1px solid ${rank.color}44`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 13,
-            fontWeight: 700,
-            color: rank.color,
-          }}
-        >
-          {value.avatar}
-        </div>
+        {value.image ? (
+          <img
+            src={value.image}
+            alt={value.username}
+            width={40}
+            height={40}
+            style={{ borderRadius: 8, objectFit: "cover", border: `1px solid ${rank.color}44` }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 8,
+              background: `linear-gradient(135deg, ${rank.color}33 0%, ${rank.color}11 100%)`,
+              border: `1px solid ${rank.color}44`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 13,
+              fontWeight: 700,
+              color: rank.color,
+            }}
+          >
+            {value.avatar}
+          </div>
+        )}
         <div style={{ flex: 1, textAlign: "left" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#FAFAFA" }}>{value.name}</div>
           <div style={{ fontSize: 11, color: "#52525B" }}>@{value.username}</div>
@@ -801,7 +809,11 @@ function PeerDropdown({
                   textAlign: "left",
                 }}
               >
-                <span style={{ color: r.color, fontSize: 14, width: 18 }}>{r.icon}</span>
+                {u.image ? (
+                  <img src={u.image} alt="" width={24} height={24} style={{ borderRadius: "50%", flexShrink: 0 }} />
+                ) : (
+                  <span style={{ color: r.color, fontSize: 14, width: 24, textAlign: "center", flexShrink: 0 }}>{r.icon}</span>
+                )}
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#FAFAFA" }}>
                   {u.name}
                 </span>
@@ -821,38 +833,302 @@ function PeerDropdown({
 export function Burnlog({
   users,
   currentUsername,
+  signOutAction,
+  signInAction,
 }: {
   users: UserStats[];
   currentUsername: string | null;
+  signOutAction?: () => Promise<void>;
+  signInAction?: () => Promise<void>;
 }) {
-  const [tab, setTab] = useState<
-    "leaderboard" | "clubs" | "challenges" | "h2h" | "profile" | "badges"
-  >("leaderboard");
-  const [selectedUser, setSelectedUser] = useState<UserStats | null>(users[0] ?? null);
+  const [tab, setTab] = useState<"leaderboard" | "clubs" | "h2h" | "profile" | "badges">("leaderboard");
+  const [selectedUser, setSelectedUser] = useState<UserStats | null>(
+    (currentUsername && users.find((u) => u.username === currentUsername)) || users[0] || null,
+  );
+  const [viewingUser, setViewingUser] = useState<UserStats | null>(null);
   const [timeframe, setTimeframe] = useState<"all-time" | "weekly">("all-time");
   const [mounted, setMounted] = useState(false);
 
+  // Editable socials state
+  const [editBio, setEditBio] = useState(selectedUser?.bio ?? "");
+  const [editGithub, setEditGithub] = useState(selectedUser?.github ?? "");
+  const [editTwitter, setEditTwitter] = useState(selectedUser?.twitter ?? "");
+  const [editWebsite, setEditWebsite] = useState(selectedUser?.website ?? "");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
   // H2H state
-  const allPeers: UserStats[] = [...users, ...MOCK_PEERS.filter((m) => !users.some((u) => u.username === m.username))];
-  const [h2hLeft, setH2hLeft] = useState<UserStats>(users[0] ?? MOCK_PEERS[0]);
-  const [h2hRight, setH2hRight] = useState<UserStats>(
-    resolvePeer("zara.dev", users) ?? MOCK_PEERS[0],
-  );
+  const [h2hLeft, setH2hLeft] = useState<UserStats | null>(users[0] ?? null);
+  const [h2hRight, setH2hRight] = useState<UserStats | null>(users[1] ?? null);
   const [h2hLeftOpen, setH2hLeftOpen] = useState(false);
   const [h2hRightOpen, setH2hRightOpen] = useState(false);
 
-  // Modals
-  const [createClubOpen, setCreateClubOpen] = useState(false);
-  const [createChallengeOpen, setCreateChallengeOpen] = useState(false);
-  const [challengePrefill, setChallengePrefill] = useState<string>("");
+  // Clubs state
+  const [clubs, setClubs] = useState<ClubData[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [clubsRequiresAuth, setClubsRequiresAuth] = useState(false);
+  const [showCreateClub, setShowCreateClub] = useState(false);
+  const [newClubName, setNewClubName] = useState("");
+  const [newClubDesc, setNewClubDesc] = useState("");
+  const [clubError, setClubError] = useState<string | null>(null);
+  const [clubCreating, setClubCreating] = useState(false);
+  const [clubImage, setClubImage] = useState<string | null>(null);
+  const clubFileRef = useRef<HTMLInputElement>(null);
+
+  // Club detail state
+  const [activeClub, setActiveClub] = useState<ClubDetail | null>(null);
+  const [clubAnnouncements, setClubAnnouncements] = useState<ClubAnnouncement[]>([]);
+  const [clubDetailLoading, setClubDetailLoading] = useState(false);
+  const [clubSubTab, setClubSubTab] = useState<"leaderboard" | "members" | "feed">("leaderboard");
+  const [newAnnouncement, setNewAnnouncement] = useState("");
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // API key state
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [keyLoading, setKeyLoading] = useState(false);
+  async function createKey() {
+    setKeyLoading(true);
+    try {
+      const res = await fetch("/api/me/key", { method: "POST" });
+      const data = (await res.json()) as { key?: string; message?: string };
+      if (data.key) {
+        setApiKey(data.key);
+        setCopied(null);
+      }
+    } finally {
+      setKeyLoading(false);
+    }
+  }
+
+  async function saveProfile() {
+    setSavingProfile(true);
+    try {
+      const res = await fetch("/api/me/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio: editBio, github: editGithub, twitter: editTwitter, website: editWebsite }),
+      });
+      if (res.ok) {
+        setProfileSaved(true);
+        setTimeout(() => setProfileSaved(false), 2000);
+        if (selectedUser) {
+          selectedUser.bio = editBio || null;
+          selectedUser.github = editGithub || null;
+          selectedUser.twitter = editTwitter || null;
+          selectedUser.website = editWebsite || null;
+        }
+      }
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  function handleClubImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = 256;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d")!;
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        setClubImage(canvas.toDataURL("image/webp", 0.8));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Clubs fetch + actions
+  async function fetchClubs() {
+    setClubsLoading(true);
+    setClubError(null);
+    try {
+      const res = await fetch("/api/clubs");
+      if (res.status === 401) {
+        setClubsRequiresAuth(true);
+        setClubs([]);
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        setClubsRequiresAuth(false);
+        setClubs(data.clubs ?? []);
+      } else {
+        setClubError("Could not load clubs right now.");
+      }
+    } catch {
+      setClubError("Could not load clubs right now.");
+    } finally {
+      setClubsLoading(false);
+    }
+  }
+
+  async function handleCreateClub() {
+    setClubError(null);
+    if (!newClubName.trim()) {
+      setClubError("Name is required");
+      return;
+    }
+    setClubCreating(true);
+    try {
+      const res = await fetch("/api/clubs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newClubName.trim(),
+          description: newClubDesc.trim() || undefined,
+          image: clubImage ?? undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setClubError(data.message ?? "Failed to create club");
+        return;
+      }
+      setShowCreateClub(false);
+      setNewClubName("");
+      setNewClubDesc("");
+      setClubImage(null);
+      fetchClubs();
+    } finally {
+      setClubCreating(false);
+    }
+  }
+
+  async function handleJoinLeave(clubId: string, isMember: boolean) {
+    const action = isMember ? "leave" : "join";
+    const res = await fetch(`/api/clubs/${clubId}/${action}`, { method: "POST" });
+    if (res.ok) {
+      fetchClubs();
+      if (activeClub?.id === clubId) openClub(clubId);
+    }
+  }
+
+  async function openClub(clubId: string) {
+    setClubDetailLoading(true);
+    setClubSubTab("leaderboard");
+    try {
+      const [detailRes, annRes] = await Promise.all([
+        fetch(`/api/clubs/${clubId}`),
+        fetch(`/api/clubs/${clubId}/announcements`),
+      ]);
+      if (detailRes.ok) {
+        const d = await detailRes.json();
+        setActiveClub(d.club);
+      }
+      if (annRes.ok) {
+        const a = await annRes.json();
+        setClubAnnouncements(a.announcements ?? []);
+        setTimeout(() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight }), 100);
+      }
+    } finally {
+      setClubDetailLoading(false);
+    }
+  }
+
+  async function postAnnouncement() {
+    if (!activeClub || !newAnnouncement.trim()) return;
+    setPostingAnnouncement(true);
+    try {
+      const res = await fetch(`/api/clubs/${activeClub.id}/announcements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newAnnouncement.trim() }),
+      });
+      if (res.ok) {
+        setNewAnnouncement("");
+        const annRes = await fetch(`/api/clubs/${activeClub.id}/announcements`);
+        if (annRes.ok) {
+          const a = await annRes.json();
+          setClubAnnouncements(a.announcements ?? []);
+          setTimeout(() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" }), 50);
+        }
+      }
+    } finally {
+      setPostingAnnouncement(false);
+    }
+  }
+
+  async function deleteMessage(msgId: string) {
+    if (!activeClub) return;
+    const res = await fetch(`/api/clubs/${activeClub.id}/announcements/${msgId}`, { method: "DELETE" });
+    if (res.ok) {
+      setClubAnnouncements((prev) => prev.filter((a) => a.id !== msgId));
+    }
+  }
+
+  async function kickMember(targetId: string) {
+    if (!activeClub) return;
+    const res = await fetch(`/api/clubs/${activeClub.id}/kick`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: targetId }),
+    });
+    if (res.ok) {
+      openClub(activeClub.id);
+    }
+  }
+
+  // Onboarding CTA banner
+  const [ctaDismissed, setCtaDismissed] = useState(true); // default true to avoid flash
+  useEffect(() => {
+    setCtaDismissed(localStorage.getItem("burnlog:cta-dismissed") === "1");
+  }, []);
+  const showOnboardingCta = currentUsername && selectedUser && selectedUser.totalTokens === 0 && !ctaDismissed;
+  function dismissCta() {
+    localStorage.setItem("burnlog:cta-dismissed", "1");
+    setCtaDismissed(true);
+  }
+
+  // Auto-refresh leaderboard data
+  const [liveUsers, setLiveUsers] = useState(users);
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/leaderboard");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.users && Array.isArray(data.users)) setLiveUsers(data.users);
+        }
+      } catch {}
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+  // Use liveUsers for rendering but keep original users as fallback
+  const activeUsers = liveUsers;
 
   // Copy-to-clip feedback
   const [copied, setCopied] = useState<string | null>(null);
-  const copyToClip = (key: string, text: string) => {
+  const copyToClip = async (key: string, text: string) => {
+    let ok = false;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(text).catch(() => {});
+      try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } catch {}
     }
-    setCopied(key);
+    if (!ok && typeof document !== "undefined") {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "true");
+      area.style.position = "absolute";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      ok = document.execCommand("copy");
+      document.body.removeChild(area);
+    }
+    setCopied(ok ? key : `${key}-failed`);
     setTimeout(() => setCopied(null), 1500);
   };
 
@@ -860,20 +1136,61 @@ export function Burnlog({
     setMounted(true);
   }, []);
 
-  const rank = selectedUser ? getRank(selectedUser.totalTokens) : RANKS[0];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (tab !== "clubs") return;
+    if (!currentUsername) {
+      setClubsRequiresAuth(true);
+      setClubs([]);
+      return;
+    }
+    fetchClubs();
+  }, [tab, currentUsername]);
 
-  const sortedUsers = [...users].sort((a, b) => {
+  useEffect(() => {
+    if (chatPollRef.current) { clearInterval(chatPollRef.current); chatPollRef.current = null; }
+    if (!activeClub || clubSubTab !== "feed") return;
+    const poll = async () => {
+      const last = clubAnnouncements[clubAnnouncements.length - 1];
+      const since = last ? `?since=${encodeURIComponent(last.createdAt)}` : "";
+      try {
+        const res = await fetch(`/api/clubs/${activeClub.id}/announcements${since}`);
+        if (res.ok) {
+          const data = await res.json();
+          const newMsgs = (data.announcements ?? []) as ClubAnnouncement[];
+          if (newMsgs.length > 0) {
+            setClubAnnouncements((prev) => {
+              const ids = new Set(prev.map((m) => m.id));
+              const fresh = newMsgs.filter((m) => !ids.has(m.id));
+              if (fresh.length === 0) return prev;
+              const merged = [...prev, ...fresh];
+              setTimeout(() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" }), 50);
+              return merged;
+            });
+          }
+        }
+      } catch {}
+    };
+    chatPollRef.current = setInterval(poll, 3000);
+    return () => { if (chatPollRef.current) clearInterval(chatPollRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeClub?.id, clubSubTab, clubAnnouncements.length]);
+
+  const rank = selectedUser ? getRank(selectedUser.totalTokens) : RANKS[0];
+  const selectedProgress = selectedUser ? getRankProgress(selectedUser.totalTokens) : getRankProgress(0);
+
+  const sortedUsers = [...activeUsers].sort((a, b) => {
     if (timeframe === "weekly") return b.weeklyTokens - a.weeklyTokens;
     return b.totalTokens - a.totalTokens;
   });
 
   const globalStats = {
-    totalBurned: users.reduce((s, u) => s + u.totalTokens, 0),
-    activeUsers: users.length,
-    avgPerUser: users.length
-      ? Math.round(users.reduce((s, u) => s + u.totalTokens, 0) / users.length)
+    totalBurned: activeUsers.reduce((s, u) => s + u.totalTokens, 0),
+    activeUsers: activeUsers.length,
+    avgPerUser: activeUsers.length
+      ? Math.round(activeUsers.reduce((s, u) => s + u.totalTokens, 0) / activeUsers.length)
       : 0,
-    weeklyTotal: users.reduce((s, u) => s + u.weeklyTokens, 0),
+    weeklyTotal: activeUsers.reduce((s, u) => s + u.weeklyTokens, 0),
   };
 
   const styles = {
@@ -909,35 +1226,6 @@ export function Burnlog({
       padding: "0 24px",
       position: "relative" as const,
       zIndex: 1,
-    },
-    header: {
-      padding: "32px 0 24px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      borderBottom: "1px solid #18181B",
-    },
-    logo: { display: "flex", alignItems: "center", gap: 10 },
-    logoMark: {
-      width: 32,
-      height: 32,
-      borderRadius: 6,
-      background: "linear-gradient(135deg, #D97706 0%, #92400E 100%)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: 16,
-      fontWeight: 800 as const,
-      color: "#09090B",
-    },
-    logoText: { fontSize: 18, fontWeight: 700 as const, color: "#FAFAFA", letterSpacing: -0.5 },
-    logoSub: {
-      fontSize: 10,
-      color: "#52525B",
-      letterSpacing: 2,
-      textTransform: "uppercase" as const,
-      marginTop: 2,
-      fontFamily: MONO,
     },
     nav: {
       display: "flex",
@@ -1016,20 +1304,6 @@ export function Burnlog({
       color: i === 0 ? "#D97706" : i === 1 ? "#E4E4E7" : i === 2 ? "#92400E" : "#3F3F46",
       fontFamily: MONO,
     }),
-    avatar: (color: string) => ({
-      width: 36,
-      height: 36,
-      borderRadius: 8,
-      background: `linear-gradient(135deg, ${color}33 0%, ${color}11 100%)`,
-      border: `1px solid ${color}44`,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: 12,
-      fontWeight: 700 as const,
-      color,
-      fontFamily: MONO,
-    }),
     profileCard: {
       background: "#0C0C0E",
       border: "1px solid #18181B",
@@ -1093,53 +1367,30 @@ export function Burnlog({
       <div style={styles.app}>
         <div style={styles.noise} />
         <div style={styles.glow} />
-        <div style={styles.container}>
-          <header style={styles.header}>
-            <div style={styles.logo}>
-              <div style={styles.logoMark}>B</div>
-              <div>
-                <div style={styles.logoText}>burnlog</div>
-                <div style={styles.logoSub}>token burn tracker</div>
-              </div>
-            </div>
-            <a
-              href="/settings"
-              style={{
-                fontSize: 12,
-                color: "#D97706",
-                padding: "8px 14px",
-                border: "1px solid #D9770644",
-                borderRadius: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Sign in
-            </a>
-          </header>
-          <div style={{ padding: "80px 0", textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 16, color: "#D97706" }}>✦</div>
-            <div style={{ fontSize: 20, color: "#FAFAFA", marginBottom: 8, fontWeight: 700 }}>
-              No burns yet.
-            </div>
-            <div style={{ fontSize: 13, color: "#52525B", marginBottom: 24, fontFamily: MONO }}>
-              Sign in, grab an API key, and run <code style={{ color: "#D97706" }}>burnlog sync</code> to light it up.
-            </div>
-            <a
-              href="/settings"
-              style={{
-                display: "inline-block",
-                padding: "12px 24px",
-                background: "#D97706",
-                color: "#09090B",
-                borderRadius: 8,
-                fontWeight: 700,
-                fontSize: 13,
-                fontFamily: MONO,
-              }}
-            >
-              Get started →
-            </a>
+        <div style={{ ...styles.container, padding: "80px 24px", textAlign: "center" as const }}>
+          <div style={{ fontSize: 48, marginBottom: 16, color: "#D97706" }}>✦</div>
+          <div style={{ fontSize: 20, color: "#FAFAFA", marginBottom: 8, fontWeight: 700 }}>
+            No burns yet.
           </div>
+          <div style={{ fontSize: 13, color: "#52525B", marginBottom: 24, fontFamily: MONO }}>
+            Sign in, grab an API key, and run <code style={{ color: "#D97706" }}>burnlog sync</code> to light it up.
+          </div>
+          <a
+            href="/settings"
+            style={{
+              display: "inline-block",
+              padding: "12px 24px",
+              background: "#D97706",
+              color: "#09090B",
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: 13,
+              fontFamily: MONO,
+              textDecoration: "none",
+            }}
+          >
+            Get started →
+          </a>
         </div>
       </div>
     );
@@ -1147,20 +1398,40 @@ export function Burnlog({
 
   const topModelMax = Math.max(...selectedUser.topModels.map((m) => m.tokens), 1);
 
-  // Clubs derived data
-  const myClubs = CLUBS.filter((c) => c.members.includes(selectedUser.username));
-  const discoverClubs = CLUBS.filter((c) => !c.members.includes(selectedUser.username));
-  const sortedClubs = [...CLUBS].sort((a, b) => b.totalBurned - a.totalBurned);
-  const myRankName = getRank(selectedUser.totalTokens).name;
-  const myRankIdx = RANKS.findIndex((r) => r.name === myRankName);
-  const clubEligible = (c: Club) => {
-    const need = RANKS.findIndex((r) => r.name === c.minRank);
-    return myRankIdx >= need;
+  // H2H metrics
+  const h2hMetrics = h2hLeft && h2hRight ? buildMetrics(h2hLeft, h2hRight) : [];
+  const h2hWins = countWins(h2hMetrics);
+  const h2hPath = h2hLeft && h2hRight ? buildMatchupPath(h2hLeft.username, h2hRight.username) : null;
+  const h2hSummary = h2hLeft && h2hRight
+    ? h2hWins.left === h2hWins.right
+      ? `@${h2hLeft.username} and @${h2hRight.username} are tied ${h2hWins.left}-${h2hWins.right} on burnlog.`
+      : h2hWins.left > h2hWins.right
+        ? `@${h2hLeft.username} leads @${h2hRight.username} ${h2hWins.left}-${h2hWins.right} on burnlog.`
+        : `@${h2hRight.username} leads @${h2hLeft.username} ${h2hWins.right}-${h2hWins.left} on burnlog.`
+    : null;
+
+  const openMatchup = () => {
+    if (!h2hPath || typeof window === "undefined") return;
+    window.location.href = h2hPath;
   };
 
-  // H2H metrics
-  const h2hMetrics = buildMetrics(h2hLeft, h2hRight);
-  const h2hWins = countWins(h2hMetrics);
+  const shareMatchup = async () => {
+    if (!h2hPath || typeof window === "undefined") return;
+    const absoluteUrl = `${window.location.origin}${h2hPath}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${h2hLeft?.username} vs ${h2hRight?.username} — burnlog`,
+          text: h2hSummary ?? undefined,
+          url: absoluteUrl,
+        });
+        setCopied("h2h-share");
+        setTimeout(() => setCopied(null), 1500);
+      } else {
+        copyToClip("h2h-share", absoluteUrl);
+      }
+    } catch {}
+  };
 
   return (
     <div style={styles.app}>
@@ -1168,47 +1439,335 @@ export function Burnlog({
       <div style={styles.glow} />
 
       <div style={styles.container}>
-        {/* Header */}
-        <header style={styles.header}>
-          <div style={styles.logo}>
-            <div style={styles.logoMark}>B</div>
-            <div>
-              <div style={styles.logoText}>burnlog</div>
-              <div style={styles.logoSub}>token burn tracker</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <nav style={styles.nav}>
-              {(
-                [
-                  ["leaderboard", "Board"],
-                  ["clubs", "Clubs"],
-                  ["challenges", "Challenges"],
-                  ["h2h", "H2H"],
-                  ["profile", "Profile"],
-                  ["badges", "Embed"],
-                ] as const
-              ).map(([key, label]) => (
-                <button key={key} style={styles.navBtn(tab === key)} onClick={() => setTab(key)}>
-                  {label}
-                </button>
-              ))}
-            </nav>
-            <a
-              href="/settings"
+        {/* Hero landing section for unauthenticated visitors */}
+        {!currentUsername && (
+          <div className="burnlog-landing-shell" style={{ paddingTop: 40, paddingBottom: 44, borderBottom: "1px solid #18181B" }}>
+            <section
+              className="burnlog-premium-hero"
+              aria-labelledby="burnlog-landing-title"
               style={{
-                fontSize: 11,
-                color: currentUsername ? "#E4E4E7" : "#D97706",
-                padding: "8px 12px",
-                border: "1px solid #18181B",
-                borderRadius: 6,
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: 28,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "linear-gradient(135deg, rgba(12,12,14,0.98) 0%, rgba(17,17,19,0.94) 45%, rgba(24,24,27,0.95) 100%)",
+                boxShadow: "0 32px 120px rgba(0,0,0,0.45)",
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "radial-gradient(circle at top left, rgba(217,119,6,0.16), transparent 30%), radial-gradient(circle at 85% 15%, rgba(244,114,182,0.12), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0))",
+                }}
+              />
+              <div aria-hidden="true" style={{ position: "absolute", inset: 0, backdropFilter: "blur(2px)" }} />
+              <HeroConstellation />
+
+              <div className="burnlog-premium-hero-grid" style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)", gap: 28, padding: 32 }}>
+                <div className="burnlog-landing-hero">
+                  <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+                    {[
+                      "Private AI coding telemetry",
+                      "Claude Code autosync today",
+                      "Codex manual sync supported",
+                      "SDK + MCP for custom workflows",
+                    ].map((pill) => (
+                      <span
+                        key={pill}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 999,
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "rgba(255,255,255,0.04)",
+                          color: "#E4E4E7",
+                          fontSize: 11,
+                          fontFamily: MONO,
+                          backdropFilter: "blur(8px)",
+                        }}
+                      >
+                        {pill}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div style={{ maxWidth: 660, fontSize: 58, fontWeight: 840, color: "#FAFAFA", letterSpacing: -2.4, lineHeight: 1.02, fontFamily: SANS, marginBottom: 18 }} id="burnlog-landing-title">
+                    See how your team is actually using AI coding tools.
+                  </div>
+                  <div style={{ maxWidth: 620, fontSize: 18, color: "#B4B4BC", lineHeight: 1.7, marginBottom: 22, fontFamily: SANS }}>
+                    burnlog gives teams a shared view of token usage, source mix, models, sessions, and estimated spend across Claude Code, Codex log imports, and custom agent workflows — without syncing prompt content off-machine.
+                  </div>
+
+                  <div className="burnlog-landing-cta-row" style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", marginBottom: 18 }}>
+                    <a
+                      href="/login"
+                      style={{
+                        padding: "15px 24px",
+                        background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+                        color: "#09090B",
+                        border: "none",
+                        borderRadius: 12,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        fontFamily: MONO,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        textDecoration: "none",
+                        justifyContent: "center",
+                        boxShadow: "0 12px 40px rgba(217,119,6,0.32)",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="#09090B">
+                        <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+                      </svg>
+                      Sign in with GitHub
+                    </a>
+                    <a
+                      href="#leaderboard"
+                      style={{
+                        fontSize: 13,
+                        color: "#F4F4F5",
+                        fontFamily: MONO,
+                        textDecoration: "none",
+                        padding: "15px 18px",
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        borderRadius: 12,
+                        background: "rgba(255,255,255,0.04)",
+                        transition: "border-color 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.24)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.14)";
+                      }}
+                    >
+                      See live usage board
+                    </a>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 18 }} className="burnlog-hero-stats-grid">
+                    {[
+                      {
+                        label: "Tracked developers",
+                        value: globalStats.activeUsers.toLocaleString(),
+                        detail: globalStats.totalBurned > 0 ? "Already syncing usage telemetry" : "Ready for your first synced team",
+                      },
+                      {
+                        label: "Tracked tokens",
+                        value: formatTokens(globalStats.totalBurned),
+                        detail: globalStats.totalBurned > 0 ? "Across shared burnlog boards" : "Appears here once a team syncs",
+                      },
+                      {
+                        label: "Collection scope",
+                        value: "Usage metadata",
+                        detail: "Token counts and session stats — not prompt bodies",
+                      },
+                    ].map((item) => (
+                      <div key={item.label} style={{ padding: 14, borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(10px)" }}>
+                        <div style={{ fontSize: 10, color: "#A1A1AA", fontFamily: MONO, letterSpacing: 1.4, textTransform: "uppercase" }}>{item.label}</div>
+                        <div style={{ fontSize: 24, fontWeight: 780, color: "#FAFAFA", marginTop: 8, marginBottom: 6 }}>{item.value}</div>
+                        <div style={{ fontSize: 12, color: "#B4B4BC", lineHeight: 1.6 }}>{item.detail}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ maxWidth: 720, padding: "14px 16px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(9,9,11,0.5)", fontSize: 11, color: "#B4B4BC", lineHeight: 1.75, fontFamily: MONO }}>
+                    burnlog is best used as workflow telemetry and monitoring. Public leaderboard and challenge numbers are self-reported unless your team wires burnlog into a trusted runtime, so treat them as useful signals — not standalone proof.
+                  </div>
+                </div>
+
+                <div className="burnlog-hero-side-stack" style={{ display: "grid", gap: 16, alignContent: "start" }}>
+                  <LandingCard eyebrow="WHAT SUPPORTS TODAY" title="A truthful path for each setup">
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {[
+                        {
+                          label: "Claude Code",
+                          title: "Autosync with the hook + daemon",
+                          note: "Native sync path today for teams that want usage to land automatically.",
+                        },
+                        {
+                          label: "Codex",
+                          title: "Manual scan and sync",
+                          note: "Supported today through log scans and manual sync, with the daemon as an optional local helper.",
+                        },
+                        {
+                          label: "SDK + MCP",
+                          title: "Custom workflows and readback",
+                          note: "Instrument your own agents or expose burnlog context inside supported runtimes.",
+                        },
+                      ].map((item) => (
+                        <div key={item.label} style={{ padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+                          <div style={{ fontSize: 10, color: "#F59E0B", fontFamily: MONO, fontWeight: 700, letterSpacing: 1.6, marginBottom: 8 }}>{item.label}</div>
+                          <div style={{ fontSize: 15, color: "#FAFAFA", fontWeight: 700, marginBottom: 6 }}>{item.title}</div>
+                          <div style={{ fontSize: 12, color: "#B4B4BC", lineHeight: 1.65 }}>{item.note}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </LandingCard>
+
+                  <LandingCard eyebrow="WHAT TEAMS SEE" title="Useful signals, not vanity charts">
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {[
+                        "Token usage, session volume, and estimated spend over time",
+                        "Source and model mix across supported tools and providers",
+                        "A shared board the team can review without exposing prompt content",
+                      ].map((item) => (
+                        <div key={item} style={{ display: "flex", gap: 10, alignItems: "flex-start", color: "#D4D4D8", fontSize: 13, lineHeight: 1.65 }}>
+                          <span style={{ color: "#F59E0B", marginTop: 1 }}>✦</span>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </LandingCard>
+                </div>
+              </div>
+            </section>
+
+            <div style={{ marginTop: 24 }} className="burnlog-landing-proof-grid">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }} className="burnlog-landing-reasons-grid">
+                {[
+                  {
+                    title: "Visibility across real workflows",
+                    desc: "Put Claude Code autosync, Codex imports, and custom agent telemetry on one surface so leads can compare adoption without chasing screenshots or local logs.",
+                  },
+                  {
+                    title: "Privacy-first by design",
+                    desc: "burnlog syncs usage metadata, token counts, and related session stats — not prompt bodies — so teams get narrower collection by default.",
+                  },
+                  {
+                    title: "Useful for ops and coaching",
+                    desc: "Track model concentration, weekly momentum, and estimated spend to understand how AI usage changes as your team adopts new tools and habits.",
+                  },
+                ].map((item) => (
+                  <LandingCard key={item.title} eyebrow="WHY IT MATTERS" title={item.title}>
+                    <div style={{ fontSize: 13, color: "#B4B4BC", lineHeight: 1.72 }}>{item.desc}</div>
+                  </LandingCard>
+                ))}
+              </div>
+            </div>
+
+            <div className="burnlog-landing-steps" style={{ marginTop: 24 }}>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>
+                  WORKS TODAY
+                </div>
+                <div style={{ fontSize: 30, fontWeight: 820, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>
+                  Pick the setup that matches your stack
+                </div>
+                <div style={{ fontSize: 14, color: "#A1A1AA", lineHeight: 1.72, maxWidth: 760, fontFamily: SANS }}>
+                  Start with native Claude Code autosync, use the current manual Codex flow, or wire burnlog into your own agent runtime with the SDK or MCP server.
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }} className="burnlog-landing-steps-grid">
+                {[
+                  {
+                    step: "Claude Code",
+                    title: "Install hook · autosync",
+                    code: "burnlog install && burnlog daemon",
+                    desc: "Best path today. Install the Claude Code hook, keep the local daemon running, and burnlog syncs usage automatically as sessions land.",
+                  },
+                  {
+                    step: "Codex",
+                    title: "Scan · sync · daemon",
+                    code: "burnlog scan && burnlog sync",
+                    desc: "Codex is supported through a manual log scan/sync flow today. Use the daemon if you want a local process watching for new logs between syncs.",
+                  },
+                  {
+                    step: "Custom agents",
+                    title: "SDK instrumentation",
+                    code: "import { Burnlog } from '@sxna/burnlog-sdk'",
+                    desc: "Use the SDK to emit token usage from your own agent loops, background jobs, or internal tooling without changing the dashboard your team already sees.",
+                  },
+                  {
+                    step: "In-agent readback",
+                    title: "MCP access",
+                    code: "Connect the burnlog MCP server",
+                    desc: "Expose prior usage and profile stats inside supported agent runtimes so the agent can read back burnlog context without custom glue code.",
+                  },
+                ].map((item) => (
+                  <LandingCard key={item.step} eyebrow={item.step} title={item.title}>
+                    <div
+                      style={{
+                        padding: "9px 12px",
+                        background: "rgba(9,9,11,0.55)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 10,
+                        fontSize: 11,
+                        color: "#F59E0B",
+                        fontFamily: MONO,
+                        marginBottom: 12,
+                        overflowX: "auto",
+                      }}
+                    >
+                      <span style={{ color: "#52525B" }}>$ </span>
+                      {item.code}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#B4B4BC", lineHeight: 1.68 }}>{item.desc}</div>
+                  </LandingCard>
+                ))}
+              </div>
+            </div>
+
+            {globalStats.totalBurned > 0 && (
+              <div style={{ textAlign: "center", marginTop: 28, fontSize: 13, color: "#71717A", fontFamily: MONO }}>
+                <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> developer{globalStats.activeUsers === 1 ? "" : "s"} currently syncing{" "}
+                <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> tracked tokens into burnlog
+              </div>
+            )}
+
+            <div
+              className="burnlog-trust-row"
+              style={{
+                marginTop: 24,
+                padding: "18px 20px",
+                background: "linear-gradient(180deg, rgba(12,12,14,0.96) 0%, rgba(15,15,17,0.94) 100%)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                fontSize: 12,
+                color: "#A1A1AA",
                 fontFamily: MONO,
               }}
             >
-              {currentUsername ? `@${currentUsername}` : "Sign in"}
-            </a>
+              <span style={{ fontSize: 16, color: "#D97706" }}>&#9670;</span>
+              <span>
+                Your prompts stay local. burnlog syncs usage metadata and token counts, never prompt content.{" "}
+                <a href="https://github.com/sharziki/burnlog" target="_blank" rel="noopener noreferrer" style={{ color: "#D97706", textDecoration: "none" }}>
+                  Open source CLI
+                </a>
+                {" "}&mdash; audit it yourself.
+              </span>
+              <a href="/privacy" style={{ color: "#E4E4E7", marginLeft: "auto", textDecoration: "none", whiteSpace: "nowrap" }}>
+                Privacy &rarr;
+              </a>
+            </div>
           </div>
-        </header>
+        )}
+
+        {/* Tab nav */}
+        <div style={{ paddingTop: 20 }} id="leaderboard">
+          <nav style={styles.nav}>
+            {(
+              [
+                ["leaderboard", "Board"],
+                ["clubs", "Clubs"],
+                ["h2h", "H2H"],
+                ["badges", "Embed"],
+                ...(currentUsername ? [["profile", "Profile"] as const] : []),
+              ] as const
+            ).map(([key, label]) => (
+              <button key={key} style={styles.navBtn(tab === key)} onClick={() => setTab(key)}>
+                {label}
+              </button>
+            ))}
+          </nav>
+        </div>
 
         {/* Hero Stats */}
         <div style={styles.heroStats}>
@@ -1274,31 +1833,116 @@ export function Burnlog({
               <span>Rank</span>
             </div>
 
+            {/* Onboarding CTA */}
+            {showOnboardingCta && (
+              <div
+                style={{
+                  background: "#0C0C0E",
+                  border: "1px solid #18181B",
+                  borderRadius: 12,
+                  padding: "20px 24px",
+                  marginBottom: 16,
+                  position: "relative",
+                }}
+              >
+                <button
+                  onClick={dismissCta}
+                  style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "#3F3F46", cursor: "pointer", fontSize: 16, padding: 4, lineHeight: 1 }}
+                >
+                  &times;
+                </button>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#FAFAFA", marginBottom: 4 }}>
+                  You&apos;re on the board &mdash; now light it up.
+                </div>
+                <div style={{ fontSize: 12, color: "#71717A", marginBottom: 12 }}>
+                  Install the CLI to start tracking your token burn.
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    onClick={() => copyToClip("onboard", "npm i -g @sxnalabs/burnlog && burnlog auth && burnlog sync")}
+                    style={{
+                      flex: 1,
+                      padding: "10px 14px",
+                      background: "#0F0F11",
+                      border: "1px solid #18181B",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      color: "#D97706",
+                      fontFamily: MONO,
+                      cursor: "pointer",
+                      overflowX: "auto",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <span style={{ color: "#3F3F46" }}>$ </span>npm i -g @sxnalabs/burnlog &amp;&amp; burnlog auth &amp;&amp; burnlog sync
+                  </div>
+                  <button
+                    onClick={() => copyToClip("onboard", "npm i -g @sxnalabs/burnlog && burnlog auth && burnlog sync")}
+                    style={{
+                      ...primaryBtn,
+                      padding: "10px 16px",
+                      fontSize: 11,
+                      borderRadius: 8,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {copied === "onboard" ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {sortedUsers.map((user, i) => {
               const r = getRank(user.totalTokens);
+              const progress = getRankProgress(user.totalTokens);
               const tokens = timeframe === "weekly" ? user.weeklyTokens : user.totalTokens;
+              const isEmpty = user.totalTokens === 0;
               return (
                 <div
                   key={user.id}
                   style={styles.leaderboardRow(selectedUser.id === user.id, i)}
-                  onClick={() => {
-                    setSelectedUser(user);
-                    setTab("profile");
-                  }}
+                  onClick={() => setViewingUser(user)}
                 >
                   <span style={styles.rankNum(i)}>{i + 1}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={styles.avatar(r.color)}>{user.avatar}</div>
+                    <UserAvatar user={user} size={36} color={r.color} />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#FAFAFA" }}>{user.name}</div>
-                      <div style={{ fontSize: 11, color: "#52525B", fontFamily: MONO }}>@{user.username}</div>
+                      <a
+                        href={`/u/${user.username}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ fontSize: 11, color: "#52525B", fontFamily: MONO, textDecoration: "none" }}
+                      >
+                        @{user.username}
+                      </a>
+                      <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginTop: 1, display: "flex", gap: 8 }}>
+                        <span>active {relativeTime(user.lastActive)}</span>
+                        {user.streak > 0 && (
+                          <span style={{ color: user.streak >= 7 ? "#D97706" : "#52525B" }}>
+                            {user.streak >= 7 ? "\u{1F525}" : "\u25CF"} {user.streak}d streak
+                          </span>
+                        )}
+                        {progress.nextRank && !isEmpty && (
+                          <span>next {progress.nextRank.name} in {formatTokens(progress.tokensRemainingToNextRank ?? 0)}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div>
                     <Sparkline data={user.weeklyHistory} color={r.color} width={110} height={28} />
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#FAFAFA", fontFamily: MONO }}>
-                    {formatTokens(tokens)}
+                  <div style={{ fontSize: 14, fontWeight: 700, color: isEmpty ? "#3F3F46" : "#FAFAFA", fontFamily: MONO }}>
+                    {isEmpty ? (
+                      <span style={{ fontSize: 11, fontWeight: 500, fontStyle: "italic", color: "#3F3F46" }}>awaiting first burn...</span>
+                    ) : (
+                      formatTokens(tokens)
+                    )}
                   </div>
                   <div
                     style={{
@@ -1322,421 +1966,551 @@ export function Burnlog({
         {/* CLUBS TAB */}
         {tab === "clubs" && (
           <div style={styles.section}>
-            <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>Clubs</div>
-              <button style={primaryBtn} onClick={() => setCreateClubOpen(true)}>
-                + Create Club
-              </button>
-            </div>
+            {!activeClub && (
+              <div style={styles.sectionHeader}>
+                <div style={styles.sectionTitle}>Clubs</div>
+                {currentUsername && (
+                  <button style={primaryBtn} onClick={() => { setShowCreateClub(true); setClubError(null); }}>
+                    Create Club
+                  </button>
+                )}
+              </div>
+            )}
 
-            {/* Club leaderboard */}
-            <div style={{ ...styles.card, marginBottom: 20 }}>
+            {/* Create club modal */}
+            {showCreateClub && (
               <div
+                onClick={() => { setShowCreateClub(false); setClubError(null); }}
                 style={{
-                  fontSize: 11,
-                  color: "#52525B",
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  fontFamily: MONO,
-                  marginBottom: 14,
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.75)",
+                  backdropFilter: "blur(6px)",
+                  zIndex: 100,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 24,
                 }}
               >
-                Club Leaderboard
-              </div>
-              {sortedClubs.map((club, i) => (
                 <div
-                  key={club.id}
+                  onClick={(e) => e.stopPropagation()}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "32px 1fr 120px 100px",
-                    alignItems: "center",
-                    padding: "12px 14px",
-                    borderRadius: 8,
-                    background: i % 2 === 0 ? "#0F0F11" : "transparent",
-                    marginBottom: 2,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 800,
-                      color: i === 0 ? "#D97706" : i === 1 ? "#E4E4E7" : i === 2 ? "#92400E" : "#3F3F46",
-                      fontFamily: MONO,
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#FAFAFA" }}>{club.name}</span>
-                      <span
-                        style={{
-                          fontSize: 9,
-                          color: "#52525B",
-                          padding: "2px 6px",
-                          border: "1px solid #18181B",
-                          borderRadius: 3,
-                          fontFamily: MONO,
-                          letterSpacing: 0.5,
-                        }}
-                      >
-                        {club.tag}
-                      </span>
-                      {club.isPrivate && (
-                        <span style={{ fontSize: 9, color: "#3F3F46", fontFamily: MONO }}>PRIVATE</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#52525B", marginTop: 2 }}>{club.tagline}</div>
-                  </div>
-                  <div style={{ fontSize: 12, color: "#E4E4E7", fontFamily: MONO }}>
-                    {club.members.length} members
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#D97706", fontFamily: MONO, textAlign: "right" }}>
-                    {formatTokens(club.totalBurned)}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* My Clubs */}
-            <div style={{ marginBottom: 20 }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#52525B",
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  fontFamily: MONO,
-                  marginBottom: 12,
-                }}
-              >
-                My Clubs
-              </div>
-              {myClubs.length === 0 ? (
-                <div
-                  style={{
-                    ...styles.card,
-                    textAlign: "center",
+                    background: "#0C0C0E",
+                    border: "1px solid #18181B",
+                    borderRadius: 16,
                     padding: 32,
-                    fontSize: 12,
-                    color: "#52525B",
-                    fontFamily: MONO,
+                    width: "100%",
+                    maxWidth: 480,
+                    fontFamily: SANS,
+                    color: "#E4E4E7",
+                    boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
                   }}
                 >
-                  You haven't joined any clubs yet. Scroll down to discover some.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-                  {myClubs.map((club) => (
-                    <div key={club.id} style={styles.card}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#FAFAFA" }}>{club.name}</span>
-                          <span
-                            style={{
-                              fontSize: 9,
-                              color: "#D97706",
-                              padding: "2px 6px",
-                              border: "1px solid #D9770644",
-                              borderRadius: 3,
-                              fontFamily: MONO,
-                            }}
-                          >
-                            {club.tag}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: 10, color: "#10B981", fontFamily: MONO }}>● MEMBER</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#52525B", marginBottom: 12 }}>{club.tagline}</div>
-                      <div style={{ display: "flex", gap: 16, fontFamily: MONO }}>
-                        <div>
-                          <div style={{ fontSize: 9, color: "#3F3F46", letterSpacing: 1 }}>TOTAL</div>
-                          <div style={{ fontSize: 13, color: "#FAFAFA", fontWeight: 700 }}>
-                            {formatTokens(club.totalBurned)}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 9, color: "#3F3F46", letterSpacing: 1 }}>WEEKLY</div>
-                          <div style={{ fontSize: 13, color: "#D97706", fontWeight: 700 }}>
-                            {formatTokens(club.weeklyBurned)}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 9, color: "#3F3F46", letterSpacing: 1 }}>MEMBERS</div>
-                          <div style={{ fontSize: 13, color: "#E4E4E7", fontWeight: 700 }}>
-                            {club.members.length}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  {/* Modal header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#FAFAFA" }}>Create Club</div>
+                    <button
+                      onClick={() => { setShowCreateClub(false); setClubError(null); }}
+                      style={{ background: "transparent", border: "none", color: "#52525B", cursor: "pointer", fontSize: 20, padding: 4, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
+                  </div>
 
-            {/* Discover Clubs */}
-            <div>
+                  {/* Image upload */}
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+                    <button
+                      type="button"
+                      onClick={() => clubFileRef.current?.click()}
+                      style={{
+                        width: 96,
+                        height: 96,
+                        borderRadius: 16,
+                        border: clubImage ? "none" : "2px dashed #27272A",
+                        background: clubImage ? "transparent" : "#0F0F11",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
+                        overflow: "hidden",
+                        padding: 0,
+                        position: "relative",
+                      }}
+                    >
+                      {clubImage ? (
+                        <>
+                          <img src={clubImage} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 16 }} />
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              background: "rgba(0,0,0,0.5)",
+                              borderRadius: 16,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              opacity: 0,
+                              transition: "opacity 0.15s",
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0"; }}
+                          >
+                            <span style={{ color: "#FAFAFA", fontSize: 10, fontFamily: MONO, letterSpacing: 1 }}>CHANGE</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3F3F46" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="4" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                          </svg>
+                          <span style={{ fontSize: 9, color: "#3F3F46", fontFamily: MONO, letterSpacing: 0.5 }}>UPLOAD</span>
+                        </>
+                      )}
+                    </button>
+                    <input
+                      ref={clubFileRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleClubImage}
+                      style={{ display: "none" }}
+                    />
+                  </div>
+
+                  {/* Name */}
+                  <label style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: MONO, display: "block", marginBottom: 6 }}>
+                    Club Name
+                  </label>
+                  <input
+                    value={newClubName}
+                    onChange={(e) => setNewClubName(e.target.value)}
+                    placeholder="e.g. Anthropic Addicts"
+                    maxLength={50}
+                    autoFocus
+                    style={{
+                      width: "100%",
+                      background: "#0F0F11",
+                      border: "1px solid #18181B",
+                      borderRadius: 8,
+                      padding: "12px 14px",
+                      fontSize: 14,
+                      color: "#E4E4E7",
+                      fontFamily: MONO,
+                      outline: "none",
+                      marginBottom: 16,
+                      boxSizing: "border-box",
+                      transition: "border-color 0.15s",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#D97706"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#18181B"; }}
+                  />
+
+                  {/* Description */}
+                  <label style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: MONO, display: "block", marginBottom: 6 }}>
+                    Description
+                  </label>
+                  <textarea
+                    value={newClubDesc}
+                    onChange={(e) => setNewClubDesc(e.target.value)}
+                    placeholder="What's this club about? (optional)"
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      background: "#0F0F11",
+                      border: "1px solid #18181B",
+                      borderRadius: 8,
+                      padding: "12px 14px",
+                      fontSize: 13,
+                      color: "#E4E4E7",
+                      fontFamily: MONO,
+                      outline: "none",
+                      resize: "vertical",
+                      marginBottom: 20,
+                      boxSizing: "border-box",
+                      transition: "border-color 0.15s",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#D97706"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#18181B"; }}
+                  />
+
+                  {/* Error */}
+                  {clubError && (
+                    <div style={{ fontSize: 12, color: "#EF4444", marginBottom: 14, fontFamily: MONO, padding: "8px 12px", background: "#EF444410", borderRadius: 6, border: "1px solid #EF444433" }}>
+                      {clubError}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                    <button
+                      onClick={() => { setShowCreateClub(false); setNewClubName(""); setNewClubDesc(""); setClubImage(null); setClubError(null); }}
+                      style={{
+                        padding: "10px 20px",
+                        background: "transparent",
+                        color: "#52525B",
+                        border: "1px solid #18181B",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: MONO,
+                        letterSpacing: 0.5,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateClub}
+                      disabled={clubCreating}
+                      style={{
+                        ...primaryBtn,
+                        padding: "10px 24px",
+                        borderRadius: 8,
+                        opacity: clubCreating ? 0.6 : 1,
+                        cursor: clubCreating ? "wait" : "pointer",
+                      }}
+                    >
+                      {clubCreating ? "Creating..." : "Create Club"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Auth required */}
+            {!activeClub && clubsRequiresAuth && (
+              <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#A1A1AA", fontFamily: MONO, fontSize: 12 }}>
+                <div style={{ fontSize: 15, color: "#FAFAFA", fontFamily: SANS, fontWeight: 700, marginBottom: 10 }}>
+                  Sign in to browse clubs.
+                </div>
+                <div style={{ marginBottom: 18, lineHeight: 1.7 }}>
+                  Clubs are private-by-default community spaces for comparing team burn, announcements, and intra-club rankings.
+                </div>
+                <a href="/login?next=%2F" style={{ ...primaryBtn, display: "inline-flex", textDecoration: "none" }}>
+                  Continue with GitHub
+                </a>
+              </div>
+            )}
+
+            {/* Loading */}
+            {!activeClub && !clubsRequiresAuth && clubsLoading && clubs.length === 0 && (
+              <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
+                Loading clubs...
+              </div>
+            )}
+
+            {/* Empty */}
+            {!activeClub && !clubsRequiresAuth && !clubsLoading && clubs.length === 0 && (
+              <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
+                No clubs yet. Create the first one.
+              </div>
+            )}
+
+            {/* Club cards */}
+            {!activeClub && clubs.map((club) => (
               <div
-                style={{
-                  fontSize: 11,
-                  color: "#52525B",
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  fontFamily: MONO,
-                  marginBottom: 12,
-                }}
+                key={club.id}
+                style={{ ...styles.card, marginBottom: 12, cursor: "pointer", transition: "border-color 0.15s" }}
+                onClick={() => openClub(club.id)}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#27272A"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#18181B"; }}
               >
-                Discover Clubs
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                    {club.image ? (
+                      <img src={club.image} alt={club.name} width={44} height={44} style={{ borderRadius: 10, objectFit: "cover", border: "1px solid #18181B" }} />
+                    ) : (
+                      <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(135deg, #D9770622 0%, #D9770608 100%)", border: "1px solid #D9770633", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#D97706", fontFamily: MONO }}>
+                        {club.name[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA" }}>{club.name}</div>
+                      <div style={{ fontSize: 11, color: "#52525B", fontFamily: MONO }}>/{club.slug}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {club.isOwner && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#D97706", background: "#D9770615", padding: "4px 10px", borderRadius: 4, border: "1px solid #D9770633", fontFamily: MONO, letterSpacing: 0.5 }}>OWNER</span>
+                    )}
+                    <span style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO }}>{club.memberCount} members · {formatTokens(club.totalTokens)}</span>
+                    <span style={{ color: "#3F3F46", fontSize: 12 }}>→</span>
+                  </div>
+                </div>
+                {club.description && (
+                  <div style={{ fontSize: 12, color: "#71717A", marginTop: 8 }}>{club.description}</div>
+                )}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-                {discoverClubs.map((club) => {
-                  const eligible = clubEligible(club);
+            ))}
+
+            {/* Club detail view */}
+            {activeClub && (
+              <div>
+                {/* Back + header */}
+                <button
+                  onClick={() => setActiveClub(null)}
+                  style={{ background: "none", border: "none", color: "#52525B", cursor: "pointer", fontFamily: MONO, fontSize: 11, padding: 0, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  ← All Clubs
+                </button>
+
+                <div style={{ ...styles.card, marginBottom: 16 }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
+                    {activeClub.image ? (
+                      <img src={activeClub.image} alt={activeClub.name} width={56} height={56} style={{ borderRadius: 12, objectFit: "cover", border: "1px solid #18181B" }} />
+                    ) : (
+                      <div style={{ width: 56, height: 56, borderRadius: 12, background: "linear-gradient(135deg, #D9770622 0%, #D9770608 100%)", border: "1px solid #D9770633", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, color: "#D97706", fontFamily: MONO }}>
+                        {activeClub.name[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#FAFAFA" }}>{activeClub.name}</div>
+                      <div style={{ fontSize: 11, color: "#52525B", fontFamily: MONO }}>/{activeClub.slug} · {activeClub.memberCount} members · owned by @{activeClub.owner.username}</div>
+                    </div>
+                    {currentUsername && !activeClub.isOwner && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleJoinLeave(activeClub.id, activeClub.isMember); }}
+                        style={activeClub.isMember
+                          ? { padding: "8px 16px", background: "transparent", color: "#52525B", border: "1px solid #18181B", borderRadius: 6, fontSize: 11, fontWeight: 600, fontFamily: MONO, cursor: "pointer" }
+                          : { ...primaryBtn, padding: "8px 16px", fontSize: 11 }
+                        }
+                      >
+                        {activeClub.isMember ? "Leave" : "Join"}
+                      </button>
+                    )}
+                  </div>
+                  {activeClub.description && (
+                    <div style={{ fontSize: 13, color: "#A1A1AA", marginBottom: 16 }}>{activeClub.description}</div>
+                  )}
+                  <div style={{ display: "flex", gap: 20, fontSize: 11, fontFamily: MONO }}>
+                    <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>Total </span><span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(activeClub.totalTokens)}</span></div>
+                    <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>This Week </span><span style={{ color: "#FAFAFA", fontWeight: 700 }}>{formatTokens(activeClub.weeklyTokens)}</span></div>
+                  </div>
+                </div>
+
+                {/* Sub-nav */}
+                <nav style={{ ...styles.nav, marginBottom: 16 }}>
+                  {(["leaderboard", "members", "feed"] as const).map((t) => (
+                    <button key={t} style={styles.navBtn(clubSubTab === t)} onClick={() => setClubSubTab(t)}>
+                      {t === "leaderboard" ? "Leaderboard" : t === "members" ? "Members" : "Feed"}
+                    </button>
+                  ))}
+                </nav>
+
+                {/* Club Leaderboard */}
+                {clubSubTab === "leaderboard" && (
+                  <div>
+                    <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 100px", padding: "0 16px 8px", fontSize: 10, color: "#3F3F46", letterSpacing: 1, textTransform: "uppercase", fontFamily: MONO }}>
+                      <span>#</span><span>Member</span><span>Weekly</span><span>Total</span>
+                    </div>
+                    {activeClub.members.map((m, i) => {
+                      const r = getRank(m.totalTokens);
+                      return (
+                        <div key={m.id} style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 100px", alignItems: "center", padding: "12px 16px", borderRadius: 10, background: i % 2 === 0 ? "#0C0C0E" : "transparent", border: "1px solid transparent", marginBottom: 2 }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: i === 0 ? "#D97706" : i === 1 ? "#E4E4E7" : i === 2 ? "#92400E" : "#3F3F46", fontFamily: MONO }}>{i + 1}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            {m.image ? (
+                              <img src={m.image} alt={m.username ?? ""} width={32} height={32} style={{ borderRadius: "50%", border: `2px solid ${r.color}44` }} />
+                            ) : (
+                              <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${r.color}22`, border: `2px solid ${r.color}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: r.color, fontFamily: MONO }}>
+                                {(m.name ?? m.username ?? "?")[0]?.toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "#FAFAFA" }}>{m.name}</div>
+                              <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO }}>@{m.username}</div>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#A1A1AA", fontFamily: MONO }}>{formatTokens(m.weeklyTokens)}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#FAFAFA", fontFamily: MONO }}>{formatTokens(m.totalTokens)}</div>
+                        </div>
+                      );
+                    })}
+                    {activeClub.members.length === 0 && (
+                      <div style={{ ...styles.card, textAlign: "center", padding: 32, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>No members yet.</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Members grid */}
+                {clubSubTab === "members" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+                    {activeClub.members.map((m) => {
+                      const r = getRank(m.totalTokens);
+                      const isSelf = m.username === currentUsername;
+                      const isClubOwner = m.id === activeClub.owner.id;
+                      return (
+                        <div key={m.id} style={{ ...styles.card, display: "flex", gap: 12, alignItems: "center" }}>
+                          {m.image ? (
+                            <img src={m.image} alt={m.username ?? ""} width={40} height={40} style={{ borderRadius: "50%", border: `2px solid ${r.color}44` }} />
+                          ) : (
+                            <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${r.color}22`, border: `2px solid ${r.color}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: r.color, fontFamily: MONO }}>
+                              {(m.name ?? m.username ?? "?")[0]?.toUpperCase()}
+                            </div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "#FAFAFA", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+                              {isClubOwner && <span style={{ fontSize: 8, color: "#D97706", background: "#D9770615", padding: "1px 5px", borderRadius: 3, fontFamily: MONO, fontWeight: 700, letterSpacing: 0.5 }}>ADMIN</span>}
+                            </div>
+                            <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO }}>@{m.username}</div>
+                            <div style={{ fontSize: 10, color: r.color, fontFamily: MONO, marginTop: 2 }}>{r.icon} {r.name} · {formatTokens(m.totalTokens)}</div>
+                          </div>
+                          {activeClub.isOwner && !isSelf && !isClubOwner && (
+                            <button
+                              onClick={() => kickMember(m.id)}
+                              title="Kick member"
+                              style={{ background: "none", border: "1px solid #27272A", borderRadius: 6, color: "#52525B", cursor: "pointer", fontSize: 10, padding: "4px 8px", fontFamily: MONO, transition: "all 0.15s" }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#EF444466"; (e.currentTarget as HTMLElement).style.color = "#EF4444"; }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#27272A"; (e.currentTarget as HTMLElement).style.color = "#52525B"; }}
+                            >
+                              Kick
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Chat Room */}
+                {clubSubTab === "feed" && (() => {
+                  const myId = activeClub.members.find((m) => m.username === currentUsername)?.id;
+                  const isAdmin = activeClub.isOwner;
                   return (
-                    <div key={club.id} style={styles.card}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#FAFAFA" }}>{club.name}</span>
-                          <span
-                            style={{
-                              fontSize: 9,
-                              color: "#52525B",
-                              padding: "2px 6px",
-                              border: "1px solid #18181B",
-                              borderRadius: 3,
-                              fontFamily: MONO,
-                            }}
-                          >
-                            {club.tag}
-                          </span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 9,
-                            color: eligible ? "#10B981" : "#3F3F46",
-                            fontFamily: MONO,
-                          }}
-                        >
-                          {eligible ? "● ELIGIBLE" : "○ NOT ELIGIBLE"}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#52525B", marginBottom: 12 }}>{club.tagline}</div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>
-                          {formatTokens(club.totalBurned)} · min {club.minRank}
-                        </div>
-                        <button
-                          disabled={!eligible}
-                          style={{
-                            ...ghostBtn,
-                            padding: "6px 12px",
-                            fontSize: 10,
-                            opacity: eligible ? 1 : 0.4,
-                            cursor: eligible ? "pointer" : "not-allowed",
-                            color: eligible ? "#D97706" : "#3F3F46",
-                            borderColor: eligible ? "#D9770644" : "#18181B",
-                          }}
-                        >
-                          {club.isPrivate ? "Invite Only" : "Join"}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CHALLENGES TAB */}
-        {tab === "challenges" && (
-          <div style={styles.section}>
-            <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>Challenges</div>
-              <button
-                style={primaryBtn}
-                onClick={() => {
-                  setChallengePrefill("");
-                  setCreateChallengeOpen(true);
-                }}
-              >
-                + Create Challenge
-              </button>
-            </div>
-
-            {/* Active */}
-            <div
-              style={{
-                fontSize: 11,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                fontFamily: MONO,
-                marginBottom: 12,
-              }}
-            >
-              Active
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
-              {CHALLENGES.filter((c) => c.status === "active").map((ch) => {
-                const shareLink = `https://burnlog.dev/c/${ch.id}`;
-                const shareKey = `share-${ch.id}`;
-                const maxProgress = Math.max(...ch.participants.map((p) => p.progress), ch.target);
-                return (
-                  <div key={ch.id} style={styles.card}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#FAFAFA" }}>{ch.name}</div>
-                      <span style={{ fontSize: 9, color: "#10B981", fontFamily: MONO }}>● ACTIVE</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#52525B", marginBottom: 14 }}>{ch.tagline}</div>
-
-                    <div style={{ marginBottom: 14 }}>
-                      {[...ch.participants]
-                        .sort((a, b) => b.progress - a.progress)
-                        .map((p, i) => {
-                          const pct = Math.min((p.progress / maxProgress) * 100, 100);
-                          const isMe = p.username === selectedUser.username;
+                    <div style={{ ...styles.card, padding: 0, display: "flex", flexDirection: "column", height: 520, overflow: "hidden" }}>
+                      {/* Messages */}
+                      <div
+                        ref={chatScrollRef}
+                        style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 2 }}
+                      >
+                        {clubAnnouncements.length === 0 && (
+                          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#3F3F46", fontFamily: MONO, fontSize: 12 }}>
+                            {activeClub.isMember ? "No messages yet. Say something." : "No messages yet. Join to chat."}
+                          </div>
+                        )}
+                        {clubAnnouncements.map((a, i) => {
+                          const isMe = myId === a.author.id;
+                          const canDelete = isAdmin || isMe;
+                          const prevAuthor = i > 0 ? clubAnnouncements[i - 1].author.id : null;
+                          const grouped = prevAuthor === a.author.id;
                           return (
-                            <div key={p.username} style={{ marginBottom: 8 }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  fontSize: 11,
-                                  marginBottom: 4,
-                                  fontFamily: MONO,
-                                }}
-                              >
-                                <span style={{ color: isMe ? "#D97706" : "#E4E4E7" }}>
-                                  {i + 1}. @{p.username}
-                                  {isMe && " (you)"}
-                                </span>
-                                <span style={{ color: "#FAFAFA", fontWeight: 700 }}>
-                                  {ch.target < 100
-                                    ? `${p.progress}/${ch.target}d`
-                                    : formatTokens(p.progress)}
-                                </span>
+                            <div
+                              key={a.id}
+                              style={{ display: "flex", gap: 10, padding: grouped ? "1px 0" : "8px 0 1px", alignItems: "flex-start", position: "relative" }}
+                              className="chat-msg"
+                            >
+                              <div style={{ width: 28, flexShrink: 0 }}>
+                                {!grouped && (
+                                  a.author.image ? (
+                                    <img src={a.author.image} alt={a.author.username ?? ""} width={28} height={28} style={{ borderRadius: "50%", border: "1px solid #27272A" }} />
+                                  ) : (
+                                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#18181B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#52525B", fontFamily: MONO }}>
+                                      {(a.author.name ?? a.author.username ?? "?")[0]?.toUpperCase()}
+                                    </div>
+                                  )
+                                )}
                               </div>
-                              <div
-                                style={{
-                                  height: 4,
-                                  background: "#18181B",
-                                  borderRadius: 2,
-                                  overflow: "hidden",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    height: "100%",
-                                    width: `${pct}%`,
-                                    background: isMe ? "#D97706" : "#52525B",
-                                    transition: "width 0.5s ease",
-                                  }}
-                                />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                {!grouped && (
+                                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: isMe ? "#D97706" : "#E4E4E7", fontFamily: MONO }}>
+                                      {a.author.username}
+                                      {a.author.id === activeClub.owner.id && (
+                                        <span style={{ fontSize: 9, color: "#D97706", background: "#D9770615", padding: "1px 5px", borderRadius: 3, marginLeft: 6, fontWeight: 600, letterSpacing: 0.5 }}>ADMIN</span>
+                                      )}
+                                    </span>
+                                    <span style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>
+                                      {new Date(a.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                    </span>
+                                  </div>
+                                )}
+                                <div style={{ fontSize: 13, color: "#D4D4D8", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{a.content}</div>
                               </div>
+                              {canDelete && (
+                                <button
+                                  onClick={() => deleteMessage(a.id)}
+                                  title="Delete message"
+                                  style={{ background: "none", border: "none", color: "#3F3F46", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.4, transition: "opacity 0.15s", flexShrink: 0, alignSelf: "center" }}
+                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; (e.currentTarget as HTMLElement).style.color = "#EF4444"; }}
+                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.4"; (e.currentTarget as HTMLElement).style.color = "#3F3F46"; }}
+                                >
+                                  ×
+                                </button>
+                              )}
                             </div>
                           );
                         })}
-                    </div>
-
-                    <div
-                      style={{
-                        padding: "10px 12px",
-                        background: "#0F0F11",
-                        border: "1px solid #18181B",
-                        borderRadius: 6,
-                        marginBottom: 10,
-                      }}
-                    >
-                      <div style={{ fontSize: 9, color: "#3F3F46", letterSpacing: 1, marginBottom: 2, fontFamily: MONO }}>
-                        PRIZE
                       </div>
-                      <div style={{ fontSize: 11, color: "#D97706", fontWeight: 700, fontFamily: MONO }}>
-                        {ch.prize}
-                      </div>
-                    </div>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO }}>
-                        Ends {ch.endsAt}
-                      </div>
-                      <button
-                        onClick={() => copyToClip(shareKey, shareLink)}
-                        style={{
-                          ...ghostBtn,
-                          padding: "6px 12px",
-                          fontSize: 10,
-                          color: copied === shareKey ? "#10B981" : "#E4E4E7",
-                          borderColor: copied === shareKey ? "#10B98144" : "#18181B",
-                        }}
-                      >
-                        {copied === shareKey ? "✓ Copied" : "Share Link"}
-                      </button>
+                      {/* Input bar */}
+                      {activeClub.isMember ? (
+                        <div style={{ padding: "10px 16px 14px", borderTop: "1px solid #18181B", display: "flex", gap: 10, alignItems: "center" }}>
+                          <input
+                            value={newAnnouncement}
+                            onChange={(e) => setNewAnnouncement(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && newAnnouncement.trim()) { e.preventDefault(); postAnnouncement(); } }}
+                            placeholder="Type a message..."
+                            maxLength={500}
+                            style={{ flex: 1, background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E4E4E7", fontFamily: MONO, outline: "none", transition: "border-color 0.15s" }}
+                            onFocus={(e) => { e.currentTarget.style.borderColor = "#D97706"; }}
+                            onBlur={(e) => { e.currentTarget.style.borderColor = "#18181B"; }}
+                          />
+                          <button
+                            onClick={postAnnouncement}
+                            disabled={postingAnnouncement || !newAnnouncement.trim()}
+                            style={{ ...primaryBtn, padding: "10px 18px", fontSize: 11, borderRadius: 8, opacity: postingAnnouncement || !newAnnouncement.trim() ? 0.4 : 1, cursor: postingAnnouncement ? "wait" : "pointer" }}
+                          >
+                            Send
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ padding: "14px 16px", borderTop: "1px solid #18181B", textAlign: "center", fontSize: 12, color: "#3F3F46", fontFamily: MONO }}>
+                          Join this club to chat
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Completed */}
-            <div
-              style={{
-                fontSize: 11,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                fontFamily: MONO,
-                marginBottom: 12,
-              }}
-            >
-              Completed
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {CHALLENGES.filter((c) => c.status === "completed").map((ch) => (
-                <div key={ch.id} style={{ ...styles.card, opacity: 0.65 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 6,
-                    }}
-                  >
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#E4E4E7" }}>{ch.name}</div>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: "#D97706",
-                        padding: "2px 8px",
-                        border: "1px solid #D9770644",
-                        borderRadius: 3,
-                        fontFamily: MONO,
-                      }}
-                    >
-                      ✦ WINNER · @{ch.winner}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#52525B", marginBottom: 10 }}>{ch.tagline}</div>
-                  <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>Ended {ch.endsAt}</div>
-                </div>
-              ))}
-            </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
 
         {/* H2H TAB */}
         {tab === "h2h" && (
           <div style={styles.section}>
+            {users.length < 2 || !h2hLeft || !h2hRight ? (
+              <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
+                Head-to-head requires at least two users on the board.
+              </div>
+            ) : (<>
             <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>Head-to-Head</div>
-              <button
-                style={primaryBtn}
-                onClick={() => {
-                  setChallengePrefill(`${h2hLeft.username} vs ${h2hRight.username}`);
-                  setCreateChallengeOpen(true);
-                }}
-              >
-                Challenge Them
-              </button>
+              <div>
+                <div style={styles.sectionTitle}>Head-to-Head</div>
+                <div style={{ fontSize: 12, color: "#52525B", fontFamily: MONO, marginTop: 4 }}>
+                  Pick any two builders, then share the live matchup.
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <button style={primaryBtn} onClick={openMatchup}>
+                  Challenge Them
+                </button>
+                <button
+                  style={{ ...primaryBtn, background: "#0F0F11", color: copied === "h2h-share" ? "#D97706" : "#E4E4E7", border: "1px solid #18181B" }}
+                  onClick={() => {
+                    if (h2hPath && typeof window !== "undefined") {
+                      copyToClip("h2h-share", `${window.location.origin}${h2hPath}`);
+                    }
+                  }}
+                >
+                  {copied === "h2h-share" ? "Copied Link" : "Copy Link"}
+                </button>
+              </div>
             </div>
 
             {/* Matchup selector */}
@@ -1751,7 +2525,7 @@ export function Burnlog({
               }}
             >
               <PeerDropdown
-                options={allPeers}
+                options={users}
                 value={h2hLeft}
                 open={h2hLeftOpen}
                 onToggle={() => {
@@ -1775,7 +2549,7 @@ export function Burnlog({
                 VS
               </div>
               <PeerDropdown
-                options={allPeers}
+                options={users}
                 value={h2hRight}
                 open={h2hRightOpen}
                 onToggle={() => {
@@ -1788,6 +2562,45 @@ export function Burnlog({
                 }}
               />
             </div>
+
+            {h2hPath && (
+              <div style={{ ...styles.card, marginBottom: 20, padding: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.2, textTransform: "uppercase", fontFamily: MONO, marginBottom: 6 }}>
+                      Shareable matchup
+                    </div>
+                    <div style={{ fontSize: 13, color: "#A1A1AA", maxWidth: 540 }}>
+                      {h2hSummary}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={shareMatchup}
+                      style={{ ...primaryBtn, padding: "10px 14px" }}
+                    >
+                      Share
+                    </button>
+                    <a
+                      href={h2hPath}
+                      style={{ ...primaryBtn, padding: "10px 14px", background: "#0F0F11", color: "#E4E4E7", border: "1px solid #18181B", textDecoration: "none" }}
+                    >
+                      Open Page
+                    </a>
+                  </div>
+                </div>
+                <div
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      copyToClip("h2h-share", `${window.location.origin}${h2hPath}`);
+                    }
+                  }}
+                  style={{ marginTop: 14, padding: "12px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 11, color: copied === "h2h-share" ? "#D97706" : "#71717A", wordBreak: "break-all", fontFamily: MONO, cursor: "pointer" }}
+                >
+                  {typeof window === "undefined" ? h2hPath : `${window.location.origin}${h2hPath}`}
+                </div>
+              </div>
+            )}
 
             {/* Score summary */}
             <div
@@ -1934,6 +2747,7 @@ export function Burnlog({
                 <ProviderBar providers={h2hRight.providers} />
               </div>
             </div>
+            </>)}
           </div>
         )}
 
@@ -1941,25 +2755,23 @@ export function Burnlog({
         {tab === "profile" && (
           <div style={styles.section}>
             <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>Profile · @{selectedUser.username}</div>
+              <div style={styles.sectionTitle}>Profile · <a href={`/u/${selectedUser.username}`} style={{ color: "inherit", textDecoration: "none" }}>@{selectedUser.username}</a></div>
               <div style={{ display: "flex", gap: 4 }}>
                 {users.map((u) => (
                   <button
                     key={u.id}
                     onClick={() => setSelectedUser(u)}
                     style={{
-                      ...styles.avatar(getRank(u.totalTokens).color),
                       cursor: "pointer",
-                      border:
-                        selectedUser.id === u.id
-                          ? `2px solid ${getRank(u.totalTokens).color}`
-                          : `1px solid ${getRank(u.totalTokens).color}33`,
-                      width: 32,
-                      height: 32,
-                      fontSize: 10,
+                      background: "none",
+                      border: selectedUser.id === u.id
+                        ? `2px solid ${getRank(u.totalTokens).color}`
+                        : `1px solid transparent`,
+                      borderRadius: "50%",
+                      padding: 0,
                     }}
                   >
-                    {u.avatar}
+                    <UserAvatar user={u} size={32} color={getRank(u.totalTokens).color} />
                   </button>
                 ))}
               </div>
@@ -1967,17 +2779,7 @@ export function Burnlog({
 
             <div style={styles.profileCard}>
               <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginBottom: 24 }}>
-                <div
-                  style={{
-                    ...styles.avatar(rank.color),
-                    width: 64,
-                    height: 64,
-                    fontSize: 22,
-                    borderRadius: 12,
-                  }}
-                >
-                  {selectedUser.avatar}
-                </div>
+                <UserAvatar user={selectedUser} size={64} color={rank.color} />
                 <div style={{ flex: 1 }}>
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}
@@ -2002,6 +2804,11 @@ export function Burnlog({
                   </div>
                   <div style={{ fontSize: 12, color: "#52525B", marginBottom: 8, fontFamily: MONO }}>
                     @{selectedUser.username}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8, fontFamily: MONO }}>
+                    {selectedProgress.nextRank
+                      ? `${selectedProgress.progressPercent}% to ${selectedProgress.nextRank.icon} ${selectedProgress.nextRank.name} · ${formatTokens(selectedProgress.tokensRemainingToNextRank ?? 0)} to go`
+                      : "Top ladder reached · no further ceiling yet"}
                   </div>
                   <div style={{ fontSize: 13, color: "#E4E4E7" }}>
                     {selectedUser.bio ?? "—"}
@@ -2044,6 +2851,11 @@ export function Burnlog({
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 24 }}>
+                <ProgressionPanel tokens={selectedUser.totalTokens} color={rank.color} />
+                <OperationalPanel user={selectedUser} />
               </div>
 
               {/* Sources strip */}
@@ -2206,6 +3018,126 @@ export function Burnlog({
                 <ActivityHeatmap heatmap={selectedUser.heatmap} />
               </div>
             </div>
+
+            {/* Account section — only when viewing own profile */}
+            {currentUsername && selectedUser.username === currentUsername && (
+              <div
+                style={{
+                  ...styles.profileCard,
+                  marginTop: 20,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "#52525B",
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    marginBottom: 16,
+                    fontFamily: MONO,
+                  }}
+                >
+                  Account
+                </div>
+
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#FAFAFA", marginBottom: 12 }}>
+                    Setup — track your token burn
+                  </div>
+
+                  {/* Step 1 */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>1. Generate an API key</div>
+                    <button
+                      onClick={createKey}
+                      disabled={keyLoading}
+                      style={{ ...primaryBtn, cursor: keyLoading ? "wait" : "pointer", opacity: keyLoading ? 0.6 : 1 }}
+                    >
+                      {keyLoading ? "rotating..." : apiKey ? "rotate CLI key" : "generate CLI key"}
+                    </button>
+                    {apiKey && (
+                      <div style={{ marginTop: 12 }}>
+                        <div
+                          onClick={() => copyToClip("apikey", apiKey)}
+                          style={{ padding: "14px 16px", background: "#0F0F11", border: "1px solid #D9770644", borderRadius: 8, fontSize: 12, color: "#D97706", wordBreak: "break-all", fontFamily: MONO, cursor: "pointer", position: "relative" }}
+                        >
+                          <div style={{ fontSize: 10, color: "#52525B", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+                            {copied === "apikey" ? "copied!" : "click to copy — previous CLI key revoked"}
+                          </div>
+                          {apiKey}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Step 2 */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>2. Install the CLI</div>
+                    <div
+                      onClick={() => copyToClip("install", "npm i -g @sxnalabs/burnlog")}
+                      style={{ padding: "10px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 12, color: "#E4E4E7", fontFamily: MONO, cursor: "pointer" }}
+                    >
+                      <span style={{ color: "#52525B" }}>$ </span>npm i -g @sxnalabs/burnlog
+                      <span style={{ float: "right", color: "#3F3F46", fontSize: 10 }}>{copied === "install" ? "copied!" : "click to copy"}</span>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>3. Login with your key</div>
+                    <div
+                      onClick={() => copyToClip("login", `burnlog login ${apiKey ?? "<your-key>"}`)}
+                      style={{ padding: "10px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 12, color: "#E4E4E7", fontFamily: MONO, cursor: "pointer" }}
+                    >
+                      <span style={{ color: "#52525B" }}>$ </span>burnlog login {apiKey ? <span style={{ color: "#D97706" }}>{apiKey}</span> : "<your-key>"}
+                      <span style={{ float: "right", color: "#3F3F46", fontSize: 10 }}>{copied === "login" ? "copied!" : "click to copy"}</span>
+                    </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>4. Auto-sync with Claude Code</div>
+                    <div style={{ fontSize: 12, color: "#52525B", fontFamily: MONO, lineHeight: 1.6, marginBottom: 8 }}>
+                      This adds a hook to Claude Code that syncs your tokens after every session.
+                    </div>
+                    <div
+                      onClick={() => copyToClip("hook", "burnlog install")}
+                      style={{ padding: "10px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 12, color: "#E4E4E7", fontFamily: MONO, cursor: "pointer" }}
+                    >
+                      <span style={{ color: "#52525B" }}>$ </span>burnlog install
+                      <span style={{ float: "right", color: "#3F3F46", fontSize: 10 }}>{copied === "hook" ? "copied!" : "click to copy"}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO, marginTop: 6, lineHeight: 1.5 }}>
+                      Or run <code style={{ color: "#52525B" }}>burnlog sync</code> manually anytime. Use <code style={{ color: "#52525B" }}>burnlog daemon</code> for continuous background sync.
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO, padding: "10px 14px", background: "#0F0F1188", borderRadius: 8, lineHeight: 1.6 }}>
+                    Supports Claude Code and Codex out of the box. Only token counts are sent — never prompts, code, or file paths.
+                  </div>
+                </div>
+
+                {signOutAction && (
+                  <form action={signOutAction}>
+                    <button
+                      type="submit"
+                      style={{
+                        padding: "8px 14px",
+                        background: "transparent",
+                        color: "#52525B",
+                        border: "1px solid #18181B",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        cursor: "pointer",
+                        fontFamily: MONO,
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -2228,12 +3160,12 @@ export function Burnlog({
 
               <div style={styles.codeBlock}>
                 <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 6 }}>Markdown</div>
-                {`[![burnlog](https://burnlog.dev/badge/${selectedUser.username}.svg)](https://burnlog.dev/u/${selectedUser.username})`}
+                {`[![burnlog](https://burnlog.net/badge/${selectedUser.username})](https://burnlog.net/u/${selectedUser.username})`}
               </div>
 
               <div style={styles.codeBlock}>
                 <div style={{ fontSize: 10, color: "#3F3F46", marginBottom: 6 }}>HTML</div>
-                {`<a href="https://burnlog.dev/u/${selectedUser.username}"><img src="https://burnlog.dev/badge/${selectedUser.username}.svg" alt="burnlog" /></a>`}
+                {`<a href="https://burnlog.net/u/${selectedUser.username}"><img src="https://burnlog.net/badge/${selectedUser.username}" alt="burnlog" /></a>`}
               </div>
             </div>
 
@@ -2242,7 +3174,23 @@ export function Burnlog({
                 Rank System
               </div>
               <div style={{ fontSize: 12, color: "#52525B", marginBottom: 20, fontFamily: MONO }}>
-                Your rank evolves as you burn more tokens.
+                Your rank evolves in smaller steps now — no early mega-ceiling.
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 16 }}>
+                <ProgressionPanel tokens={selectedUser.totalTokens} color={rank.color} />
+                <div style={{ background: "#0F0F11", border: "1px solid #18181B", borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
+                    Next Unlock
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: rank.color, fontFamily: MONO, marginBottom: 4 }}>
+                    {selectedProgress.nextRank ? `${selectedProgress.nextRank.icon} ${selectedProgress.nextRank.name}` : "Apex tier"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#71717A", lineHeight: 1.6, fontFamily: MONO }}>
+                    {selectedProgress.nextRank
+                      ? `${formatTokens(selectedProgress.tokensRemainingToNextRank ?? 0)} more tokens to promote into ${selectedProgress.nextRank.name}.`
+                      : "You are already sitting at the top of the current ladder."}
+                  </div>
+                </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {RANKS.map((r) => {
@@ -2303,219 +3251,300 @@ export function Burnlog({
           </div>
         )}
 
-        {/* Footer */}
-        <footer
-          style={{
-            padding: "32px 0",
-            marginTop: 40,
-            borderTop: "1px solid #18181B",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: 11,
-            color: "#3F3F46",
-            fontFamily: MONO,
-          }}
-        >
-          <span>burnlog · private · v1</span>
-          <div style={{ display: "flex", gap: 16 }}>
-            <a href="/settings">Settings</a>
-            <span>CLI</span>
-            <span>API</span>
-          </div>
-        </footer>
       </div>
 
-      {/* Create Club Modal */}
-      <Modal open={createClubOpen} onClose={() => setCreateClubOpen(false)} title="Create Club">
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Club Name
-            </div>
-            <input style={inputStyle} placeholder="Midnight Burners" />
-          </div>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Tag (3 chars)
-            </div>
-            <input style={inputStyle} placeholder="MDN" maxLength={4} />
-          </div>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Tagline
-            </div>
-            <input style={inputStyle} placeholder="3am > 3pm" />
-          </div>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Minimum Rank
-            </div>
-            <select style={inputStyle as React.CSSProperties}>
-              {RANKS.map((r) => (
-                <option key={r.name} value={r.name}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <label
+      {/* Viewing user profile modal */}
+      {viewingUser && (() => {
+        const vRank = getRank(viewingUser.totalTokens);
+        const vProgress = getRankProgress(viewingUser.totalTokens);
+        const vTopModelMax = Math.max(...viewingUser.topModels.map((m) => m.tokens), 1);
+        return (
+          <div
+            onClick={() => setViewingUser(null)}
             style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(8px)",
+              zIndex: 9999,
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              fontSize: 12,
-              color: "#E4E4E7",
-              fontFamily: MONO,
+              justifyContent: "center",
+              padding: 24,
             }}
           >
-            <input type="checkbox" /> Private · invite only
-          </label>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-            <button style={ghostBtn} onClick={() => setCreateClubOpen(false)}>
-              Cancel
-            </button>
-            <button style={primaryBtn} onClick={() => setCreateClubOpen(false)}>
-              Create
-            </button>
-          </div>
-        </div>
-      </Modal>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#09090B",
+                border: "1px solid #18181B",
+                borderRadius: 16,
+                padding: 32,
+                maxWidth: 640,
+                width: "100%",
+                maxHeight: "85vh",
+                overflowY: "auto",
+                position: "relative",
+              }}
+            >
+              <button
+                onClick={() => setViewingUser(null)}
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  right: 16,
+                  background: "none",
+                  border: "none",
+                  color: "#52525B",
+                  fontSize: 20,
+                  cursor: "pointer",
+                  padding: 4,
+                  lineHeight: 1,
+                }}
+              >
+                &times;
+              </button>
 
-      {/* Create Challenge Modal */}
-      <Modal
-        open={createChallengeOpen}
-        onClose={() => setCreateChallengeOpen(false)}
-        title="Create Challenge"
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Challenge Name
-            </div>
-            <input
-              style={inputStyle}
-              defaultValue={challengePrefill}
-              placeholder="Weekly Burn Sprint"
-            />
-          </div>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Tagline
-            </div>
-            <input style={inputStyle} placeholder="most tokens in 7 days wins" />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
+              <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginBottom: 24 }}>
+                <UserAvatar user={viewingUser} size={64} color={vRank.color} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: "#FAFAFA" }}>
+                      {viewingUser.name}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: vRank.color,
+                        background: `${vRank.color}15`,
+                        padding: "3px 10px",
+                        borderRadius: 4,
+                        border: `1px solid ${vRank.color}33`,
+                        fontFamily: MONO,
+                      }}
+                    >
+                      {vRank.icon} {vRank.name}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#52525B", marginBottom: 8, fontFamily: MONO }}>
+                    @{viewingUser.username}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 8, fontFamily: MONO }}>
+                    {vProgress.nextRank
+                      ? `${vProgress.progressPercent}% to ${vProgress.nextRank.icon} ${vProgress.nextRank.name} · ${formatTokens(vProgress.tokensRemainingToNextRank ?? 0)} to go`
+                      : "Top ladder reached · no further ceiling yet"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#E4E4E7" }}>
+                    {viewingUser.bio ?? "—"}
+                  </div>
+                </div>
+              </div>
+
               <div
                 style={{
-                  fontSize: 10,
-                  color: "#52525B",
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  marginBottom: 6,
-                  fontFamily: MONO,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: 12,
+                  padding: "20px 0",
+                  borderTop: "1px solid #18181B",
+                  borderBottom: "1px solid #18181B",
+                  marginBottom: 20,
                 }}
               >
-                Target Tokens
+                {[
+                  { label: "Total Burned", value: formatTokens(viewingUser.totalTokens) },
+                  { label: "This Week", value: formatTokens(viewingUser.weeklyTokens) },
+                  { label: "Streak", value: `${viewingUser.streak} days` },
+                  { label: "Tok/Req", value: viewingUser.tokensPerCommit.toLocaleString() },
+                ].map((s, i) => (
+                  <div key={i}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "#3F3F46",
+                        letterSpacing: 1.5,
+                        textTransform: "uppercase",
+                        marginBottom: 4,
+                        fontFamily: MONO,
+                      }}
+                    >
+                      {s.label}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
+                      {s.value}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <input style={inputStyle} placeholder="100000000" />
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#52525B",
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  marginBottom: 6,
-                  fontFamily: MONO,
-                }}
-              >
-                Ends At
+
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 24 }}>
+                <ProgressionPanel tokens={viewingUser.totalTokens} color={vRank.color} />
+                <OperationalPanel user={viewingUser} />
               </div>
-              <input style={inputStyle} placeholder="2026-04-30" />
+
+              {viewingUser.sources.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#52525B",
+                      marginBottom: 10,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      fontFamily: MONO,
+                    }}
+                  >
+                    Sources
+                  </div>
+                  <SourcesStrip sources={viewingUser.sources} />
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#52525B",
+                      marginBottom: 10,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      fontFamily: MONO,
+                    }}
+                  >
+                    Weekly Burn
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100 }}>
+                    {viewingUser.weeklyHistory.map((v, i) => {
+                      const max = Math.max(...viewingUser.weeklyHistory, 1);
+                      const h = (v / max) * 90;
+                      return (
+                        <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                          <div
+                            style={{
+                              height: h,
+                              background:
+                                i === 6
+                                  ? `linear-gradient(180deg, ${vRank.color} 0%, ${vRank.color}44 100%)`
+                                  : "#18181B",
+                              borderRadius: "4px 4px 0 0",
+                              transition: "height 0.5s ease",
+                              marginBottom: 6,
+                            }}
+                          />
+                          <div style={{ fontSize: 9, color: "#3F3F46", fontFamily: MONO }}>{DAYS[i]}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#52525B",
+                      marginBottom: 10,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      fontFamily: MONO,
+                    }}
+                  >
+                    Provider Split
+                  </div>
+                  <ProviderBar providers={viewingUser.providers} />
+                  <div style={{ marginTop: 16 }}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "#3F3F46",
+                        letterSpacing: 1,
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                        fontFamily: MONO,
+                      }}
+                    >
+                      Top Models
+                    </div>
+                    {viewingUser.topModels.length === 0 ? (
+                      <div style={{ fontSize: 11, color: "#3F3F46" }}>&mdash;</div>
+                    ) : (
+                      viewingUser.topModels.map((m) => (
+                        <div key={m.model} style={styles.modelRow}>
+                          <span style={{ color: "#FAFAFA", fontWeight: 600 }}>{m.model}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div
+                              style={{
+                                width: 60,
+                                height: 4,
+                                background: "#18181B",
+                                borderRadius: 2,
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${(m.tokens / vTopModelMax) * 100}%`,
+                                  height: "100%",
+                                  background: vRank.color,
+                                }}
+                              />
+                            </div>
+                            <span style={{ color: "#D97706", fontWeight: 700 }}>
+                              {formatTokens(m.tokens)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #18181B" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    marginBottom: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#52525B",
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      fontFamily: MONO,
+                    }}
+                  >
+                    Burn Activity &middot; 12 Weeks
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>
+                    <span>less</span>
+                    {[0.12, 0.28, 0.45, 0.7, 1].map((a) => (
+                      <span
+                        key={a}
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 3,
+                          background: `rgba(217,119,6,${a})`,
+                          display: "inline-block",
+                        }}
+                      />
+                    ))}
+                    <span>more</span>
+                  </div>
+                </div>
+                <ActivityHeatmap heatmap={viewingUser.heatmap} />
+              </div>
             </div>
           </div>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "#52525B",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 6,
-                fontFamily: MONO,
-              }}
-            >
-              Prize
-            </div>
-            <input style={inputStyle} placeholder="Custom rank flair + bragging rights" />
-          </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-            <button style={ghostBtn} onClick={() => setCreateChallengeOpen(false)}>
-              Cancel
-            </button>
-            <button style={primaryBtn} onClick={() => setCreateChallengeOpen(false)}>
-              Create
-            </button>
-          </div>
-        </div>
-      </Modal>
+        );
+      })()}
+
     </div>
   );
 }
