@@ -11,7 +11,11 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ matchup: string }> };
 
+const hasDatabase = Boolean(process.env.DATABASE_URL);
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (!hasDatabase) notFound();
+
   const { matchup } = await params;
   const parsed = parseMatchupSlug(matchup);
   if (!parsed) notFound();
@@ -54,6 +58,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function H2HPage({ params }: Props) {
+  if (!hasDatabase) notFound();
+
   const { matchup } = await params;
   const parsed = parseMatchupSlug(matchup);
   if (!parsed) notFound();

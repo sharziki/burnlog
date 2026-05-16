@@ -1,5 +1,7 @@
 import { prisma } from "./db";
 
+const hasDatabase = Boolean(process.env.DATABASE_URL);
+
 export type UserStats = {
   id: string;
   username: string;
@@ -38,6 +40,8 @@ function initials(name: string): string {
 }
 
 export async function getUserStats(userId: string): Promise<UserStats | null> {
+  if (!hasDatabase) return null;
+
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return null;
 
@@ -155,6 +159,8 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
 }
 
 export async function getLeaderboard(): Promise<UserStats[]> {
+  if (!hasDatabase) return [];
+
   const users = await prisma.user.findMany({ where: { username: { not: null } } });
   const stats = await Promise.all(users.map((u) => getUserStats(u.id)));
   return stats

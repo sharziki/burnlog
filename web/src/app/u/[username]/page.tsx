@@ -11,7 +11,11 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ username: string }> };
 
+const hasDatabase = Boolean(process.env.DATABASE_URL);
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (!hasDatabase) notFound();
+
   const { username } = await params;
   const user = await prisma.user.findFirst({
     where: { username },
@@ -52,6 +56,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProfilePage({ params }: Props) {
+  if (!hasDatabase) notFound();
+
   const { username } = await params;
   const session = await auth();
   const viewerId = (session?.user as { id?: string } | undefined)?.id;

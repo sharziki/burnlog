@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { buildMatchupPath } from "@/lib/h2h";
 import { formatTokens } from "@/lib/format";
@@ -230,6 +231,154 @@ function AnimCount({ value, duration = 1200 }: { value: number; duration?: numbe
     return () => cancelAnimationFrame(raf);
   }, [value, duration]);
   return <>{formatTokens(display)}</>;
+}
+
+function HeroConstellation() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof window === "undefined") return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const nodeCount = Math.min(28, Math.max(16, Math.round(window.innerWidth / 70)));
+    let width = 0;
+    let height = 0;
+    let animationFrame = 0;
+    let reducedMotion = mediaQuery.matches;
+
+    const nodes = Array.from({ length: nodeCount }, (_, index) => ({
+      x: 0,
+      y: 0,
+      vx: ((index % 2 === 0 ? 1 : -1) * (0.08 + (index % 5) * 0.015)),
+      vy: ((index % 3 === 0 ? 1 : -1) * (0.05 + (index % 7) * 0.012)),
+      radius: 1.5 + (index % 4) * 0.8,
+      tint: index % 5 === 0 ? "217,119,6" : index % 3 === 0 ? "250,250,250" : "244,114,182",
+    }));
+
+    const resize = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+
+      width = parent.clientWidth;
+      height = parent.clientHeight;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.floor(width * ratio));
+      canvas.height = Math.max(1, Math.floor(height * ratio));
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      nodes.forEach((node, index) => {
+        node.x = (((index * 97) % 1000) / 1000) * width;
+        node.y = (((index * 57) % 1000) / 1000) * height;
+      });
+    };
+
+    const draw = () => {
+      context.clearRect(0, 0, width, height);
+
+      const wash = context.createRadialGradient(width * 0.78, height * 0.24, 0, width * 0.78, height * 0.24, Math.max(width, height) * 0.8);
+      wash.addColorStop(0, "rgba(217,119,6,0.18)");
+      wash.addColorStop(0.45, "rgba(244,114,182,0.08)");
+      wash.addColorStop(1, "rgba(9,9,11,0)");
+      context.fillStyle = wash;
+      context.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance > 150) continue;
+          context.beginPath();
+          context.strokeStyle = `rgba(250,250,250,${0.12 * (1 - distance / 150)})`;
+          context.lineWidth = 1;
+          context.moveTo(a.x, a.y);
+          context.lineTo(b.x, b.y);
+          context.stroke();
+        }
+      }
+
+      nodes.forEach((node) => {
+        context.beginPath();
+        context.fillStyle = `rgba(${node.tint},0.88)`;
+        context.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        context.fill();
+
+        context.beginPath();
+        context.fillStyle = `rgba(${node.tint},0.12)`;
+        context.arc(node.x, node.y, node.radius * 6, 0, Math.PI * 2);
+        context.fill();
+
+        if (!reducedMotion) {
+          node.x += node.vx;
+          node.y += node.vy;
+
+          if (node.x < -20 || node.x > width + 20) node.vx *= -1;
+          if (node.y < -20 || node.y > height + 20) node.vy *= -1;
+        }
+      });
+
+      if (!reducedMotion) animationFrame = window.requestAnimationFrame(draw);
+    };
+
+    const handleMotionChange = (event: MediaQueryListEvent) => {
+      reducedMotion = event.matches;
+      window.cancelAnimationFrame(animationFrame);
+      draw();
+    };
+
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    const observer = new ResizeObserver(() => {
+      resize();
+      window.cancelAnimationFrame(animationFrame);
+      draw();
+    });
+
+    observer.observe(parent);
+    mediaQuery.addEventListener("change", handleMotionChange);
+    resize();
+    draw();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+      mediaQuery.removeEventListener("change", handleMotionChange);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} aria-hidden="true" className="burnlog-hero-canvas" />;
+}
+
+function LandingCard({ eyebrow, title, children }: { eyebrow?: string; title: string; children: ReactNode }) {
+  return (
+    <div
+      style={{
+        background: "linear-gradient(180deg, rgba(24,24,27,0.94) 0%, rgba(12,12,14,0.94) 100%)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 18,
+        padding: 24,
+        boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
+        backdropFilter: "blur(16px)",
+      }}
+    >
+      {eyebrow && (
+        <div style={{ fontSize: 11, color: "#F59E0B", fontFamily: MONO, fontWeight: 700, letterSpacing: 1.8, marginBottom: 10 }}>
+          {eyebrow}
+        </div>
+      )}
+      <div style={{ fontSize: 18, fontWeight: 750, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>{title}</div>
+      {children}
+    </div>
+  );
 }
 
 // --- Sparkline ---
@@ -1292,102 +1441,228 @@ export function Burnlog({
       <div style={styles.container}>
         {/* Hero landing section for unauthenticated visitors */}
         {!currentUsername && (
-          <div className="burnlog-landing-shell" style={{ paddingTop: 48, paddingBottom: 40, borderBottom: "1px solid #18181B" }}>
-            <div className="burnlog-landing-hero" style={{ textAlign: "center", maxWidth: 820, margin: "0 auto" }}>
-              <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 18 }}>
+          <div className="burnlog-landing-shell" style={{ paddingTop: 40, paddingBottom: 44, borderBottom: "1px solid #18181B" }}>
+            <section
+              className="burnlog-premium-hero"
+              aria-labelledby="burnlog-landing-title"
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: 28,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "linear-gradient(135deg, rgba(12,12,14,0.98) 0%, rgba(17,17,19,0.94) 45%, rgba(24,24,27,0.95) 100%)",
+                boxShadow: "0 32px 120px rgba(0,0,0,0.45)",
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "radial-gradient(circle at top left, rgba(217,119,6,0.16), transparent 30%), radial-gradient(circle at 85% 15%, rgba(244,114,182,0.12), transparent 22%), linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0))",
+                }}
+              />
+              <div aria-hidden="true" style={{ position: "absolute", inset: 0, backdropFilter: "blur(2px)" }} />
+              <HeroConstellation />
+
+              <div className="burnlog-premium-hero-grid" style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)", gap: 28, padding: 32 }}>
+                <div className="burnlog-landing-hero">
+                  <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+                    {[
+                      "Private AI coding telemetry",
+                      "Claude Code autosync today",
+                      "Codex manual sync supported",
+                      "SDK + MCP for custom workflows",
+                    ].map((pill) => (
+                      <span
+                        key={pill}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 999,
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "rgba(255,255,255,0.04)",
+                          color: "#E4E4E7",
+                          fontSize: 11,
+                          fontFamily: MONO,
+                          backdropFilter: "blur(8px)",
+                        }}
+                      >
+                        {pill}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div style={{ maxWidth: 660, fontSize: 58, fontWeight: 840, color: "#FAFAFA", letterSpacing: -2.4, lineHeight: 1.02, fontFamily: SANS, marginBottom: 18 }} id="burnlog-landing-title">
+                    See how your team is actually using AI coding tools.
+                  </div>
+                  <div style={{ maxWidth: 620, fontSize: 18, color: "#B4B4BC", lineHeight: 1.7, marginBottom: 22, fontFamily: SANS }}>
+                    burnlog gives teams a shared view of token usage, source mix, models, sessions, and estimated spend across Claude Code, Codex log imports, and custom agent workflows — without syncing prompt content off-machine.
+                  </div>
+
+                  <div className="burnlog-landing-cta-row" style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", marginBottom: 18 }}>
+                    <a
+                      href="/login"
+                      style={{
+                        padding: "15px 24px",
+                        background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+                        color: "#09090B",
+                        border: "none",
+                        borderRadius: 12,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        fontFamily: MONO,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        textDecoration: "none",
+                        justifyContent: "center",
+                        boxShadow: "0 12px 40px rgba(217,119,6,0.32)",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="#09090B">
+                        <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+                      </svg>
+                      Sign in with GitHub
+                    </a>
+                    <a
+                      href="#leaderboard"
+                      style={{
+                        fontSize: 13,
+                        color: "#F4F4F5",
+                        fontFamily: MONO,
+                        textDecoration: "none",
+                        padding: "15px 18px",
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        borderRadius: 12,
+                        background: "rgba(255,255,255,0.04)",
+                        transition: "border-color 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.24)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.14)";
+                      }}
+                    >
+                      See live usage board
+                    </a>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 18 }} className="burnlog-hero-stats-grid">
+                    {[
+                      {
+                        label: "Tracked developers",
+                        value: globalStats.activeUsers.toLocaleString(),
+                        detail: globalStats.totalBurned > 0 ? "Already syncing usage telemetry" : "Ready for your first synced team",
+                      },
+                      {
+                        label: "Tracked tokens",
+                        value: formatTokens(globalStats.totalBurned),
+                        detail: globalStats.totalBurned > 0 ? "Across shared burnlog boards" : "Appears here once a team syncs",
+                      },
+                      {
+                        label: "Collection scope",
+                        value: "Usage metadata",
+                        detail: "Token counts and session stats — not prompt bodies",
+                      },
+                    ].map((item) => (
+                      <div key={item.label} style={{ padding: 14, borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(10px)" }}>
+                        <div style={{ fontSize: 10, color: "#A1A1AA", fontFamily: MONO, letterSpacing: 1.4, textTransform: "uppercase" }}>{item.label}</div>
+                        <div style={{ fontSize: 24, fontWeight: 780, color: "#FAFAFA", marginTop: 8, marginBottom: 6 }}>{item.value}</div>
+                        <div style={{ fontSize: 12, color: "#B4B4BC", lineHeight: 1.6 }}>{item.detail}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ maxWidth: 720, padding: "14px 16px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(9,9,11,0.5)", fontSize: 11, color: "#B4B4BC", lineHeight: 1.75, fontFamily: MONO }}>
+                    burnlog is best used as workflow telemetry and monitoring. Public leaderboard and challenge numbers are self-reported unless your team wires burnlog into a trusted runtime, so treat them as useful signals — not standalone proof.
+                  </div>
+                </div>
+
+                <div className="burnlog-hero-side-stack" style={{ display: "grid", gap: 16, alignContent: "start" }}>
+                  <LandingCard eyebrow="WHAT SUPPORTS TODAY" title="A truthful path for each setup">
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {[
+                        {
+                          label: "Claude Code",
+                          title: "Autosync with the hook + daemon",
+                          note: "Native sync path today for teams that want usage to land automatically.",
+                        },
+                        {
+                          label: "Codex",
+                          title: "Manual scan and sync",
+                          note: "Supported today through log scans and manual sync, with the daemon as an optional local helper.",
+                        },
+                        {
+                          label: "SDK + MCP",
+                          title: "Custom workflows and readback",
+                          note: "Instrument your own agents or expose burnlog context inside supported runtimes.",
+                        },
+                      ].map((item) => (
+                        <div key={item.label} style={{ padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+                          <div style={{ fontSize: 10, color: "#F59E0B", fontFamily: MONO, fontWeight: 700, letterSpacing: 1.6, marginBottom: 8 }}>{item.label}</div>
+                          <div style={{ fontSize: 15, color: "#FAFAFA", fontWeight: 700, marginBottom: 6 }}>{item.title}</div>
+                          <div style={{ fontSize: 12, color: "#B4B4BC", lineHeight: 1.65 }}>{item.note}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </LandingCard>
+
+                  <LandingCard eyebrow="WHAT TEAMS SEE" title="Useful signals, not vanity charts">
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {[
+                        "Token usage, session volume, and estimated spend over time",
+                        "Source and model mix across supported tools and providers",
+                        "A shared board the team can review without exposing prompt content",
+                      ].map((item) => (
+                        <div key={item} style={{ display: "flex", gap: 10, alignItems: "flex-start", color: "#D4D4D8", fontSize: 13, lineHeight: 1.65 }}>
+                          <span style={{ color: "#F59E0B", marginTop: 1 }}>✦</span>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </LandingCard>
+                </div>
+              </div>
+            </section>
+
+            <div style={{ marginTop: 24 }} className="burnlog-landing-proof-grid">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }} className="burnlog-landing-reasons-grid">
                 {[
-                  "Private AI coding telemetry",
-                  "Claude Code autosync today",
-                  "Codex manual sync supported",
-                  "SDK + MCP for custom agents",
-                ].map((pill) => (
-                  <span
-                    key={pill}
-                    style={{
-                      padding: "7px 10px",
-                      borderRadius: 999,
-                      border: "1px solid #27272A",
-                      background: "rgba(217,119,6,0.08)",
-                      color: "#D4D4D8",
-                      fontSize: 11,
-                      fontFamily: MONO,
-                    }}
-                  >
-                    {pill}
-                  </span>
+                  {
+                    title: "Visibility across real workflows",
+                    desc: "Put Claude Code autosync, Codex imports, and custom agent telemetry on one surface so leads can compare adoption without chasing screenshots or local logs.",
+                  },
+                  {
+                    title: "Privacy-first by design",
+                    desc: "burnlog syncs usage metadata, token counts, and related session stats — not prompt bodies — so teams get narrower collection by default.",
+                  },
+                  {
+                    title: "Useful for ops and coaching",
+                    desc: "Track model concentration, weekly momentum, and estimated spend to understand how AI usage changes as your team adopts new tools and habits.",
+                  },
+                ].map((item) => (
+                  <LandingCard key={item.title} eyebrow="WHY IT MATTERS" title={item.title}>
+                    <div style={{ fontSize: 13, color: "#B4B4BC", lineHeight: 1.72 }}>{item.desc}</div>
+                  </LandingCard>
                 ))}
-              </div>
-              <div style={{ fontSize: 48, fontWeight: 800, color: "#FAFAFA", letterSpacing: -1.5, lineHeight: 1.1, fontFamily: SANS, marginBottom: 16 }}>
-                Private telemetry for how your team actually uses AI coding tools.
-              </div>
-              <div style={{ fontSize: 18, color: "#A1A1AA", lineHeight: 1.65, marginBottom: 18, fontFamily: SANS }}>
-                burnlog gives teams a shared view of token usage, source mix, models, sessions, and estimated spend across Claude Code and other local agents without shipping prompt content off-machine.
-              </div>
-              <div style={{ margin: "0 auto 18px", maxWidth: 760, padding: "12px 14px", borderRadius: 10, border: "1px solid #27272A", background: "#0F0F11", fontSize: 11, color: "#A1A1AA", lineHeight: 1.7, fontFamily: MONO }}>
-                Burnlog is best used as workflow telemetry and monitoring. Public leaderboard/challenge numbers are self-reported unless your team wires burnlog into a trusted runtime, so use them as signals for applicants and teams — not standalone proof.
-              </div>
-              <div style={{ fontSize: 12, color: "#71717A", marginBottom: 28, fontFamily: MONO }}>
-                Claude Code works now · Codex logs can be scanned and synced manually · SDK + MCP available for custom workflows
-              </div>
-              <div className="burnlog-landing-cta-row" style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
-                <a
-                  href="/login"
-                  style={{
-                    padding: "14px 28px",
-                    background: "#D97706",
-                    color: "#09090B",
-                    border: "none",
-                    borderRadius: 8,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    fontFamily: MONO,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    textDecoration: "none",
-                    justifyContent: "center",
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#09090B">
-                    <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
-                  </svg>
-                  Sign in with GitHub
-                </a>
-                <a
-                  href="#leaderboard"
-                  style={{
-                    fontSize: 13,
-                    color: "#E4E4E7",
-                    fontFamily: MONO,
-                    textDecoration: "none",
-                    padding: "14px 20px",
-                    border: "1px solid #3F3F46",
-                    borderRadius: 8,
-                    background: "#111113",
-                    transition: "border-color 0.15s",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#52525B"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#3F3F46"; }}
-                >
-                  See live usage board
-                </a>
               </div>
             </div>
 
-            <div className="burnlog-landing-steps" style={{ marginTop: 52 }}>
-              <div style={{ textAlign: "center", marginBottom: 18 }}>
+            <div className="burnlog-landing-steps" style={{ marginTop: 24 }}>
+              <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 12, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>
                   WORKS TODAY
                 </div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>
-                  Choose your setup
+                <div style={{ fontSize: 30, fontWeight: 820, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>
+                  Pick the setup that matches your stack
                 </div>
-                <div style={{ fontSize: 14, color: "#A1A1AA", lineHeight: 1.65, maxWidth: 760, margin: "0 auto", fontFamily: SANS }}>
-                  Start with the path that matches your stack today. burnlog supports native Claude Code autosync, a truthful manual Codex flow, and tooling for teams building their own agents or in-agent readback.
+                <div style={{ fontSize: 14, color: "#A1A1AA", lineHeight: 1.72, maxWidth: 760, fontFamily: SANS }}>
+                  Start with native Claude Code autosync, use the current manual Codex flow, or wire burnlog into your own agent runtime with the SDK or MCP server.
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }} className="burnlog-landing-steps-grid">
                 {[
                   {
                     step: "Claude Code",
@@ -1405,7 +1680,7 @@ export function Burnlog({
                     step: "Custom agents",
                     title: "SDK instrumentation",
                     code: "import { Burnlog } from '@sxna/burnlog-sdk'",
-                    desc: "Use the SDK to emit token usage from your own agent loops, background jobs, or internal tooling without changing the landing surface your team already sees.",
+                    desc: "Use the SDK to emit token usage from your own agent loops, background jobs, or internal tooling without changing the dashboard your team already sees.",
                   },
                   {
                     step: "In-agent readback",
@@ -1414,85 +1689,33 @@ export function Burnlog({
                     desc: "Expose prior usage and profile stats inside supported agent runtimes so the agent can read back burnlog context without custom glue code.",
                   },
                 ].map((item) => (
-                  <div
-                    key={item.step}
-                    style={{
-                      background: "#0C0C0E",
-                      border: "1px solid #18181B",
-                      borderRadius: 12,
-                      padding: 24,
-                    }}
-                  >
-                    <div style={{ fontSize: 10, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 10 }}>
-                      {item.step}
+                  <LandingCard key={item.step} eyebrow={item.step} title={item.title}>
+                    <div
+                      style={{
+                        padding: "9px 12px",
+                        background: "rgba(9,9,11,0.55)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 10,
+                        fontSize: 11,
+                        color: "#F59E0B",
+                        fontFamily: MONO,
+                        marginBottom: 12,
+                        overflowX: "auto",
+                      }}
+                    >
+                      <span style={{ color: "#52525B" }}>$ </span>
+                      {item.code}
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA", marginBottom: 8, fontFamily: SANS }}>
-                      {item.title}
-                    </div>
-                    {item.code && (
-                      <div
-                        style={{
-                          padding: "8px 12px",
-                          background: "#0F0F11",
-                          border: "1px solid #18181B",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          color: "#D97706",
-                          fontFamily: MONO,
-                          marginBottom: 10,
-                          overflowX: "auto",
-                        }}
-                      >
-                        <span style={{ color: "#3F3F46" }}>$ </span>{item.code}
-                      </div>
-                    )}
-                    <div style={{ fontSize: 13, color: "#A1A1AA", lineHeight: 1.6 }}>
-                      {item.desc}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginTop: 48 }}>
-              <div style={{ textAlign: "center", marginBottom: 18 }}>
-                <div style={{ fontSize: 12, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>
-                  WHY TEAMS USE BURNLOG
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>
-                  Visibility without giving up privacy
-                </div>
-                <div style={{ fontSize: 14, color: "#A1A1AA", lineHeight: 1.65, maxWidth: 760, margin: "0 auto", fontFamily: SANS }}>
-                  burnlog helps engineering teams understand how usage shifts across tools, models, and providers while keeping collection narrow and prompt content private.
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
-                {[
-                  {
-                    title: "Cross-tool visibility",
-                    desc: "Put Claude Code, Codex scans, and custom agent telemetry on one surface so leads can compare usage patterns instead of chasing screenshots and local log files.",
-                  },
-                  {
-                    title: "Privacy-first collection",
-                    desc: "burnlog syncs token and session metadata, not prompt bodies, giving teams useful telemetry with a much smaller privacy footprint.",
-                  },
-                  {
-                    title: "Analytics that matter",
-                    desc: "See source mix, model concentration, weekly momentum, and estimated cost so you can reason about adoption, spend, and workflow changes over time.",
-                  },
-                ].map((item) => (
-                  <div key={item.title} style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 12, padding: 24 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA", marginBottom: 10, fontFamily: SANS }}>{item.title}</div>
-                    <div style={{ fontSize: 13, color: "#A1A1AA", lineHeight: 1.7 }}>{item.desc}</div>
-                  </div>
+                    <div style={{ fontSize: 13, color: "#B4B4BC", lineHeight: 1.68 }}>{item.desc}</div>
+                  </LandingCard>
                 ))}
               </div>
             </div>
 
             {globalStats.totalBurned > 0 && (
-              <div style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "#71717A", fontFamily: MONO }}>
-                <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> developer{globalStats.activeUsers === 1 ? "" : "s"} syncing{" "}
-                <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> tracked tokens
+              <div style={{ textAlign: "center", marginTop: 28, fontSize: 13, color: "#71717A", fontFamily: MONO }}>
+                <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> developer{globalStats.activeUsers === 1 ? "" : "s"} currently syncing{" "}
+                <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> tracked tokens into burnlog
               </div>
             )}
 
@@ -1500,10 +1723,10 @@ export function Burnlog({
               className="burnlog-trust-row"
               style={{
                 marginTop: 24,
-                padding: "16px 20px",
-                background: "#0C0C0E",
-                border: "1px solid #18181B",
-                borderRadius: 10,
+                padding: "18px 20px",
+                background: "linear-gradient(180deg, rgba(12,12,14,0.96) 0%, rgba(15,15,17,0.94) 100%)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 16,
                 display: "flex",
                 alignItems: "center",
                 gap: 12,

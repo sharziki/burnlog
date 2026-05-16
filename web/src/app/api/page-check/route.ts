@@ -10,6 +10,13 @@ function badRequest(message: string) {
 }
 
 export async function GET(req: Request) {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { ok: false, message: "database unavailable" },
+      { status: 503 },
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const kind = searchParams.get("kind");
 

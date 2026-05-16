@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "next start",
+    "start": "HOSTNAME=0.0.0.0 AUTH_SECRET=${AUTH_SECRET:-dev-insecure-auth-secret-change-me} node .next/standalone/server.js",
     "lint": "eslint .",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

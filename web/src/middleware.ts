@@ -101,6 +101,10 @@ function notFoundHtml(pathname: string): string {
 }
 
 async function isKnownPage(request: NextRequest): Promise<boolean | null> {
+  if (!process.env.DATABASE_URL) {
+    return null;
+  }
+
   const pathname = request.nextUrl.pathname;
 
   let probeUrl: URL | null = null;

@@ -140,10 +140,11 @@ export async function checkOvertake(
   });
 }
 
-/** Token milestones: 100K, 500K, 1M, 5M, 10M, 50M, 100M, 500M, 1B */
+/** Token milestones through ultra-high tiers */
 const MILESTONES = [
   100_000, 500_000, 1_000_000, 5_000_000, 10_000_000,
   50_000_000, 100_000_000, 500_000_000, 1_000_000_000,
+  2_500_000_000, 5_000_000_000, 10_000_000_000, 25_000_000_000, 50_000_000_000,
 ];
 
 export async function checkMilestone(

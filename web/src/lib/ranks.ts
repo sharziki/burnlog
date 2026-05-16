@@ -32,7 +32,12 @@ export const RANKS: Rank[] = [
   { name: "Quasar", min: 50_000_000, max: 99_999_999, color: "#E879F9", icon: "✷" },
   { name: "Singularity", min: 100_000_000, max: 249_999_999, color: "#C084FC", icon: "⬢" },
   { name: "Event Horizon", min: 250_000_000, max: 999_999_999, color: "#818CF8", icon: "⬣" },
-  { name: "Omega Burn", min: 1_000_000_000, max: Number.POSITIVE_INFINITY, color: "#FAFAFA", icon: "✴" },
+  { name: "Omega Burn", min: 1_000_000_000, max: 2_499_999_999, color: "#FAFAFA", icon: "✴" },
+  { name: "Celestial Flame", min: 2_500_000_000, max: 4_999_999_999, color: "#67E8F9", icon: "✺" },
+  { name: "Nebula Crown", min: 5_000_000_000, max: 9_999_999_999, color: "#22D3EE", icon: "✵" },
+  { name: "Titanstar", min: 10_000_000_000, max: 24_999_999_999, color: "#38BDF8", icon: "✹" },
+  { name: "Mythic Core", min: 25_000_000_000, max: 49_999_999_999, color: "#4F46E5", icon: "❖" },
+  { name: "Apex Singularity", min: 50_000_000_000, max: Number.POSITIVE_INFINITY, color: "#A78BFA", icon: "✦" },
 ];
 
 export function getRank(tokens: number): Rank {
