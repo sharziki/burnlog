@@ -49,6 +49,7 @@ Pick the one that matches how your tokens are produced.
 npm install -g @sxnalabs/burnlog
 burnlog login <api-key>      # grab one at https://burnlog.net/settings
 burnlog install              # Claude Code only: auto-sync on session end
+burnlog prompt hermes --source my-agent --with-mcp
 ```
 
 Today, `burnlog install` only sets up a Claude Code hook. Codex logs are still
@@ -69,16 +70,13 @@ npm install @sxna/burnlog-sdk
 ```ts
 import { Burnlog } from "@sxna/burnlog-sdk";
 
-const burnlog = new Burnlog({
-  apiKey: process.env.BURNLOG_API_KEY!,
-  source: "my-agent",
-});
+const burnlog = Burnlog.fromEnv({ source: "my-agent" });
 
 const res = await anthropic.messages.create({ /* ... */ });
-burnlog.trackAnthropic(res);   // batches + flushes in the background
+burnlog.trackResponse(res);   // batches + flushes in the background
 ```
 
-Zero runtime dependencies. `track()` never throws. See [sdk/README](sdk/README.md).
+Zero runtime dependencies. `track()` never throws. `trackResponse()` auto-detects common Anthropic/OpenAI usage shapes. See [sdk/README](sdk/README.md).
 
 ### MCP — query your rank from inside an agent
 

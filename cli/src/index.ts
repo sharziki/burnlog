@@ -9,6 +9,7 @@ import { sync } from "./commands/sync.js";
 import { status } from "./commands/status.js";
 import { install, uninstall } from "./commands/install.js";
 import { daemon } from "./commands/daemon.js";
+import { prompt } from "./prompt.js";
 
 function readVersion(): string {
   try {
@@ -33,9 +34,11 @@ ${pc.bold("commands")}
   ${pc.cyan("uninstall")}          remove the Claude Code hook
   ${pc.cyan("daemon")}             run a background watcher that syncs every 30s
   ${pc.cyan("status")}             show config, adapter detection, hook state, and api status
+  ${pc.cyan("prompt")}             print a paste-into-agent setup prompt for claude/codex/hermes/custom
   ${pc.cyan("help")}               show this
 
 ${pc.bold("env")}
+  BURNLOG_API_KEY        override stored api key
   BURNLOG_API_URL        override api url (default https://burnlog.net)
   BURNLOG_CLAUDE_DIR     override ~/.claude/projects
   BURNLOG_CODEX_DIR      override ~/.codex/sessions
@@ -59,6 +62,9 @@ async function main(): Promise<void> {
       break;
     case "status":
       await status(rest);
+      break;
+    case "prompt":
+      prompt(rest);
       break;
     case "install":
       install(rest);

@@ -6,6 +6,7 @@
 npm install -g @sxnalabs/burnlog
 burnlog login <api-key>     # grab a key from https://burnlog.net/settings
 burnlog install             # Claude Code only: auto-sync on session end
+burnlog prompt hermes --source my-agent --with-mcp
 ```
 
 `burnlog install` only wires a Claude Code hook today. Codex logs are still read by

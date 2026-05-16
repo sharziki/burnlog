@@ -20,7 +20,7 @@ export type BurnlogOptions = {
   apiKey: string;
   /** A stable tag for where these events come from. e.g. "my-agent". 1-32 chars [a-z0-9-]. */
   source?: string;
-  /** Base URL of the burnlog web app. Defaults to https://burnlog.sxna.dev. */
+  /** Base URL of the burnlog web app. Defaults to https://burnlog.net. */
   baseUrl?: string;
   /** Max events to batch before flushing. Default 100. */
   maxBatchSize?: number;
@@ -31,6 +31,8 @@ export type BurnlogOptions = {
   /** Custom fetch (e.g. for tests). Defaults to global fetch. */
   fetch?: typeof fetch;
 };
+
+export type BurnlogFromEnvOptions = Partial<BurnlogOptions>;
 
 type QueuedEvent = {
   requestId: string;
@@ -60,9 +62,25 @@ export function providerFromModel(model: string): Provider {
   return "other";
 }
 
-const DEFAULT_BASE = "https://burnlog.sxna.dev";
+const DEFAULT_BASE = "https://burnlog.net";
 const DEFAULT_BATCH = 100;
 const DEFAULT_FLUSH_MS = 5000;
+
+function parseIntegerEnv(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseBooleanEnv(value: string | undefined): boolean | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return undefined;
+}
+
+type TrackResponseOptions = { source?: string; requestId?: string; timestamp?: Date | string };
 
 export class Burnlog {
   private readonly apiKey: string;
@@ -75,6 +93,19 @@ export class Burnlog {
   private inFlight: Promise<void> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private closed = false;
+
+  static fromEnv(opts: BurnlogFromEnvOptions = {}): Burnlog {
+    const env = typeof process === "undefined" ? undefined : process.env;
+    return new Burnlog({
+      apiKey: opts.apiKey ?? env?.BURNLOG_API_KEY ?? "",
+      source: opts.source ?? env?.BURNLOG_SOURCE ?? "custom",
+      baseUrl: opts.baseUrl ?? env?.BURNLOG_API_URL ?? DEFAULT_BASE,
+      maxBatchSize: opts.maxBatchSize ?? parseIntegerEnv(env?.BURNLOG_MAX_BATCH_SIZE) ?? DEFAULT_BATCH,
+      flushIntervalMs: opts.flushIntervalMs ?? parseIntegerEnv(env?.BURNLOG_FLUSH_INTERVAL_MS) ?? DEFAULT_FLUSH_MS,
+      debug: opts.debug ?? parseBooleanEnv(env?.BURNLOG_DEBUG) ?? false,
+      fetch: opts.fetch,
+    });
+  }
 
   constructor(opts: BurnlogOptions) {
     if (!opts.apiKey) throw new Error("burnlog: apiKey is required");
@@ -179,6 +210,54 @@ export class Burnlog {
       outputTokens: output,
       cacheCreationTokens: 0,
       cacheReadTokens: cached,
+      timestamp: opts.timestamp,
+      source: opts.source,
+    });
+  }
+
+  /** Convenience: auto-detect common provider response shapes and track them. */
+  trackResponse(
+    response: {
+      id?: string;
+      model?: string;
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        cache_creation_input_tokens?: number;
+        cache_read_input_tokens?: number;
+        input_tokens_details?: { cached_tokens?: number };
+      };
+    },
+    opts: TrackResponseOptions = {},
+  ): void {
+    const usage = response?.usage;
+    if (!response?.id || !response?.model || !usage) return;
+
+    const hasOpenAIShape =
+      usage.prompt_tokens != null ||
+      usage.completion_tokens != null ||
+      usage.input_tokens_details?.cached_tokens != null;
+
+    if (hasOpenAIShape) {
+      this.trackOpenAI(response, opts);
+      return;
+    }
+
+    const input = usage.input_tokens ?? 0;
+    const output = usage.output_tokens ?? 0;
+    const cacheCreation = usage.cache_creation_input_tokens ?? 0;
+    const cacheRead = usage.cache_read_input_tokens ?? 0;
+    if (input + output + cacheCreation + cacheRead === 0) return;
+
+    this.track({
+      requestId: opts.requestId ?? response.id,
+      model: response.model,
+      inputTokens: input,
+      outputTokens: output,
+      cacheCreationTokens: cacheCreation,
+      cacheReadTokens: cacheRead,
       timestamp: opts.timestamp,
       source: opts.source,
     });

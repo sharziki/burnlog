@@ -10,15 +10,12 @@ npm install @sxna/burnlog-sdk
 import { Burnlog } from "@sxna/burnlog-sdk";
 import Anthropic from "@anthropic-ai/sdk";
 
-const burnlog = new Burnlog({
-  apiKey: process.env.BURNLOG_API_KEY!,
-  source: "my-agent", // any lowercase id, 1-32 chars [a-z0-9-]
-});
+const burnlog = Burnlog.fromEnv({ source: "my-agent" });
 
 const anthropic = new Anthropic();
 const res = await anthropic.messages.create({ /* ... */ });
 
-burnlog.trackAnthropic(res);   // that's it. batches + flushes in the background.
+burnlog.trackResponse(res);   // that's it. batches + flushes in the background.
 ```
 
 ## Full API
@@ -27,11 +24,14 @@ burnlog.trackAnthropic(res);   // that's it. batches + flushes in the background
 const burnlog = new Burnlog({
   apiKey: string;                 // required
   source?: string;                 // default "custom"
-  baseUrl?: string;                // default "https://burnlog.sxna.dev"
+  baseUrl?: string;                // default "https://burnlog.net"
   maxBatchSize?: number;           // default 100
   flushIntervalMs?: number;        // default 5000 (0 = disabled)
   debug?: boolean;                 // default false — logs errors to stderr
 });
+
+// Or bootstrap directly from env
+const burnlog = Burnlog.fromEnv();
 
 // Primary method
 burnlog.track({
@@ -45,10 +45,11 @@ burnlog.track({
   source: "override-for-this-event", // optional
 });
 
-// Convenience for Anthropic SDK responses
-burnlog.trackAnthropic(response);
+// Convenience for Anthropic, OpenAI, and common SDK response shapes
+burnlog.trackResponse(response);
 
-// Convenience for OpenAI SDK responses (Chat and Responses APIs)
+// Provider-specific helpers still work when you want them
+burnlog.trackAnthropic(response);
 burnlog.trackOpenAI(response);
 
 // Flush manually

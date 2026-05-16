@@ -51,16 +51,21 @@ burnlog does not yet support passive parsing of Hermes usage logs. Today the
 working path is explicit tracking via the SDK (or another direct integration)
 inside the runtime that makes the model calls.
 
-If you want a copy-paste prompt for a Hermes-powered workflow, use this:
+If you want a copy-paste prompt for a Hermes-powered workflow, use either `burnlog prompt hermes --source your-agent-id --with-mcp` or paste this directly:
 
 ```text
-Set up burnlog tracking for this Hermes workflow using the SDK, not local log parsing.
+Wire burnlog into this Hermes workflow using the SDK, not local log parsing.
 
 1. Install the package: npm install @sxna/burnlog-sdk
-2. Set BURNLOG_API_KEY=blg_PASTE_YOUR_KEY_HERE in the runtime environment.
-3. Wrap the model-call path so burnlog records usage after each provider response.
-4. Use burnlog.trackAnthropic(...) or burnlog.trackOpenAI(...) when possible.
-5. If the provider response shape is custom, call burnlog.track({...}) manually.
+2. Persist these env vars in the runtime environment:
+   - BURNLOG_API_KEY=blg_PASTE_YOUR_KEY_HERE
+   - BURNLOG_SOURCE=my-agent
+   - BURNLOG_API_URL=https://burnlog.net
+3. Import Burnlog from @sxna/burnlog-sdk.
+4. Create one tracker with: const burnlog = Burnlog.fromEnv();
+5. After each provider response, call burnlog.trackResponse(response).
+6. If a response shape is custom, call burnlog.track({...}) manually.
+7. Run the existing tests/build and report every file changed.
 
 Do not attempt to install burnlog CLI hooks for Hermes. Hermes local log ingestion is not supported yet.
 ```
@@ -90,15 +95,13 @@ Then add this to your agent code:
 ```ts
 import { Burnlog } from "@sxna/burnlog-sdk";
 
-const burnlog = new Burnlog({
-  apiKey: process.env.BURNLOG_API_KEY!,
-  source: "my-agent",
-});
+const burnlog = Burnlog.fromEnv({ source: "my-agent" });
 
-// After any Anthropic API call:
+// After common provider responses:
+burnlog.trackResponse(response);
+
+// Provider-specific helpers still work too:
 burnlog.trackAnthropic(response);
-
-// After any OpenAI API call:
 burnlog.trackOpenAI(response);
 
 // Or track manually:

@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const DEFAULT_BASE = "https://burnlog.sxna.dev";
+const DEFAULT_BASE = "https://burnlog.net";
 
 const apiKey = process.env.BURNLOG_API_KEY;
 const baseUrl = (process.env.BURNLOG_API_URL ?? DEFAULT_BASE).replace(/\/$/, "");

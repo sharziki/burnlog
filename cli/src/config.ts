@@ -16,6 +16,7 @@ const DEFAULT_API_URL = "https://burnlog.net";
 
 const DEFAULTS: Config = {
   apiUrl: process.env.BURNLOG_API_URL ?? DEFAULT_API_URL,
+  apiKey: process.env.BURNLOG_API_KEY,
   claudeProjectsDir: join(homedir(), ".claude", "projects"),
 };
 
@@ -24,8 +25,9 @@ export function loadConfig(): Config {
   try {
     const raw = readFileSync(CONFIG_PATH, "utf8");
     const parsed = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Config>) };
-    // BURNLOG_API_URL env always wins over stored value.
+    // Env always wins over stored values.
     if (process.env.BURNLOG_API_URL) parsed.apiUrl = process.env.BURNLOG_API_URL;
+    if (process.env.BURNLOG_API_KEY) parsed.apiKey = process.env.BURNLOG_API_KEY;
     return parsed;
   } catch {
     return { ...DEFAULTS };
