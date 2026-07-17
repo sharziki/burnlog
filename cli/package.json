@@ -1,7 +1,29 @@
 {
-  "name": "burnlog",
-  "version": "1.0.0",
-  "description": "Track your AI token burn from Claude Code sessions",
+  "name": "@sxnalabs/burnlog",
+  "version": "0.2.0",
+  "description": "Private leaderboard for AI token burn. Tracks token usage from Claude Code, Codex, and other coding agents — tokens only, never prompts.",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "tokens",
+    "leaderboard",
+    "ai-agents",
+    "burnlog",
+    "sxna",
+    "anthropic",
+    "openai"
+  ],
+  "author": "Sharvil Saxena <sharvilsaxena@gmail.com> (https://github.com/sharziki)",
+  "license": "MIT",
+  "homepage": "https://github.com/sharziki/burnlog#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sharziki/burnlog.git",
+    "directory": "cli"
+  },
+  "bugs": {
+    "url": "https://github.com/sharziki/burnlog/issues"
+  },
   "bin": {
     "burnlog": "dist/index.js"
   },
@@ -21,9 +43,13 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

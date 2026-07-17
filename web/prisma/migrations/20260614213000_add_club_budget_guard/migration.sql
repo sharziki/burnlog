@@ -1,0 +1,1 @@
+ALTER TABLE "Club" ADD COLUMN "blockIngestOnBudget" BOOLEAN NOT NULL DEFAULT false;

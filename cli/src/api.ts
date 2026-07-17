@@ -8,6 +8,33 @@ export type IngestResponse = {
   error?: string;
 };
 
+export type RankResponse = {
+  ok: boolean;
+  username: string;
+  rank: string;
+  rankIcon: string;
+  totalTokens: number;
+  position: number;
+  totalUsers: number;
+};
+
+export type ClubBudget = {
+  id: string;
+  name: string;
+  slug: string;
+  monthlyTokens: number;
+  monthlyBudgetTokens: number;
+  monthlyBudgetUsedPct: number;
+  budgetStatus: "unset" | "ok" | "warning" | "over";
+};
+
+export type ClubsResponse = {
+  ok: boolean;
+  username: string | null;
+  clubs: ClubBudget[];
+  error?: string;
+};
+
 export async function ingest(
   apiUrl: string,
   apiKey: string,
@@ -30,4 +57,52 @@ export async function ingest(
   }
   if (!res.ok) throw new Error(data.error ?? `ingest failed: ${res.status}`);
   return data;
+}
+
+export async function fetchRank(
+  apiUrl: string,
+  apiKey: string,
+): Promise<RankResponse | null> {
+  try {
+    const res = await fetch(`${apiUrl}/api/me/rank`, {
+      headers: { authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as RankResponse;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchClubs(apiUrl: string, apiKey: string): Promise<ClubsResponse> {
+  const res = await fetch(`${apiUrl}/api/me/clubs`, {
+    headers: { authorization: `Bearer ${apiKey}` },
+  });
+  const text = await res.text();
+  let data: ClubsResponse;
+  try {
+    data = JSON.parse(text) as ClubsResponse;
+  } catch {
+    throw new Error(`clubs failed: ${res.status} ${text.slice(0, 200)}`);
+  }
+  if (!res.ok) throw new Error(data.error ?? `clubs failed: ${res.status}`);
+  return data;
+}
+
+export async function fetchClubReport(
+  apiUrl: string,
+  apiKey: string,
+  clubId: string,
+  opts: { from?: string; to?: string } = {},
+): Promise<string> {
+  const params = new URLSearchParams();
+  if (opts.from) params.set("from", opts.from);
+  if (opts.to) params.set("to", opts.to);
+  const query = params.toString();
+  const res = await fetch(`${apiUrl}/api/clubs/${clubId}/report${query ? `?${query}` : ""}`, {
+    headers: { authorization: `Bearer ${apiKey}` },
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`report failed: ${res.status} ${text.slice(0, 200)}`);
+  return text;
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "ApiKey" ADD COLUMN "monthlyBudgetTokens" INTEGER NOT NULL DEFAULT 0;

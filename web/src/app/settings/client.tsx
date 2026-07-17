@@ -5,14 +5,18 @@ import { useState } from "react";
 export function SettingsClient({
   username,
   name,
+  image,
   signOutAction,
 }: {
   username: string;
   name: string;
+  image: string | null;
   signOutAction: () => Promise<void>;
 }) {
   const [key, setKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
 
   async function createKey() {
     setLoading(true);
@@ -22,6 +26,25 @@ export function SettingsClient({
       if (data.key) setKey(data.key);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function deleteAccount() {
+    if (deleteConfirm !== "delete my account") return;
+    setDeleteStatus("deleting");
+    try {
+      const res = await fetch("/api/me/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: deleteConfirm }),
+      });
+      if (res.ok) {
+        window.location.href = "/";
+      } else {
+        setDeleteStatus("error");
+      }
+    } catch {
+      setDeleteStatus("error");
     }
   }
 
@@ -67,11 +90,24 @@ export function SettingsClient({
           marginBottom: 16,
         }}
       >
-        <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>
           signed in as
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{name}</div>
-        <div style={{ fontSize: 12, color: "#6B7280" }}>@{username}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {image && (
+            <img
+              src={image}
+              alt={username}
+              width={48}
+              height={48}
+              style={{ borderRadius: "50%", border: "2px solid #D9770644" }}
+            />
+          )}
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{name}</div>
+            <div style={{ fontSize: 12, color: "#6B7280" }}>@{username}</div>
+          </div>
+        </div>
       </div>
 
       <div
@@ -121,6 +157,63 @@ export function SettingsClient({
               copy this once — it won't be shown again
             </div>
             {key}
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          background: "#0A0A0A",
+          border: "1px solid #3F1D1D",
+          borderRadius: 14,
+          padding: 28,
+          marginTop: 16,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>Delete account</div>
+        <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
+          Permanently deletes your user profile, sessions, API keys, personal burn events, and teams you own. Type <code style={{ color: "#EF4444" }}>delete my account</code> to confirm.
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input
+            value={deleteConfirm}
+            onChange={(e) => {
+              setDeleteConfirm(e.target.value);
+              setDeleteStatus("idle");
+            }}
+            style={{
+              flex: 1,
+              minWidth: 220,
+              background: "#0D0D0D",
+              border: "1px solid #1F1F1F",
+              borderRadius: 6,
+              color: "#E4E4E7",
+              fontSize: 12,
+              padding: "10px 12px",
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          />
+          <button
+            onClick={deleteAccount}
+            disabled={deleteConfirm !== "delete my account" || deleteStatus === "deleting"}
+            style={{
+              padding: "10px 18px",
+              background: deleteConfirm === "delete my account" ? "#EF4444" : "transparent",
+              color: deleteConfirm === "delete my account" ? "#000" : "#6B7280",
+              border: "1px solid #3F1D1D",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: deleteStatus === "deleting" ? "wait" : "pointer",
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            {deleteStatus === "deleting" ? "deleting..." : "delete account"}
+          </button>
+        </div>
+        {deleteStatus === "error" && (
+          <div style={{ marginTop: 10, fontSize: 11, color: "#EF4444" }}>
+            Delete failed. Check your session and try again.
           </div>
         )}
       </div>

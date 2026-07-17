@@ -1,0 +1,1 @@
+ALTER TABLE "Club" ADD COLUMN "monthlyBudgetTokens" INTEGER NOT NULL DEFAULT 0;

@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -10,19 +10,30 @@ generator client {
 // ---------- Auth.js tables ----------
 
 model User {
-  id            String      @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String?
-  email         String?     @unique
+  email         String?   @unique
   emailVerified DateTime?
   image         String?
-  username      String?     @unique // github login
+  username      String?   @unique // github login
   bio           String?
-  createdAt     DateTime    @default(now())
+  github        String?
+  twitter       String?
+  website       String?
+  currentStreak Int       @default(0)
+  longestStreak Int       @default(0)
+  lastBurnDate  String? // "YYYY-MM-DD" UTC, for fast streak calc
+  createdAt     DateTime  @default(now())
 
-  accounts   Account[]
-  sessions   Session[]
-  apiKeys    ApiKey[]
-  burnEvents BurnEvent[]
+  accounts          Account[]
+  sessions          Session[]
+  apiKeys           ApiKey[]
+  burnEvents        BurnEvent[]
+  ownedClubs        Club[]             @relation("clubOwner")
+  clubMemberships   ClubMembership[]
+  clubAnnouncements ClubAnnouncement[]
+  notifications     Notification[]
+  clubAuditEvents   ClubAuditEvent[]
 }
 
 model Account {
@@ -64,14 +75,20 @@ model VerificationToken {
 // ---------- burnlog tables ----------
 
 model ApiKey {
-  id        String    @id @default(cuid())
-  userId    String
-  keyHash   String    @unique
-  label     String?
-  createdAt DateTime  @default(now())
-  lastUsed  DateTime?
+  id                  String    @id @default(cuid())
+  userId              String
+  clubId              String?
+  keyHash             String    @unique
+  label               String?
+  monthlyBudgetTokens Int       @default(0)
+  createdAt           DateTime  @default(now())
+  lastUsed            DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club       Club?       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  burnEvents BurnEvent[]
+
+  @@index([clubId])
 }
 
 /// Tokens-only burn event. Intentionally does NOT store project, cwd,
@@ -80,6 +97,8 @@ model ApiKey {
 model BurnEvent {
   id                  String   @id @default(cuid())
   userId              String
+  clubId              String?
+  apiKeyId            String?
   /// Dedupe key from the source CLI (e.g. Anthropic requestId, Codex rollout uuid).
   /// Random opaque ids only. Must be unique per (user, source).
   requestId           String
@@ -97,10 +116,117 @@ model BurnEvent {
   timestamp           DateTime
   createdAt           DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club   Club?   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  apiKey ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
 
   @@unique([userId, source, requestId])
   @@index([userId, timestamp])
+  @@index([clubId, timestamp])
+  @@index([apiKeyId])
   @@index([userId, source])
   @@index([userId, model])
+}
+
+// ---------- Clubs ----------
+
+model Club {
+  id                  String   @id @default(cuid())
+  name                String
+  slug                String   @unique
+  description         String?
+  image               String?
+  isPrivate           Boolean  @default(false)
+  inviteCode          String?  @unique
+  plan                String   @default("free")
+  monthlyBudgetTokens Int      @default(0)
+  blockIngestOnBudget Boolean  @default(false)
+  budgetWebhookUrl    String?
+  ownerId             String
+  createdAt           DateTime @default(now())
+
+  owner         User               @relation("clubOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  apiKeys       ApiKey[]
+  burnEvents    BurnEvent[]
+  memberships   ClubMembership[]
+  announcements ClubAnnouncement[]
+  auditEvents   ClubAuditEvent[]
+}
+
+model ClubAuditEvent {
+  id          String   @id @default(cuid())
+  clubId      String
+  actorUserId String?
+  actorType   String
+  action      String
+  meta        String?
+  createdAt   DateTime @default(now())
+
+  club      Club  @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  actorUser User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([clubId, createdAt])
+}
+
+model ClubAnnouncement {
+  id        String   @id @default(cuid())
+  clubId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([clubId, createdAt])
+}
+
+model ClubMembership {
+  id       String   @id @default(cuid())
+  clubId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+  @@index([userId])
+}
+
+// ---------- Notifications ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  /// Type tag for rendering: "rank_up" | "overtake" | "streak" | "milestone" | "welcome"
+  type      String
+  /// Human-readable notification body (plain text, max ~200 chars)
+  message   String
+  /// Optional JSON metadata (e.g. {"rank":"Blaze","icon":"●"} or {"by":"alice"})
+  meta      String?
+  /// Optional link target (e.g. "/u/alice", "/h2h/alice-vs-bob")
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+}
+
+// ---------- Sales ----------
+
+model TeamLead {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String?
+  company    String?
+  teamSize   String?
+  useCase    String?
+  source     String   @default("teams_page")
+  status     String   @default("new")
+  adminNotes String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

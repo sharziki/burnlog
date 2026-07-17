@@ -1,23 +1,53 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import { Nav } from "@/components/Nav";
+import { Footer } from "@/components/Footer";
 import "./globals.css";
 
-export const metadata = {
-  title: "burnlog",
-  description: "private leaderboard for AI token burn",
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "burnlog — private leaderboard for AI token burn",
+    template: "%s · burnlog",
+  },
+  description:
+    "Track every token you push through Claude Code, Codex, and other AI coding agents. Rank against friends. Private by default — we store tokens, not your prompts.",
+  openGraph: {
+    title: "burnlog — private leaderboard for AI token burn",
+    description:
+      "Track every token you push through Claude Code, Codex, and other AI coding agents.",
+    url: siteUrl,
+    siteName: "burnlog",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "burnlog — private leaderboard for AI token burn",
+    description:
+      "Track every token you push through Claude Code, Codex, and other AI coding agents.",
+    creator: "@sharziki",
+  },
+  icons: { icon: "/favicon.svg" },
+  manifest: "/manifest.json",
+  authors: [{ name: "Sharvil Saxena", url: "https://github.com/sharziki" }],
+  creator: "SXNA Labs",
+  publisher: "SXNA Labs",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="theme-color" content="#09090B" />
       </head>
-      <body>{children}</body>
+      <body>
+        <Nav />
+        {children}
+        <Footer />
+      </body>
     </html>
   );
 }

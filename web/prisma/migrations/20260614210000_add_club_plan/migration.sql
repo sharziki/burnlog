@@ -1,0 +1,1 @@
+ALTER TABLE "Club" ADD COLUMN "plan" TEXT NOT NULL DEFAULT 'free';
