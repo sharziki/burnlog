@@ -37,6 +37,11 @@ async function emit(n: Notify): Promise<void> {
   }
 }
 
+/** Emit a notification from outside this module (achievements, challenges). */
+export async function notifyUser(n: Notify): Promise<void> {
+  await emit(n);
+}
+
 // Dedupe guard: don't send the same notification type+key within a window.
 // This prevents spamming "you overtook X" on every sync batch.
 async function recentlyNotified(

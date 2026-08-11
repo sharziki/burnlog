@@ -150,10 +150,12 @@ const server = new McpServer(
   {
     capabilities: { tools: {} },
     instructions:
-      "burnlog — query your AI token burn and rank, and join orgs. Tools:\n" +
-      "  get_my_rank, get_my_stats, get_my_clubs, get_leaderboard, find_user, list_orgs, join_org.\n" +
+      "burnlog — query your AI token burn and rank, join orgs, and run challenges. Tools:\n" +
+      "  get_my_rank, get_my_stats, get_my_clubs, get_leaderboard, find_user, list_orgs, join_org,\n" +
+      "  get_my_challenges, create_challenge, join_challenge.\n" +
       "Use the read tools when the user asks about token usage, rank, team budgets, streak, or leaderboard comparisons.\n" +
-      "Use list_orgs to discover joinable orgs (teams/clubs) and join_org to join one (by slug; private orgs need an inviteCode).",
+      "Use list_orgs to discover joinable orgs (teams/clubs) and join_org to join one (by slug; private orgs need an inviteCode).\n" +
+      "Use create_challenge when the user wants to compete with someone — it returns a shareable invite link.",
   },
 );
 
@@ -402,6 +404,144 @@ server.registerTool(
     const name = org ? `${org.name} (${org.slug})` : args.slug;
     if (data.alreadyMember) return textResult(`already a member of ${name}`);
     return textResult(`joined ${name}`);
+  },
+);
+
+// ---------- Challenges ----------
+
+type ChallengeStanding = {
+  userId: string;
+  username: string;
+  score: number;
+  tokens: number;
+  qualified: boolean;
+  note: string | null;
+  place: number;
+};
+
+type ChallengeEntry = {
+  id: string;
+  name: string;
+  type: string;
+  typeLabel: string;
+  unit: string;
+  inviteCode: string;
+  hostUsername: string;
+  status: "upcoming" | "active" | "ended";
+  msRemaining: number;
+  standings: ChallengeStanding[];
+  winnerUsername: string | null;
+};
+
+type ChallengesResponse = {
+  ok: boolean;
+  mine: ChallengeEntry[];
+  open: ChallengeEntry[];
+};
+
+type CreateChallengeResponse = {
+  ok: boolean;
+  challenge: { id: string; name: string; type: string; inviteCode: string; url: string };
+};
+
+function remaining(ms: number): string {
+  if (ms <= 0) return "ended";
+  const hours = Math.floor(ms / 3_600_000);
+  const days = Math.floor(hours / 24);
+  return days > 0 ? `${days}d ${hours % 24}h left` : `${hours}h left`;
+}
+
+function renderChallenge(c: ChallengeEntry): string {
+  const lines = [
+    `${c.name} — ${c.typeLabel} · ${c.status === "ended" ? "settled" : remaining(c.msRemaining)}`,
+    `  ${baseUrl}/c/${c.inviteCode}`,
+  ];
+  for (const s of c.standings.slice(0, 8)) {
+    const marker = c.status === "ended" && s.username === c.winnerUsername ? "*" : `${s.place}.`;
+    const score = s.qualified
+      ? `${Math.round(s.score).toLocaleString()} ${c.unit}`
+      : (s.note ?? "not qualified");
+    lines.push(`  ${marker} @${s.username.padEnd(18)} ${score}  (${formatTokens(s.tokens)})`);
+  }
+  return lines.join("\n");
+}
+
+server.registerTool(
+  "get_my_challenges",
+  {
+    description:
+      "List the burnlog challenges the current user is in, with live standings, plus challenges open to join. Use when the user asks 'am I winning', 'how's my sprint going', or 'what challenges am I in'.",
+    inputSchema: {},
+  },
+  async () => {
+    const data = await apiGet<ChallengesResponse>("/api/challenges");
+    const parts: string[] = [];
+    if (data.mine.length) {
+      parts.push("your challenges:");
+      parts.push(data.mine.map(renderChallenge).join("\n\n"));
+    } else {
+      parts.push("you're not in any challenges — use create_challenge to start one");
+    }
+    if (data.open.length) {
+      parts.push("");
+      parts.push("open to join:");
+      parts.push(
+        data.open
+          .slice(0, 5)
+          .map((c) => `  ${c.name} (${c.typeLabel}) — ${baseUrl}/c/${c.inviteCode}`)
+          .join("\n"),
+      );
+    }
+    return textResult(parts.join("\n"));
+  },
+);
+
+server.registerTool(
+  "create_challenge",
+  {
+    description:
+      "Start a burnlog challenge and get a shareable invite link. Use when the user wants to compete with someone on token burn.",
+    inputSchema: {
+      name: z.string().min(1).max(60).describe("Challenge name, e.g. 'Weekend Sprint'."),
+      type: z
+        .enum(["sprint", "efficiency", "provider", "streak", "cost-cap"])
+        .default("sprint")
+        .describe(
+          "sprint = most tokens wins; efficiency = fewest tokens/call; provider = highest share on one provider; streak = first to a target streak; cost-cap = most calls under a token budget.",
+        ),
+      days: z
+        .number()
+        .int()
+        .optional()
+        .describe("Duration in days. Must be valid for the type (sprint: 3/7/14/30)."),
+      provider: z
+        .enum(["anthropic", "openai", "google", "other"])
+        .optional()
+        .describe("Target provider, for type=provider."),
+      targetStreak: z.number().int().optional().describe("Target streak days, for type=streak."),
+      budgetTokens: z.number().int().optional().describe("Token ceiling, for type=cost-cap."),
+    },
+  },
+  async (args) => {
+    const data = await apiPost<CreateChallengeResponse>("/api/challenges", args);
+    return textResult(
+      `created "${data.challenge.name}"\nshare: ${baseUrl}/c/${data.challenge.inviteCode}`,
+    );
+  },
+);
+
+server.registerTool(
+  "join_challenge",
+  {
+    description: "Join a burnlog challenge using its invite code or a pasted invite URL.",
+    inputSchema: {
+      code: z.string().min(1).max(200).describe("Invite code, or the full /c/<code> URL."),
+    },
+  },
+  async (args) => {
+    const code = args.code.replace(/^.*\/c\//, "").replace(/[^a-z0-9]/gi, "");
+    await apiPost<{ ok: boolean }>(`/api/challenges/${code}/join`, {});
+    return textResult(`joined — ${baseUrl}/c/${code}`);
   },
 );
 

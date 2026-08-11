@@ -10,6 +10,7 @@ import {
   checkStreakMilestone,
   checkClubBudgetAlerts,
 } from "@/lib/notifications";
+import { evaluateAndNotify } from "@/lib/achievements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +49,7 @@ const WINDOW_MS = 60_000;
 function monthStartUtc(now = new Date()): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
+
 
 function err(status: number, code: string, message: string) {
   return NextResponse.json({ ok: false, error: code, message }, { status });
@@ -297,6 +299,7 @@ export async function POST(req: Request) {
       checkMilestone(keyRow.userId, oldTotal, newTotal),
       checkStreakMilestone(keyRow.userId, oldStreak, newStreak),
       checkClubBudgetAlerts(keyRow.userId),
+      evaluateAndNotify(keyRow.userId),
     ]);
   }
 

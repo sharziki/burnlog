@@ -4,7 +4,9 @@ import { prisma } from "@/lib/db";
 import { getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
-import { ProfileClient } from "./ProfileClient";
+import { getAchievements } from "@/lib/achievements";
+import { getUserChallenges } from "@/lib/challenges";
+import { ProfileClient, type ProfileChallenge } from "./ProfileClient";
 
 export const dynamic = "force-dynamic";
 
@@ -38,13 +40,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${siteUrl}/u/${username}`,
       siteName: "burnlog",
       type: "profile",
-      images: user.image ? [{ url: user.image, width: 256, height: 256 }] : undefined,
+      images: [{ url: `${siteUrl}/og/u/${username}`, width: 1200, height: 630 }],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: user.image ? [user.image] : undefined,
+      images: [`${siteUrl}/og/u/${username}`],
     },
   };
 }
@@ -57,8 +59,33 @@ export default async function ProfilePage({ params }: Props) {
   });
   if (!user) notFound();
 
-  const stats = await getUserStats(user.id);
+  const [stats, achievements, entered] = await Promise.all([
+    getUserStats(user.id),
+    getAchievements(user.id),
+    getUserChallenges(user.id),
+  ]);
   if (!stats) notFound();
 
-  return <ProfileClient user={stats} joinedAt={user.createdAt.toISOString()} />;
+  const challenges: ProfileChallenge[] = entered.map((c) => {
+    const mine = c.standings.find((s) => s.userId === user.id);
+    return {
+      id: c.id,
+      inviteCode: c.inviteCode,
+      name: c.name,
+      typeLabel: c.typeLabel,
+      icon: c.icon,
+      place: mine?.place ?? 0,
+      won: c.winnerUsername === username,
+      ended: c.status === "ended",
+    };
+  });
+
+  return (
+    <ProfileClient
+      user={stats}
+      joinedAt={user.createdAt.toISOString()}
+      achievements={achievements.map((a) => a.key)}
+      challenges={challenges}
+    />
+  );
 }

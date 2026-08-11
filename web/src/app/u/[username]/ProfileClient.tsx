@@ -3,10 +3,11 @@
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
+import { ACHIEVEMENTS, TIER_COLOR } from "@/lib/achievements";
 import type { UserStats } from "@/lib/stats";
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS = '"Instrument Sans", system-ui, -apple-system, sans-serif';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
 const DOLLARS_PER_TOKEN = dollarsPerToken();
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -129,7 +130,29 @@ function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
   );
 }
 
-export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: string }) {
+export type ProfileChallenge = {
+  id: string;
+  inviteCode: string;
+  name: string;
+  typeLabel: string;
+  icon: string;
+  place: number;
+  won: boolean;
+  ended: boolean;
+};
+
+export function ProfileClient({
+  user,
+  joinedAt,
+  achievements,
+  challenges,
+}: {
+  user: UserStats;
+  joinedAt: string;
+  achievements: string[];
+  challenges: ProfileChallenge[];
+}) {
+  const unlockedKeys = new Set(achievements);
   const rank = getRank(user.totalTokens);
   const spend = user.totalTokens * DOLLARS_PER_TOKEN;
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
@@ -396,6 +419,82 @@ export function ProfileClient({ user, joinedAt }: { user: UserStats; joinedAt: s
             )}
           </div>
         </div>
+
+        {/* ─── Trophy case ─── */}
+        <div style={{ marginTop: 20, background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: MONO }}>
+              ACHIEVEMENTS
+            </span>
+            <span style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO }}>
+              {unlockedKeys.size} / {ACHIEVEMENTS.length}
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: 8 }}>
+            {ACHIEVEMENTS.map((a) => {
+              const earned = unlockedKeys.has(a.key);
+              const color = TIER_COLOR[a.tier];
+              return (
+                <div
+                  key={a.key}
+                  title={earned ? a.name : `Locked — ${a.how}`}
+                  style={{
+                    border: `1px solid ${earned ? color + "44" : "#18181B"}`,
+                    background: earned ? color + "0D" : "transparent",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    opacity: earned ? 1 : 0.62,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: earned ? color : "#3F3F46", fontSize: 15, fontFamily: MONO }}>{a.icon}</span>
+                    <span style={{ fontSize: 12, color: earned ? "#FAFAFA" : "#52525B", fontWeight: 600 }}>{a.name}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO, marginTop: 5, lineHeight: 1.4 }}>
+                    {earned ? a.tier : a.how}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ─── Challenge record ─── */}
+        {challenges.length > 0 && (
+          <div style={{ marginTop: 20, background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
+            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
+              CHALLENGES
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {challenges.map((c) => (
+                <a
+                  key={c.id}
+                  href={`/c/${c.inviteCode}`}
+                  className="hover-lift"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    border: "1px solid #18181B",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    textDecoration: "none",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ color: c.won ? "#D97706" : "#3F3F46", fontFamily: MONO, fontSize: 13 }}>
+                    {c.won ? "★" : c.icon}
+                  </span>
+                  <span style={{ color: "#E4E4E7", fontSize: 13 }}>{c.name}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: "#52525B" }}>{c.typeLabel}</span>
+                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 10, color: c.ended ? "#52525B" : "#10B981" }}>
+                    {c.ended ? (c.won ? "won" : `#${c.place}`) : "live"}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ─── Badge Embed ─── */}
         <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>

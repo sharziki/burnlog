@@ -34,6 +34,10 @@ model User {
   clubAnnouncements ClubAnnouncement[]
   notifications     Notification[]
   clubAuditEvents   ClubAuditEvent[]
+  achievements      Achievement[]
+  hostedChallenges  Challenge[]        @relation("challengeHost")
+  wonChallenges     Challenge[]        @relation("challengeWinner")
+  challengeEntries  ChallengeEntry[]
 }
 
 model Account {
@@ -213,6 +217,72 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt])
+}
+
+// ---------- Challenges ----------
+
+/// A time-boxed competition between users. Scoring is derived from BurnEvent
+/// rows inside [startsAt, endsAt) — nothing is written per-event, so a
+/// challenge costs nothing to run and can never disagree with the leaderboard.
+model Challenge {
+  id          String    @id @default(cuid())
+  name        String
+  /// "sprint" | "efficiency" | "provider" | "streak" | "cost-cap"
+  type        String
+  hostId      String
+  /// Short, URL-safe join code. The invite link is the growth loop.
+  inviteCode  String    @unique
+  /// Type-specific settings as JSON, e.g. {"provider":"anthropic"},
+  /// {"targetStreak":14}, {"budgetTokens":1000000}. Null for "sprint".
+  config      String?
+  startsAt    DateTime
+  endsAt      DateTime
+  /// "active" | "ended". Settled lazily on read, so no cron is required.
+  status      String    @default("active")
+  winnerId    String?
+  settledAt   DateTime?
+  /// Set when this challenge was created via the "rematch" button.
+  rematchOfId String?
+  createdAt   DateTime  @default(now())
+
+  host    User             @relation("challengeHost", fields: [hostId], references: [id], onDelete: Cascade)
+  winner  User?            @relation("challengeWinner", fields: [winnerId], references: [id], onDelete: SetNull)
+  entries ChallengeEntry[]
+
+  @@index([status, endsAt])
+  @@index([hostId])
+}
+
+model ChallengeEntry {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  joinedAt    DateTime @default(now())
+  /// Frozen standings, written once when the challenge settles.
+  finalScore  Float?
+  finalPlace  Int?
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+}
+
+// ---------- Achievements ----------
+
+/// One row per unlocked achievement. `key` is a stable id from the catalog
+/// in lib/achievements.ts — the display metadata lives in code, not the DB.
+model Achievement {
+  id         String   @id @default(cuid())
+  userId     String
+  key        String
+  unlockedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 // ---------- Sales ----------
