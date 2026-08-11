@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "//vercel-build": "Vercel prefers this over `build`. Migrations run on deploy so the schema is always ahead of the code that needs it; local `build` stays offline-safe.",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "prisma migrate dev",
