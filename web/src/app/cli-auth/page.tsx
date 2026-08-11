@@ -3,7 +3,7 @@ import { CliAuthClient } from "./CliAuthClient";
 
 export const dynamic = "force-dynamic";
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 function parsePort(value: string | undefined): number | null {
   if (!value) return null;

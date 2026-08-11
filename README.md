@@ -34,27 +34,72 @@ directories**. See [privacy model](web/src/app/privacy/page.tsx) for exactly
 what we do and don't store, and [security posture](web/src/app/security/page.tsx)
 for deployment and control details.
 
-## Three ways to plug in
+## Start here
 
-Pick the one that matches how your tokens are produced.
+```bash
+npx @sxnalabs/burnlog
+```
 
-| You have…                           | Use              | Package              |
-| ----------------------------------- | ---------------- | -------------------- |
-| Claude Code, Codex, or similar CLI  | **CLI**          | `@sxnalabs/burnlog`  |
-| Your own agent calling an LLM SDK   | **SDK**          | `@sxna/burnlog-sdk`  |
-| Claude Code / Cursor and want to ask it about your rank | **MCP server** | `@sxna/burnlog-mcp` |
+That's the whole thing. It finds your agents, shows you your own numbers
+*before* asking for anything, signs you in through the browser, uploads, and
+offers to auto-sync from then on. No config file, no account-first wall.
+
+## Four ways to plug in
+
+Pick whichever matches how your tokens are produced — most people need one.
+
+| You have…                                               | Use            | Package             |
+| ------------------------------------------------------- | -------------- | ------------------- |
+| Claude Code, Codex, or similar CLI                       | **CLI**        | `@sxnalabs/burnlog` |
+| Any other tool, or one that keeps no usage log           | **wrap**       | `@sxnalabs/burnlog` |
+| Your own agent calling an LLM SDK                        | **SDK**        | `@sxna/burnlog-sdk` |
+| Claude Code / Cursor and want to ask it about your rank  | **MCP server** | `@sxna/burnlog-mcp` |
 
 ### CLI — for agents that write logs to disk
 
 ```bash
 npm install -g @sxnalabs/burnlog
-burnlog login <api-key>      # grab one at https://burnlog.sxna.dev/settings
+burnlog                      # scan, sign in, sync, install the hook
 burnlog install              # auto-sync on every Claude Code session end
 ```
 
 Reads `~/.claude/projects/*/*.jsonl`, `~/.codex/sessions/**/*.jsonl`, etc.
 Nothing besides token counts leaves your machine. Run `burnlog sync` any
 time, or `burnlog daemon` for a background watcher. See [cli/README](cli/README.md).
+
+### wrap — for everything that *doesn't* write a usage log
+
+Cursor, Gemini CLI, aider, your own scripts: plenty of tools never write token
+counts to disk. `wrap` counts them at the wire instead.
+
+```bash
+burnlog wrap -- aider
+burnlog wrap -- python my_agent.py
+burnlog wrap --only anthropic,openai -- npm run agent
+burnlog wrap --list          # every provider it knows
+```
+
+It runs your command with the usual base-URL environment variables
+(`ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`, …) pointed
+at a loopback proxy, forwards each request upstream untouched, and reads the
+`usage` block out of the response — streaming or not.
+
+Covers Anthropic, OpenAI, Google, Mistral, Cohere, OpenRouter, Groq, xAI,
+DeepSeek, Together, Fireworks, Perplexity, Cerebras, and Ollama. Anything else
+speaking an OpenAI-compatible API works through `OPENAI_BASE_URL`.
+
+**No certificates involved.** burnlog deliberately does *not* MITM your HTTPS
+traffic — no local CA to install or trust. The request body is never inspected
+beyond reading `model` when the response doesn't name it.
+
+Events land in `~/.burnlog/events/*.jsonl` first, so a wrapped command keeps
+counting with no network and no API key. `burnlog sync` uploads them later.
+That file is also the open extension point — append a line from any language
+and it syncs:
+
+```bash
+burnlog log 42000 --model claude-opus-4-6 --source my-batch-job
+```
 
 ### SDK — for your own agents
 
@@ -92,10 +137,56 @@ Drop this into `~/.claude.json` (Claude Code) or `.cursor/mcp.json`:
 }
 ```
 
-Then ask your agent *"what's my rank"*, *"which team is over budget"*, or
-*"who's top of the leaderboard"*. Tools: `get_my_rank`, `get_my_stats`,
-`get_my_clubs`, `get_leaderboard`, `find_user`. See
-[mcp/README](mcp/README.md).
+Then ask your agent *"what's my rank"*, *"which team is over budget"*,
+*"who's top of the leaderboard"*, or *"start a weekend sprint against @kai"*.
+Tools: `get_my_rank`, `get_my_stats`, `get_my_clubs`, `get_leaderboard`,
+`find_user`, `list_orgs`, `join_org`, `get_my_challenges`, `create_challenge`,
+`join_challenge`. See [mcp/README](mcp/README.md).
+
+## Challenges
+
+A challenge is a window plus a scoring rule. Nothing is written per burn event,
+so standings can never disagree with the leaderboard and a challenge costs
+nothing to run. They settle themselves the first time anyone loads the page
+after the clock runs out — no cron, no queue.
+
+```bash
+burnlog challenge new "Weekend Sprint" --type sprint --days 3
+burnlog challenge join <code>
+burnlog challenge                      # live standings in the terminal
+```
+
+| Type                    | Metric                    | Wins    | Durations   |
+| ----------------------- | ------------------------- | ------- | ----------- |
+| `sprint`                | tokens burned             | highest | 3/7/14/30d  |
+| `efficiency`            | tokens per call (20+ calls) | lowest  | 7/14d       |
+| `provider`              | % of burn on one provider | highest | 7/14d       |
+| `streak`                | consecutive burn days     | highest | 14/30/60d   |
+| `cost-cap`              | calls under a token budget | highest | 7/14d       |
+
+Every challenge has a shareable link at `/c/<code>` with a live countdown, an
+OG card, and a rematch button that carries the roster over.
+
+## Achievements
+
+Thirteen unlockables, from **First Burn** to **Billion Club**, shown as a
+trophy case on every profile. They're recomputed from `BurnEvent` rather than
+counted incrementally, so they can't drift, and adding a new one to
+`web/src/lib/achievements.ts` backfills it for everybody automatically.
+
+## Embeds
+
+```md
+![burnlog](https://burnlog.net/badge/<username>)
+```
+
+```html
+<script src="https://burnlog.net/widget.js" data-user="<username>"></script>
+```
+
+The badge is an SVG in the shields.io house style; the widget is a dependency-free
+card (~4KB) with a 7-day sparkline that works on any site, light or dark. Profile
+and challenge links unfurl into generated OG cards on X, Slack, Discord, and iMessage.
 
 ## Team budget API
 

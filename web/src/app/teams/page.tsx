@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: "burnlog for engineering teams tracking AI coding spend and usage.",
 };
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS = '"Instrument Sans", system-ui, -apple-system, sans-serif';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
 
 const features = [
   ["Private workspaces", "Invite-only teams for engineering, FinOps, platform, or agency groups."],

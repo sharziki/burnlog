@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     "burnlog's privacy model — what we store, what we don't, and why.",
 };
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 export default function PrivacyPage() {
   return (

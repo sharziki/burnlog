@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: "burnlog terms of service.",
 };
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 export default function TermsPage() {
   return (

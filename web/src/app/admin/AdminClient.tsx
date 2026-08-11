@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS = '"Instrument Sans", system-ui, -apple-system, sans-serif';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
 const STATUSES = ["new", "contacted", "qualified", "pilot", "won", "lost"];
 const PLANS = ["free", "team", "enterprise"];
 

@@ -1,0 +1,604 @@
+"use client";
+
+import { useState } from "react";
+import { BurnMark } from "./Logo";
+import { RANKS } from "@/lib/ranks";
+import { formatTokens } from "@/lib/format";
+
+/**
+ * The logged-out landing page.
+ *
+ * Kept out of Burnlog.tsx deliberately: that component is the *product*
+ * (leaderboard, clubs, h2h) and is already large. Marketing copy and product
+ * chrome change for different reasons and shouldn't share a file.
+ */
+
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
+
+const INSTALL = "npx @sxnalabs/burnlog";
+
+export type LandingStats = {
+  totalBurned: number;
+  weeklyTotal: number;
+  activeUsers: number;
+};
+
+export function Landing({
+  stats,
+  signInAction,
+}: {
+  stats: LandingStats;
+  signInAction?: () => Promise<void>;
+}) {
+  return (
+    <div style={{ fontFamily: SANS }}>
+      <Hero stats={stats} signInAction={signInAction} />
+      <Compatibility />
+      <HowItWorks />
+      <Competition />
+      <Privacy />
+      <Embeds />
+      <FinalCta signInAction={signInAction} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- hero --- */
+
+function Hero({
+  stats,
+  signInAction,
+}: {
+  stats: LandingStats;
+  signInAction?: () => Promise<void>;
+}) {
+  return (
+    <section style={{ position: "relative", padding: "72px 0 64px", overflow: "hidden" }}>
+      <Embers />
+      <div style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(300px,0.85fr)", gap: 56, alignItems: "center" }} className="landing-hero">
+        <div>
+          <div style={{ ...eyebrow, marginBottom: 20 }}>The leaderboard for the inference age</div>
+
+          <h1 style={{ fontSize: 60, fontWeight: 800, letterSpacing: -2.4, lineHeight: 1.02, color: "#FAFAFA", margin: 0 }}>
+            See how hard you
+            <br />
+            ship with AI.
+          </h1>
+
+          <p style={{ fontSize: 17, color: "#A1A1AA", lineHeight: 1.65, margin: "22px 0 0", maxWidth: 500 }}>
+            Every token your agents burn — Claude Code, Codex, Cursor, your own — counted,
+            ranked, and put on a board against everyone else plugged in.
+            Tokens only. Your prompts never leave your machine.
+          </p>
+
+          <div style={{ marginTop: 30 }}>
+            <InstallLine />
+          </div>
+
+          <div style={{ display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap", alignItems: "center" }}>
+            {signInAction && (
+              <form action={signInAction}>
+                <button type="submit" className="btn-primary" style={primaryBtn}>
+                  <GitHubGlyph />
+                  Sign in with GitHub
+                </button>
+              </form>
+            )}
+            <a href="#leaderboard" style={ghostBtn}>
+              See the board
+            </a>
+          </div>
+
+          <div style={{ marginTop: 22, fontFamily: MONO, fontSize: 11, color: "#3F3F46" }}>
+            free · open-source CLI · no card
+          </div>
+        </div>
+
+        <RankLadder stats={stats} />
+      </div>
+
+      {stats.totalBurned > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12, marginTop: 52 }} className="landing-proof">
+          {[
+            ["tokens burned", formatTokens(stats.totalBurned)],
+            ["this week", formatTokens(stats.weeklyTotal)],
+            ["burners", String(stats.activeUsers)],
+          ].map(([label, value]) => (
+            <div key={label} style={{ ...card, padding: "18px 20px" }}>
+              <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700, color: "#F59E0B", letterSpacing: -0.5 }}>
+                {value}
+              </div>
+              <div style={{ ...eyebrow, color: "#52525B", marginTop: 6 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RankLadder({ stats }: { stats: LandingStats }) {
+  return (
+    <div style={{ ...card, padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <span style={eyebrow}>the ranks</span>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: "#3F3F46" }}>climb ↑</span>
+      </div>
+      {[...RANKS].reverse().map((r, i) => (
+        <div
+          key={r.name}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "11px 0",
+            borderTop: i === 0 ? "none" : "1px solid #141416",
+          }}
+        >
+          <span style={{ fontFamily: MONO, fontSize: 17, color: r.color, width: 22, textAlign: "center" }}>
+            {r.icon}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#E4E4E7", flex: 1 }}>{r.name}</span>
+          <span style={{ fontFamily: MONO, fontSize: 11, color: "#52525B" }}>
+            {r.min === 0 ? "0" : formatTokens(r.min) + "+"}
+          </span>
+        </div>
+      ))}
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #18181B", fontFamily: MONO, fontSize: 11, color: "#52525B", textAlign: "center" }}>
+        most devs land in{" "}
+        <span style={{ color: "#D97706", fontWeight: 700 }}>Blaze</span> their first week
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------- compatibility --- */
+
+/** Named explicitly, because "does it work with my thing" is the first question. */
+const TOOLS = [
+  "Claude Code",
+  "Codex",
+  "Cursor",
+  "Gemini CLI",
+  "aider",
+  "Copilot",
+  "Cline",
+  "opencode",
+  "your own agents",
+];
+
+const PROVIDERS = [
+  "Anthropic",
+  "OpenAI",
+  "Google",
+  "Mistral",
+  "Cohere",
+  "OpenRouter",
+  "Groq",
+  "xAI",
+  "DeepSeek",
+  "Together",
+  "Fireworks",
+  "Perplexity",
+  "Cerebras",
+  "Ollama",
+];
+
+function Compatibility() {
+  return (
+    <Section eyebrowText="works with what you already run" title="If it burns tokens, burnlog counts it.">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">
+        <div style={{ ...card, padding: 24 }}>
+          <div style={{ ...eyebrow, marginBottom: 14 }}>agents — read from local logs</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {TOOLS.map((t) => (
+              <span key={t} style={chip}>
+                {t}
+              </span>
+            ))}
+          </div>
+          <p style={bodyText}>
+            Tools that keep a usage log are read straight off disk. Nothing but token
+            counts and a random id ever gets uploaded.
+          </p>
+        </div>
+
+        <div style={{ ...card, padding: 24 }}>
+          <div style={{ ...eyebrow, marginBottom: 14 }}>providers — counted at the wire</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {PROVIDERS.map((p) => (
+              <span key={p} style={chip}>
+                {p}
+              </span>
+            ))}
+          </div>
+          <p style={bodyText}>
+            Everything else runs under{" "}
+            <code style={inlineCode}>burnlog wrap</code>, which counts calls no log file
+            ever sees. No certificates, no HTTPS interception.
+          </p>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* -------------------------------------------------------- how it works --- */
+
+function HowItWorks() {
+  const steps = [
+    {
+      n: "01",
+      title: "Run one command",
+      code: INSTALL,
+      body: "Finds your agents, shows your numbers, signs you in, syncs. No config file, no account-first wall.",
+    },
+    {
+      n: "02",
+      title: "Catch everything else",
+      code: "burnlog wrap -- <anything>",
+      body: "Counts any LLM call from any tool across 14 providers, even when there's no log to read.",
+    },
+    {
+      n: "03",
+      title: "Settle it",
+      code: "burnlog challenge new",
+      body: "Sprints, streak races, head-to-heads. Share one link and let the numbers argue.",
+    },
+  ];
+  return (
+    <Section eyebrowText="setup" title="Sixty seconds, then never think about it again.">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 }} className="landing-three">
+        {steps.map((s) => (
+          <div key={s.n} style={{ ...card, padding: 24 }} className="hover-lift">
+            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: "#D97706", letterSpacing: 2, marginBottom: 12 }}>
+              {s.n}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA", marginBottom: 12 }}>{s.title}</div>
+            <div style={codeBlock}>
+              <span style={{ color: "#3F3F46" }}>$ </span>
+              {s.code}
+            </div>
+            <p style={{ ...bodyText, marginTop: 12 }}>{s.body}</p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* --------------------------------------------------------- competition --- */
+
+function Competition() {
+  const features = [
+    {
+      title: "Challenges",
+      body: "Token sprints, efficiency gauntlets, provider locks, streak races, cost caps. One invite link, live standings, automatic settlement, and a rematch button.",
+      href: "/challenges",
+      cta: "Browse challenges",
+    },
+    {
+      title: "Achievements",
+      body: "Thirteen unlockables from First Burn to Billion Club, earned from real usage and displayed as a trophy case on your profile.",
+    },
+    {
+      title: "Clubs",
+      body: "Private leaderboards for your team, batch, or group chat — with shared budgets, alerts, and CSV exports when finance asks.",
+      href: "/teams",
+      cta: "burnlog for teams",
+    },
+    {
+      title: "Head-to-head",
+      body: "Put any two burners side by side across total, weekly, streak, and efficiency. Winner decided by category count.",
+    },
+  ];
+  return (
+    <Section eyebrowText="the fun part" title="Tracking is the excuse. Competing is the point.">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">
+        {features.map((f) => (
+          <div key={f.title} style={{ ...card, padding: 24 }} className="hover-lift">
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#FAFAFA" }}>{f.title}</div>
+            <p style={bodyText}>{f.body}</p>
+            {f.href && (
+              <a href={f.href} style={{ ...linkText, display: "inline-block", marginTop: 12 }}>
+                {f.cta} →
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ------------------------------------------------------------- privacy --- */
+
+function Privacy() {
+  return (
+    <Section eyebrowText="privacy" title="We store token counts. That's the whole list.">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">
+        <div style={{ ...card, padding: 24, borderColor: "#14301F" }}>
+          <div style={{ ...eyebrow, color: "#10B981", marginBottom: 14 }}>what we store</div>
+          {["token counts", "model name", "which agent", "a random dedupe id", "a timestamp"].map((x) => (
+            <Row key={x} mark="+" color="#10B981" text={x} />
+          ))}
+        </div>
+        <div style={{ ...card, padding: 24, borderColor: "#3A1616" }}>
+          <div style={{ ...eyebrow, color: "#EF4444", marginBottom: 14 }}>what we never touch</div>
+          {["prompts or completions", "file names or contents", "project or repo names", "working directories", "session ids"].map((x) => (
+            <Row key={x} mark="−" color="#EF4444" text={x} />
+          ))}
+        </div>
+      </div>
+      <p style={{ ...bodyText, marginTop: 16 }}>
+        The CLI is MIT-licensed and{" "}
+        <a href="https://github.com/sharziki/burnlog" target="_blank" rel="noopener noreferrer" style={linkText}>
+          open source
+        </a>{" "}
+        — read exactly what it sends before you run it. Or{" "}
+        <a href="/privacy" style={linkText}>
+          read the privacy model
+        </a>
+        .
+      </p>
+    </Section>
+  );
+}
+
+function Row({ mark, color, text }: { mark: string; color: string; text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
+      <span style={{ fontFamily: MONO, fontSize: 13, color, width: 12 }}>{mark}</span>
+      <span style={{ fontFamily: MONO, fontSize: 12.5, color: "#A1A1AA" }}>{text}</span>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------- embeds --- */
+
+function Embeds() {
+  return (
+    <Section eyebrowText="show it off" title="A badge that updates itself.">
+      <div style={{ ...card, padding: 28, display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 300px", minWidth: 0 }}>
+          <p style={{ ...bodyText, marginTop: 0 }}>
+            Drop your rank into a GitHub README, a portfolio, or anywhere else people
+            look at your work. Profile and challenge links unfurl into generated cards
+            on X, Slack, Discord, and iMessage.
+          </p>
+          <div style={{ ...codeBlock, marginTop: 14 }}>![burnlog](burnlog.net/badge/you)</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
+          <FakeBadge rank="Supernova" color="#A855F7" icon="✦" tokens="1.2B" />
+          <FakeBadge rank="Inferno" color="#DC2626" icon="◉" tokens="8.4M" />
+          <FakeBadge rank="Blaze" color="#D97706" icon="●" tokens="1.1M" />
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function FakeBadge({ rank, color, icon, tokens }: { rank: string; color: string; icon: string; tokens: string }) {
+  return (
+    <span style={{ display: "flex", fontFamily: MONO, fontSize: 11, borderRadius: 4, overflow: "hidden" }}>
+      <span style={{ background: "#1A1A2E", color: "#fff", padding: "4px 9px" }}>burnlog</span>
+      <span style={{ background: color, color: "#09090B", padding: "4px 9px", fontWeight: 700 }}>
+        {icon} {rank} · {tokens}
+      </span>
+    </span>
+  );
+}
+
+/* ----------------------------------------------------------- final cta --- */
+
+function FinalCta({ signInAction }: { signInAction?: () => Promise<void> }) {
+  return (
+    <section style={{ padding: "16px 0 72px" }}>
+      <div style={{ ...card, padding: 44, textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <span className="flame-idle" style={{ display: "flex" }}>
+            <BurnMark size={44} ground="#0C0C0E" gradientId="cta-mark" />
+          </span>
+        </div>
+        <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: -1.2, color: "#FAFAFA", margin: 0 }}>
+          Your burn is already happening.
+        </h2>
+        <p style={{ fontSize: 15, color: "#71717A", margin: "12px auto 0", maxWidth: 440, lineHeight: 1.6 }}>
+          It may as well count for something. One command and you&apos;re on the board.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 26, flexWrap: "wrap" }}>
+          <div style={{ display: "flex" }}>
+            <InstallLine />
+          </div>
+          {signInAction && (
+            <form action={signInAction}>
+              <button type="submit" className="btn-primary" style={primaryBtn}>
+                <GitHubGlyph />
+                Sign in with GitHub
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------- parts --- */
+
+function Section({
+  eyebrowText,
+  title,
+  children,
+}: {
+  eyebrowText: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section style={{ padding: "56px 0", borderTop: "1px solid #131316" }}>
+      <div style={eyebrow}>{eyebrowText}</div>
+      <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: -1.2, color: "#FAFAFA", margin: "12px 0 28px", maxWidth: 640, lineHeight: 1.12 }}>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function InstallLine() {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(INSTALL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard blocked — the command is visible and selectable anyway.
+    }
+  }
+  return (
+    <button onClick={copy} className="hover-lift" aria-label={`Copy "${INSTALL}"`} style={installBtn}>
+      <span style={{ color: "#3F3F46" }}>$</span>
+      <span>{INSTALL}</span>
+      <span style={{ marginLeft: 6, fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: copied ? "#10B981" : "#52525B" }}>
+        {copied ? "copied" : "copy"}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Deterministic positions — random offsets would differ between the server
+ * and client render and trip a hydration mismatch.
+ */
+function Embers() {
+  const sparks = [
+    { left: "6%", bottom: 60, delay: "0s", duration: "7s" },
+    { left: "17%", bottom: 180, delay: "1.4s", duration: "5.5s" },
+    { left: "29%", bottom: 90, delay: "3.1s", duration: "6.4s" },
+    { left: "44%", bottom: 240, delay: "2.2s", duration: "8s" },
+    { left: "58%", bottom: 130, delay: "4.6s", duration: "6s" },
+    { left: "71%", bottom: 200, delay: "0.8s", duration: "7.4s" },
+    { left: "86%", bottom: 70, delay: "3.7s", duration: "5.8s" },
+  ];
+  return (
+    <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      {sparks.map((s, i) => (
+        <span key={i} className="ember" style={{ left: s.left, bottom: s.bottom, animationDelay: s.delay, animationDuration: s.duration }} />
+      ))}
+    </div>
+  );
+}
+
+function GitHubGlyph() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+    </svg>
+  );
+}
+
+/* -------------------------------------------------------------- tokens --- */
+
+const card: React.CSSProperties = {
+  background: "#0C0C0E",
+  border: "1px solid #18181B",
+  borderRadius: 14,
+};
+
+const eyebrow: React.CSSProperties = {
+  fontFamily: MONO,
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: 2,
+  textTransform: "uppercase",
+  color: "#D97706",
+};
+
+const bodyText: React.CSSProperties = {
+  fontSize: 13.5,
+  color: "#71717A",
+  lineHeight: 1.65,
+  margin: "12px 0 0",
+};
+
+const chip: React.CSSProperties = {
+  fontFamily: MONO,
+  fontSize: 11,
+  color: "#A1A1AA",
+  background: "#131316",
+  border: "1px solid #1F1F23",
+  borderRadius: 5,
+  padding: "5px 9px",
+};
+
+const codeBlock: React.CSSProperties = {
+  fontFamily: MONO,
+  fontSize: 11.5,
+  color: "#D97706",
+  background: "#09090B",
+  border: "1px solid #18181B",
+  borderRadius: 6,
+  padding: "9px 12px",
+  overflowX: "auto",
+  whiteSpace: "nowrap",
+};
+
+const inlineCode: React.CSSProperties = {
+  fontFamily: MONO,
+  fontSize: 12,
+  color: "#D97706",
+  background: "#131316",
+  borderRadius: 4,
+  padding: "1px 5px",
+};
+
+const linkText: React.CSSProperties = {
+  color: "#D97706",
+  textDecoration: "none",
+  fontWeight: 600,
+};
+
+const primaryBtn: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 9,
+  padding: "13px 22px",
+  background: "#D97706",
+  color: "#09090B",
+  border: "none",
+  borderRadius: 8,
+  fontFamily: MONO,
+  fontSize: 12.5,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const ghostBtn: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  padding: "13px 20px",
+  border: "1px solid #27272A",
+  borderRadius: 8,
+  fontFamily: MONO,
+  fontSize: 12.5,
+  color: "#A1A1AA",
+  textDecoration: "none",
+};
+
+const installBtn: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 11,
+  padding: "13px 16px",
+  background: "#0C0C0E",
+  border: "1px solid #27272A",
+  borderRadius: 8,
+  fontFamily: MONO,
+  fontSize: 13,
+  color: "#E4E4E7",
+  cursor: "pointer",
+  textAlign: "left",
+};

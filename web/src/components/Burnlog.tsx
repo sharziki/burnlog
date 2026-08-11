@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Landing } from "./Landing";
 import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
@@ -80,8 +81,8 @@ type TeamKey = {
 };
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS = '"Instrument Sans", system-ui, -apple-system, sans-serif';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
 const DOLLARS_PER_TOKEN = dollarsPerToken();
 
 function relativeTime(iso: string | null): string {
@@ -461,6 +462,93 @@ function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
   );
 }
 
+// ---------- Hero install line ----------
+/**
+ * The single command that gets someone on the board. Click-to-copy, because
+ * the shortest path from "interested" to "installed" is one click, not a
+ * hand-transcribed npx invocation.
+ */
+const INSTALL_COMMAND = "npx @sxnalabs/burnlog";
+
+function InstallLine() {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(INSTALL_COMMAND);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard denied — the text is right there to select by hand.
+    }
+  }
+
+  return (
+    <button
+      onClick={copy}
+      className="hover-lift"
+      aria-label={`Copy "${INSTALL_COMMAND}" to clipboard`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "13px 16px",
+        marginBottom: 26,
+        background: "#0C0C0E",
+        border: "1px solid #27272A",
+        borderRadius: 8,
+        fontFamily: MONO,
+        fontSize: 13,
+        color: "#E4E4E7",
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+    >
+      <span style={{ color: "#3F3F46" }}>$</span>
+      <span>{INSTALL_COMMAND}</span>
+      <span style={{ marginLeft: 8, fontSize: 10, color: copied ? "#10B981" : "#52525B", letterSpacing: 1, textTransform: "uppercase" }}>
+        {copied ? "copied" : "copy"}
+      </span>
+    </button>
+  );
+}
+
+// ---------- Embers ----------
+/**
+ * Decorative sparks drifting up behind the hero. Deterministic offsets —
+ * random values would differ between the server and client render and
+ * trigger a hydration mismatch.
+ */
+function Embers() {
+  // Vary the starting height as well as the timing — with a shared baseline
+  // any single frame lines them up into what reads as a stray dotted rule.
+  const sparks = [
+    { left: "8%", bottom: 40, delay: "0s", duration: "7s" },
+    { left: "19%", bottom: 130, delay: "1.4s", duration: "5.5s" },
+    { left: "31%", bottom: 210, delay: "3.1s", duration: "6.4s" },
+    { left: "47%", bottom: 80, delay: "2.2s", duration: "8s" },
+    { left: "62%", bottom: 260, delay: "4.6s", duration: "6s" },
+    { left: "74%", bottom: 160, delay: "0.8s", duration: "7.4s" },
+    { left: "88%", bottom: 100, delay: "3.7s", duration: "5.8s" },
+  ];
+  return (
+    <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+      {sparks.map((s, i) => (
+        <span
+          key={i}
+          className="ember"
+          style={{
+            left: s.left,
+            bottom: s.bottom,
+            animationDelay: s.delay,
+            animationDuration: s.duration,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ---------- Button helpers ----------
 const primaryBtn: React.CSSProperties = {
   padding: "10px 18px",
@@ -633,6 +721,8 @@ export function Burnlog({
   const [h2hLeftOpen, setH2hLeftOpen] = useState(false);
   const [h2hRightOpen, setH2hRightOpen] = useState(false);
 
+  const [challengeBusy, setChallengeBusy] = useState(false);
+
   // Clubs state
   const [clubs, setClubs] = useState<ClubData[]>([]);
   const [clubsLoading, setClubsLoading] = useState(false);
@@ -729,6 +819,41 @@ export function Burnlog({
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
+  }
+
+  /**
+   * "Challenge Them" on the H2H tab: spin up a 7-day sprint against whoever
+   * is on the right side of the comparison and drop the user straight onto
+   * the challenge page with the invite link ready to share.
+   */
+  async function challengeOpponent(opponent: string) {
+    if (!currentUsername) {
+      window.location.href = "/api/auth/signin?callbackUrl=/challenges";
+      return;
+    }
+    setChallengeBusy(true);
+    try {
+      const res = await fetch("/api/challenges", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: `${currentUsername} vs ${opponent}`,
+          type: "sprint",
+          days: 7,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        message?: string;
+        challenge?: { url: string };
+      };
+      if (data.ok && data.challenge) window.location.href = data.challenge.url;
+      else alert(data.message ?? "Couldn't start that challenge.");
+    } catch {
+      alert("Network error — try again.");
+    } finally {
+      setChallengeBusy(false);
+    }
   }
 
   // Clubs fetch + actions
@@ -1300,198 +1425,19 @@ export function Burnlog({
       <div style={styles.glow} />
 
       <div style={styles.container}>
-        {/* Hero landing section for unauthenticated visitors */}
+        {/* Landing page for unauthenticated visitors. Marketing lives in
+            Landing.tsx; this file stays the product surface. */}
         {!currentUsername && (
-          <div style={{ paddingTop: 48, paddingBottom: 40, borderBottom: "1px solid #18181B" }}>
-            <div style={{ display: "flex", gap: 48, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-              <div style={{ flex: "1 1 360px", minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#D97706", letterSpacing: 2, textTransform: "uppercase", fontFamily: MONO, marginBottom: 18 }}>
-                Private leaderboard for AI token burn
-              </div>
-              <div style={{ fontSize: 52, fontWeight: 800, color: "#FAFAFA", letterSpacing: -2, lineHeight: 1.05, fontFamily: SANS, marginBottom: 18 }}>
-                See how hard you<br />ship with AI.
-              </div>
-              <div style={{ fontSize: 16, color: "#A1A1AA", lineHeight: 1.6, marginBottom: 32, fontFamily: SANS, maxWidth: 460 }}>
-                burnlog counts every token your agents burn &mdash; Claude Code, Codex, your own &mdash; and ranks you against everyone plugged in. Tokens only; your prompts never leave your machine.
-              </div>
-              <div style={{ display: "flex", gap: 16, justifyContent: "flex-start", alignItems: "center", flexWrap: "wrap" }}>
-                {signInAction && (
-                  <form action={signInAction}>
-                    <button
-                      type="submit"
-                      style={{
-                        padding: "14px 28px",
-                        background: "#D97706",
-                        color: "#09090B",
-                        border: "none",
-                        borderRadius: 8,
-                        fontSize: 14,
-                        fontWeight: 700,
-                        fontFamily: MONO,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="#09090B">
-                        <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.38 7.86 10.9.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.3-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.52 11.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
-                      </svg>
-                      Sign in with GitHub
-                    </button>
-                  </form>
-                )}
-                <a
-                  href="#leaderboard"
-                  style={{
-                    fontSize: 13,
-                    color: "#71717A",
-                    fontFamily: MONO,
-                    textDecoration: "none",
-                    padding: "14px 20px",
-                    border: "1px solid #27272A",
-                    borderRadius: 8,
-                    transition: "border-color 0.15s",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#52525B"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#27272A"; }}
-                >
-                  View Leaderboard
-                </a>
-              </div>
-              </div>
-
-              {/* Rank ladder — visual anchor */}
-              <div style={{ flex: "1 1 300px", minWidth: 280, maxWidth: 400, background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 16, padding: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#71717A", letterSpacing: 2, textTransform: "uppercase", fontFamily: MONO }}>The ranks</span>
-                  <span style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>climb &uarr;</span>
-                </div>
-                {[...RANKS].reverse().map((r, i) => (
-                  <div key={r.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i === 0 ? "none" : "1px solid #141416" }}>
-                    <span style={{ fontSize: 18, color: r.color, width: 22, textAlign: "center", fontFamily: MONO }}>{r.icon}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "#E4E4E7", fontFamily: SANS, flex: 1 }}>{r.name}</span>
-                    <span style={{ fontSize: 11, color: "#52525B", fontFamily: MONO }}>{r.min === 0 ? "0" : formatTokens(r.min) + "+"}</span>
-                  </div>
-                ))}
-                {globalStats.totalBurned > 0 && (
-                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #18181B", fontSize: 11, color: "#52525B", fontFamily: MONO, textAlign: "center" }}>
-                    <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> burned by{" "}
-                    <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> so far
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* How it works */}
-            <div
-              className="onboarding-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 16,
-                marginTop: 48,
-              }}
-            >
-              {[
-                {
-                  step: "01",
-                  title: "Install",
-                  code: "npm i -g @sxnalabs/burnlog",
-                  desc: "One command. Works with Claude Code, Codex, and more.",
-                },
-                {
-                  step: "02",
-                  title: "Sign in & sync",
-                  code: "burnlog login && burnlog sync",
-                  desc: "Sign in with GitHub in the browser. Reads your local agent logs — prompts never leave your machine.",
-                },
-                {
-                  step: "03",
-                  title: "Compete",
-                  code: null,
-                  desc: "Climb the ranks. Challenge friends. Show off your badge on GitHub.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.step}
-                  className="onboarding-card"
-                  style={{
-                    background: "#0C0C0E",
-                    border: "1px solid #18181B",
-                    borderRadius: 12,
-                    padding: 24,
-                  }}
-                >
-                  <div style={{ fontSize: 10, color: "#D97706", fontFamily: MONO, fontWeight: 700, letterSpacing: 2, marginBottom: 10 }}>
-                    {item.step}
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA", marginBottom: 8, fontFamily: SANS }}>
-                    {item.title}
-                  </div>
-                  {item.code && (
-                    <div
-                      className="onboarding-code"
-                      style={{
-                        padding: "8px 12px",
-                        background: "#0F0F11",
-                        border: "1px solid #18181B",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        color: "#D97706",
-                        fontFamily: MONO,
-                        marginBottom: 10,
-                        overflowX: "auto",
-                      }}
-                    >
-                      <span style={{ color: "#3F3F46" }}>$ </span>{item.code}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 12, color: "#71717A", lineHeight: 1.5 }}>
-                    {item.desc}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Social proof */}
-            {globalStats.totalBurned > 0 && (
-              <div style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "#3F3F46", fontFamily: MONO }}>
-                <span style={{ color: "#D97706", fontWeight: 700 }}>{globalStats.activeUsers}</span> developer{globalStats.activeUsers === 1 ? "" : "s"} tracking{" "}
-                <span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(globalStats.totalBurned)}</span> tokens burned
-              </div>
-            )}
-
-            {/* Privacy callout */}
-            <div
-              style={{
-                marginTop: 24,
-                padding: "16px 20px",
-                background: "#0C0C0E",
-                border: "1px solid #18181B",
-                borderRadius: 10,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                fontSize: 12,
-                color: "#71717A",
-                fontFamily: MONO,
-              }}
-            >
-              <span style={{ fontSize: 16, color: "#52525B" }}>&#9670;</span>
-              <span>
-                Your prompts stay local. We only track token counts.{" "}
-                <a href="https://github.com/sharziki/burnlog" target="_blank" rel="noopener noreferrer" style={{ color: "#D97706", textDecoration: "none" }}>
-                  Open source CLI
-                </a>
-                {" "}&mdash; audit it yourself.
-              </span>
-              <a href="/privacy" style={{ color: "#52525B", marginLeft: "auto", textDecoration: "none", whiteSpace: "nowrap" }}>
-                Privacy &rarr;
-              </a>
-            </div>
-          </div>
+          <Landing
+            stats={{
+              totalBurned: globalStats.totalBurned,
+              weeklyTotal: globalStats.weeklyTotal,
+              activeUsers: globalStats.activeUsers,
+            }}
+            signInAction={signInAction}
+          />
         )}
+
 
         {/* Tab nav */}
         <div style={{ paddingTop: 20 }} id="leaderboard">
@@ -1509,6 +1455,11 @@ export function Burnlog({
                 {label}
               </button>
             ))}
+            {/* Challenges own a real URL (invite links are the whole point),
+                so this is a link out rather than another local tab. */}
+            <a href="/challenges" style={{ ...styles.navBtn(false), textDecoration: "none" }}>
+              Challenges
+            </a>
           </nav>
         </div>
 
@@ -2505,13 +2456,11 @@ export function Burnlog({
             <div style={styles.sectionHeader}>
               <div style={styles.sectionTitle}>Head-to-Head</div>
               <button
-                style={primaryBtn}
-                onClick={() => {
-                  // challenges coming soon
-
-                }}
+                style={{ ...primaryBtn, opacity: challengeBusy ? 0.6 : 1 }}
+                disabled={challengeBusy}
+                onClick={() => challengeOpponent(h2hRight.username)}
               >
-                Challenge Them
+                {challengeBusy ? "Starting…" : "Challenge Them"}
               </button>
             </div>
 

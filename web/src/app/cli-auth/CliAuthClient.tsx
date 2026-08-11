@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 type Status = "idle" | "working" | "done" | "error";
 

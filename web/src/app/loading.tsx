@@ -1,4 +1,4 @@
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 function Skeleton({ width, height = 16 }: { width: number | string; height?: number }) {
   return (

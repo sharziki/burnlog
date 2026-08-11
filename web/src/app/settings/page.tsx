@@ -37,7 +37,7 @@ export default async function SettingsPage() {
         justifyContent: "center",
         flexDirection: "column",
         gap: 16,
-        fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+        fontFamily: 'var(--font-mono), "IBM Plex Mono", ui-monospace, monospace',
       }}
     >
       <div
@@ -66,7 +66,7 @@ export default async function SettingsPage() {
             borderRadius: 8,
             fontWeight: 700,
             cursor: "pointer",
-            fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+            fontFamily: 'var(--font-mono), "IBM Plex Mono", ui-monospace, monospace',
             fontSize: 13,
           }}
         >

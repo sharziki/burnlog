@@ -1,4 +1,4 @@
-const FOOTER_MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const FOOTER_MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 export function Footer() {
   return (

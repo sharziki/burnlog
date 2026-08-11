@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 export function TeamLeadForm() {
   const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
