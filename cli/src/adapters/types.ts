@@ -22,7 +22,21 @@ export type BurnEvent = {
   timestamp: string;
 };
 
-export type AdapterName = "claude-code" | "codex" | "hermes" | "openclaw";
+/**
+ * Sources burnlog ships with. `proxy` is `burnlog wrap` (any provider),
+ * `jsonl` is the open sink any tool can append to. The server accepts any
+ * `[a-z0-9-]{1,32}` tag, so community adapters don't need a release here —
+ * hence the open string union.
+ */
+export type KnownAdapter =
+  | "claude-code"
+  | "codex"
+  | "hermes"
+  | "openclaw"
+  | "proxy"
+  | "jsonl";
+
+export type AdapterName = KnownAdapter | (string & {});
 
 export type ScanResult = {
   source: AdapterName;

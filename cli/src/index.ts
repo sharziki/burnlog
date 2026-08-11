@@ -11,6 +11,10 @@ import { install, uninstall } from "./commands/install.js";
 import { daemon } from "./commands/daemon.js";
 import { budget } from "./commands/budget.js";
 import { report } from "./commands/report.js";
+import { setup } from "./commands/setup.js";
+import { wrap } from "./commands/wrap.js";
+import { challenge } from "./commands/challenge.js";
+import { log } from "./commands/log.js";
 
 function readVersion(): string {
   try {
@@ -24,26 +28,37 @@ function readVersion(): string {
 const HELP = `${pc.bold("burnlog")} ${pc.dim("· track your AI token burn")}
 
 ${pc.bold("usage")}
+  burnlog                     ${pc.dim("scan, sign in, sync, done")}
   burnlog <command> [args]
 
-${pc.bold("commands")}
+${pc.bold("getting on the board")}
+  ${pc.cyan("setup")}              the one-command flow (same as bare ${pc.bold("burnlog")})
   ${pc.cyan("login")}  [api-key]   sign in with GitHub in the browser; pass a key for CI (alias: ${pc.cyan("auth")})
   ${pc.cyan("logout")}             clear your api key
+
+${pc.bold("counting tokens")}
   ${pc.cyan("scan")}               parse logs locally, show totals (dry run)
   ${pc.cyan("sync")}    [--quiet]  upload new burn events to the leaderboard
+  ${pc.cyan("wrap")}    -- <cmd>   count any command's LLM calls (any provider)
+  ${pc.cyan("log")}     <tokens>   record usage by hand (dashboards, batch jobs)
   ${pc.cyan("install")}            install a Claude Code hook (auto-sync on session end)
   ${pc.cyan("uninstall")}          remove the Claude Code hook
   ${pc.cyan("daemon")}             run a background watcher that syncs every 30s
+
+${pc.bold("competing")}
+  ${pc.cyan("challenge")}          list / ${pc.bold("new")} / ${pc.bold("join <code>")}
   ${pc.cyan("status")}             show config + leaderboard rank
+
+${pc.bold("teams")}
   ${pc.cyan("budget")}             show team budgets (CI: --club <slug> --fail-on-over)
   ${pc.cyan("report")}             export team CSV usage (--club <slug> --out report.csv)
-  ${pc.cyan("help")}               show this
 
 ${pc.bold("env")}
   BURNLOG_API_URL        override api url (default https://burnlog.sxna.dev)
   BURNLOG_API_KEY        api key for CI/non-interactive use
   BURNLOG_CLAUDE_DIR     override ~/.claude/projects
   BURNLOG_CODEX_DIR      override ~/.codex/sessions
+  BURNLOG_EVENTS_DIR     override ~/.burnlog/events (the open sink)
 `;
 
 async function main(): Promise<void> {
@@ -80,10 +95,28 @@ async function main(): Promise<void> {
     case "daemon":
       await daemon(rest);
       break;
+    case "setup":
+    case "init":
+      await setup(rest);
+      break;
+    case "wrap":
+      await wrap(rest);
+      break;
+    case "challenge":
+    case "challenges":
+      await challenge(rest);
+      break;
+    case "log":
+      log(rest);
+      break;
+    // Bare `burnlog` runs the whole onboarding rather than printing help —
+    // the first command should do something useful, not explain itself.
+    case undefined:
+      await setup([]);
+      break;
     case "help":
     case "--help":
     case "-h":
-    case undefined:
       console.log(HELP);
       break;
     case "--version":

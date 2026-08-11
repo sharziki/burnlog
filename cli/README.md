@@ -3,20 +3,19 @@
 > Private leaderboard for AI token burn. Track every token you push through Claude Code, Codex, and other AI coding agents — tokens only, never prompts.
 
 ```
-npm install -g @sxnalabs/burnlog
-burnlog login <api-key>     # grab a key from https://burnlog.sxna.dev/settings
-burnlog install             # wires a Claude Code hook — auto-sync on session end
+npx @sxnalabs/burnlog
 ```
 
-That's it. Close Claude Code when you're done, and your burn syncs. You can
-also run `burnlog sync` any time to push manually.
+One command. It scans for your agents and shows you your own numbers first,
+then signs you in through the browser, uploads, and offers to auto-sync from
+then on. Nothing is asked of you before you've seen what it found.
 
-## What it reads
+## Two ways it counts
 
-burnlog walks local log files written by your coding agents and extracts the
-`usage` blocks. It **never** reads prompt text, file contents, project paths,
-or anything else that could identify what you were working on — only the
-token counts and a random dedup id.
+**1. Log scraping** — burnlog walks local log files written by your coding
+agents and extracts the `usage` blocks. It **never** reads prompt text, file
+contents, project paths, or anything else that could identify what you were
+working on — only the token counts and a random dedup id.
 
 | Agent        | Path                                          |
 | ------------ | --------------------------------------------- |
@@ -24,15 +23,62 @@ token counts and a random dedup id.
 | OpenAI Codex | `~/.codex/sessions/**/*.jsonl`                |
 | Hermes       | `~/.hermes/` (stub, pending format)           |
 | openclaw     | `~/.openclaw/` (stub, pending format)         |
+| open sink    | `~/.burnlog/events/*.jsonl`                   |
 
-Override any root with `BURNLOG_CLAUDE_DIR`, `BURNLOG_CODEX_DIR`, etc.
+Override any root with `BURNLOG_CLAUDE_DIR`, `BURNLOG_CODEX_DIR`,
+`BURNLOG_EVENTS_DIR`.
+
+**2. `burnlog wrap`** — for the many tools that never write usage to disk
+(Cursor, Gemini CLI, aider, your own scripts), count at the wire instead:
+
+```
+burnlog wrap -- aider
+burnlog wrap -- python my_agent.py
+burnlog wrap --only anthropic,openai -- npm run agent
+burnlog wrap --list
+```
+
+`wrap` runs your command with the standard base-URL environment variables
+pointed at a loopback proxy, forwards each request upstream untouched, and
+reads the `usage` block out of the response — streaming or not.
+
+Supported: Anthropic, OpenAI, Google, Mistral, Cohere, OpenRouter, Groq, xAI,
+DeepSeek, Together, Fireworks, Perplexity, Cerebras, Ollama. Anything else with
+an OpenAI-compatible API works via `OPENAI_BASE_URL`.
+
+There is **no HTTPS interception** and no local CA — that's why it's base-URL
+redirection rather than a CONNECT proxy. Request bodies are never inspected
+beyond reading `model` when the response doesn't name it. Events are written to
+`~/.burnlog/events/` before any upload, so a wrapped command keeps working with
+no network and no API key.
+
+## The open sink
+
+Any tool, in any language, can participate without waiting on a burnlog
+release. Append one JSON object per line to `~/.burnlog/events/<date>.jsonl`
+and `burnlog sync` picks it up:
+
+```json
+{"model":"gpt-5","inputTokens":1200,"outputTokens":340,"source":"my-tool","timestamp":"2026-08-11T14:00:00Z"}
+```
+
+Or use the command:
+
+```
+burnlog log 42000 --model claude-opus-4-6 --source my-batch-job
+burnlog log 0 --in 30000 --out 12000 --model gpt-5
+```
 
 ## Commands
 
 ```
-burnlog login <api-key>       save your api key (stored in ~/.burnlog/config.json, mode 600)
+burnlog                       scan, sign in, sync, install the hook (same as `setup`)
+burnlog login [api-key]       browser sign-in; pass a key for CI (~/.burnlog/config.json, mode 600)
 burnlog scan                  parse logs locally, show totals (does not upload)
 burnlog sync [--quiet]        upload new burn events to the leaderboard
+burnlog wrap -- <cmd>         count any command's LLM calls, any provider
+burnlog log <tokens>          record usage by hand
+burnlog challenge             list challenges · `new` to start one · `join <code>`
 burnlog status                show current config
 burnlog budget                show joined team budget usage
 burnlog budget --club <slug>  show one team by slug or id

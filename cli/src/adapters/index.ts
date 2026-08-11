@@ -1,6 +1,7 @@
 import { ClaudeCodeAdapter } from "./claude-code.js";
 import { CodexAdapter } from "./codex.js";
 import { HermesAdapter } from "./hermes.js";
+import { JsonlAdapter } from "./jsonl.js";
 import { OpenclawAdapter } from "./openclaw.js";
 import type { Adapter, BurnEvent, ScanResult } from "./types.js";
 
@@ -12,6 +13,9 @@ export const adapters: Adapter[] = [
   new CodexAdapter(),
   new HermesAdapter(),
   new OpenclawAdapter(),
+  // Last so `burnlog scan` reads log-scrapers first, then anything the proxy
+  // or a third-party tool dropped in the open sink.
+  new JsonlAdapter(),
 ];
 
 export function scanAll(): ScanResult[] {
