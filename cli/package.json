@@ -1,6 +1,6 @@
 {
   "name": "@sxnalabs/burnlog",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Private leaderboard for AI token burn. Tracks token usage from Claude Code, Codex, and other coding agents — tokens only, never prompts.",
   "keywords": [
     "claude-code",
