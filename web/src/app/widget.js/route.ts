@@ -36,7 +36,7 @@ const SCRIPT = String.raw`(function () {
   root.rel = "noopener";
   root.style.cssText = [
     "display:block", "box-sizing:border-box", "width:100%", "max-width:340px",
-    "min-height:132px", "padding:16px 18px", "border-radius:12px",
+    "min-height:158px", "padding:16px 18px 18px", "border-radius:12px",
     "border:1px solid " + C.border, "background:" + C.bg,
     "text-decoration:none", "font-family:" + MONO, "line-height:1.4"
   ].join(";");
@@ -50,6 +50,7 @@ const SCRIPT = String.raw`(function () {
   }
 
   function fmt(n) {
+    if (n >= 1e12) return (n / 1e12).toFixed(1) + "T";
     if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
     if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
     if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";

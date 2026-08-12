@@ -13,9 +13,12 @@ export type Rank = {
  *
  * Originally topped out at Supernova/10M, which real usage blew straight
  * through — a heavy agent user was measured at 140B, four orders of magnitude
- * past the ceiling, so the top rank stopped meaning anything. The scale is
- * logarithmic and now runs to 100B, where "burning a hundred billion tokens"
- * gets a name worth having.
+ * past the ceiling, so the top rank stopped meaning anything.
+ *
+ * The ceiling has to sit above the heaviest real user, not on them: a rank you
+ * can't climb out of is the same dead end as a rank you outgrew. The scale is
+ * logarithmic and runs to 10T, two decades of headroom past the biggest number
+ * we've actually measured.
  *
  * Glyphs are deliberately geometric + ∞ so they render in IBM Plex Mono
  * everywhere the ladder appears.
@@ -29,7 +32,9 @@ export const RANKS: Rank[] = [
   { name: "Quasar",        min: 100_000_000,     max: 999_999_999,         color: "#60A5FA", icon: "✧", blurb: "visible from orbit" },
   { name: "Singularity",   min: 1_000_000_000,   max: 9_999_999_999,       color: "#22D3EE", icon: "◆", blurb: "a billion tokens deep" },
   { name: "Event Horizon", min: 10_000_000_000,  max: 99_999_999_999,      color: "#FAFAFA", icon: "◈", blurb: "nothing escapes" },
-  { name: "Heat Death",    min: 100_000_000_000, max: Number.POSITIVE_INFINITY, color: "#F472B6", icon: "∞", blurb: "you burned the universe down" },
+  { name: "Heat Death",    min: 100_000_000_000, max: 999_999_999_999,      color: "#F472B6", icon: "∞", blurb: "you burned the universe down" },
+  { name: "Vacuum Decay",  min: 1_000_000_000_000, max: 9_999_999_999_999,  color: "#E879F9", icon: "★", blurb: "a trillion tokens, and still going" },
+  { name: "Boltzmann",     min: 10_000_000_000_000, max: Number.POSITIVE_INFINITY, color: "#FDE68A", icon: "✶", blurb: "nobody has been here yet" },
 ];
 
 export function getRank(tokens: number): Rank {

@@ -27,6 +27,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { key: "billion-club", name: "Billion Club", icon: "✦", how: "Burn 1B tokens total", tier: "legendary" },
   { key: "ten-billion", name: "Event Horizon", icon: "◈", how: "Burn 10B tokens total", tier: "legendary" },
   { key: "heat-death", name: "Heat Death", icon: "∞", how: "Burn 100B tokens total", tier: "legendary" },
+  { key: "vacuum-decay", name: "Vacuum Decay", icon: "★", how: "Burn 1T tokens total", tier: "legendary" },
 
   // ---- intensity ----
   { key: "week-warrior", name: "Week Warrior", icon: "⚔", how: "Burn 3M+ tokens in a single week", tier: "rare" },
@@ -98,6 +99,7 @@ const EARNED: Record<string, (f: Facts) => boolean> = {
   "billion-club": (f) => f.totalTokens >= 1_000_000_000,
   "ten-billion": (f) => f.totalTokens >= 10_000_000_000,
   "heat-death": (f) => f.totalTokens >= 100_000_000_000,
+  "vacuum-decay": (f) => f.totalTokens >= 1_000_000_000_000,
 
   // intensity
   "week-warrior": (f) => f.bestWeekTokens >= 3_000_000,

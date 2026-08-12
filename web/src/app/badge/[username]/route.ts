@@ -1,64 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getRank } from "@/lib/ranks";
-import { formatTokens } from "@/lib/format";
+import { buildBadge, buildMissingBadge, type BadgeStyle } from "@/lib/badge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function escapeXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function measureText(text: string, fontSize: number): number {
-  // Approximate character width for Verdana at given font size
-  return text.length * fontSize * 0.62 + 10;
-}
-
-function buildBadge(leftText: string, rightText: string, rightBg: string): string {
-  const leftWidth = measureText(leftText, 11);
-  const rightWidth = measureText(rightText, 11);
-  const totalWidth = leftWidth + rightWidth;
-  const height = 20;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${height}">
-  <linearGradient id="s" x2="0" y2="100%">
-    <stop offset="0" stop-color="#fff" stop-opacity=".1"/>
-    <stop offset="1" stop-opacity=".1"/>
-  </linearGradient>
-  <clipPath id="r">
-    <rect width="${totalWidth}" height="${height}" rx="3" fill="#fff"/>
-  </clipPath>
-  <g clip-path="url(#r)">
-    <rect width="${leftWidth}" height="${height}" fill="#1A1A2E"/>
-    <rect x="${leftWidth}" width="${rightWidth}" height="${height}" fill="${escapeXml(rightBg)}"/>
-    <rect width="${totalWidth}" height="${height}" fill="url(#s)"/>
-  </g>
-  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
-    <text x="${leftWidth / 2}" y="14" fill="#fff">${escapeXml(leftText)}</text>
-    <text x="${leftWidth + rightWidth / 2}" y="14" fill="#fff">${escapeXml(rightText)}</text>
-  </g>
-</svg>`;
-}
+const STYLES: BadgeStyle[] = ["default", "compact", "flat"];
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ username: string }> },
 ) {
-  const { username } = await params;
-  // Badges pasted from older snippets carry a `.svg` suffix that never matched a
-  // username, so they rendered as "user not found". Tolerate both forms.
-  const slug = username.endsWith(".svg") ? username.slice(0, -4) : username;
+  const raw = (await params).username;
+  // People paste `/badge/name.svg` out of habit; both spellings work.
+  const username = raw.replace(/\.svg$/i, "");
 
-  const user = await prisma.user.findFirst({
-    where: { username: slug },
-    select: { id: true },
-  });
+  const styleParam = new URL(req.url).searchParams.get("style") as BadgeStyle | null;
+  const style: BadgeStyle = styleParam && STYLES.includes(styleParam) ? styleParam : "default";
 
+  const user = await prisma.user.findFirst({ where: { username }, select: { id: true } });
   if (!user) {
-    const svg = buildBadge("burnlog", "user not found", "#555");
-    return new NextResponse(svg, {
-      status: 404,
+    // 200, not 404: GitHub's image proxy refuses to serve a non-2xx response,
+    // so a 404 renders as a broken-image icon and the branded fallback never
+    // gets seen. Short TTL so it flips over quickly once the account exists.
+    return new NextResponse(buildMissingBadge(), {
       headers: {
         "Content-Type": "image/svg+xml",
         "Cache-Control": "public, max-age=300, s-maxage=300",
@@ -70,19 +35,16 @@ export async function GET(
     where: { userId: user.id },
     _sum: { totalTokens: true },
   });
-
-  const totalTokens = Number(agg._sum.totalTokens ?? 0);
-  const rank = getRank(totalTokens);
-  const rightText = `${rank.icon} ${rank.name} \u00B7 ${formatTokens(totalTokens)} tokens`;
-  const svg = buildBadge("burnlog", rightText, rank.color === "#FAFAFA" ? "#333" : rank.color);
-
-  const etag = `"${totalTokens}"`;
+  const tokens = Number(agg._sum.totalTokens ?? 0);
+  const { svg } = buildBadge(tokens, style);
 
   return new NextResponse(svg, {
     headers: {
       "Content-Type": "image/svg+xml",
+      // 15 minutes: fresh enough to feel live in a README, long enough that a
+      // popular profile doesn't hammer the database on every page view.
       "Cache-Control": "public, max-age=900, s-maxage=900",
-      ETag: etag,
+      ETag: `"${tokens}-${style}"`,
     },
   });
 }

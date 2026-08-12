@@ -10,21 +10,6 @@ export const metadata: Metadata = {
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
 
-const features = [
-  ["Private workspaces", "Invite-only teams for engineering, FinOps, platform, or agency groups."],
-  ["Budget controls", "Monthly token budgets, 80% / 100% alerts, and owner notifications."],
-  ["Team API keys", "Separate shared CI, service, and agent usage from personal developer usage."],
-  ["Agent readback", "MCP tools let Claude Code, Cursor, or Codex answer team budget questions."],
-  ["CSV exports", "Usage reports for finance reviews, client billing, or weekly ops meetings."],
-  ["Privacy-first ingest", "Tokens and opaque request ids only. No prompts, paths, code, or repo names."],
-];
-
-const companyPoints = [
-  ["Teams stay teams", "Attach clubs you already own. Rosters, keys, and budgets don't move."],
-  ["One rollup", "Company-wide burn without asking every lead for a spreadsheet."],
-  ["Head-to-head", "Point two teams at each other on recent form, not lifetime totals."],
-];
-
 type Plan = {
   name: string;
   price: string;
@@ -91,7 +76,7 @@ export default function TeamsPage() {
               Control AI coding spend before it becomes a finance surprise.
             </h1>
             <p style={{ margin: "18px 0 0", color: "#A1A1AA", fontSize: 16, lineHeight: 1.7, maxWidth: 660 }}>
-              burnlog turns local agent token usage into team budgets, private workspaces, API-key ingest, alerts, and reports. Built for engineering leaders who need visibility without collecting prompts or code.
+              Team budgets, private workspaces, and alerts — from token counts alone. No prompts, no code.
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
               <a href="/settings" style={primaryLink}>Create API key</a>
@@ -114,18 +99,6 @@ export default function TeamsPage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section style={{ marginTop: 36 }}>
-        <h2 style={sectionTitle}>What teams get</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }} className="teams-grid">
-          {features.map(([title, body]) => (
-            <div key={title} style={panel}>
-              <h3 style={{ margin: 0, color: "#FAFAFA", fontSize: 15 }}>{title}</h3>
-              <p style={{ margin: "8px 0 0", color: "#71717A", fontSize: 13, lineHeight: 1.55 }}>{body}</p>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -163,27 +136,17 @@ export default function TeamsPage() {
       </section>
 
       <section style={{ marginTop: 36 }}>
-        <h2 style={sectionTitle}>Company: teams under one roof</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(280px, 0.9fr)", gap: 20, alignItems: "start" }} className="teams-hero">
-          <div style={panel}>
-            <p style={{ margin: 0, color: "#A1A1AA", fontSize: 14, lineHeight: 1.7 }}>
-              A company holds up to {CLUB_PLANS.company.teamLimit} teams for one flat ${CLUB_PLANS.company.monthlyPriceUsdFlat} a month. Each team keeps its own roster, keys, and budget; the company adds the rollup across all of them — and lets you put two of your own teams head-to-head.
-            </p>
-            <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
-              {companyPoints.map(([title, body]) => (
-                <div key={title} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: 10, alignItems: "baseline" }}>
-                  <span style={{ color: "#D97706", fontFamily: MONO, fontSize: 11 }}>—</span>
-                  <div>
-                    <div style={{ color: "#FAFAFA", fontSize: 13 }}>{title}</div>
-                    <div style={{ color: "#71717A", fontSize: 12, lineHeight: 1.55, marginTop: 2 }}>{body}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <h2 style={sectionTitle}>Team vs team</h2>
+        <div style={{ display: "grid", gap: 20 }}>
           <div style={{ ...panel, padding: 20 }}>
-            <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO, textTransform: "uppercase", letterSpacing: 1 }}>
-              Team vs team · last 30 days
+            {/* The two sides need names, or the columns are just unlabelled
+                numbers and the reader has to guess which is which. */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center", paddingBottom: 14, borderBottom: "1px solid #18181B" }}>
+              <div style={{ textAlign: "right", color: "#FAFAFA", fontSize: 15, fontWeight: 600 }}>Platform</div>
+              <div style={{ fontFamily: MONO, fontSize: 9, color: "#52525B", textTransform: "uppercase", letterSpacing: 1, textAlign: "center", minWidth: 88 }}>
+                last 30 days
+              </div>
+              <div style={{ color: "#FAFAFA", fontSize: 15, fontWeight: 600 }}>Growth</div>
             </div>
             {[
               ["Recent form", "8.2M", "6.9M", "left"],
@@ -198,30 +161,20 @@ export default function TeamsPage() {
                 <div style={{ fontFamily: MONO, fontSize: 13, color: side === "right" ? "#D97706" : "#A1A1AA", fontWeight: side === "right" ? 800 : 400 }}>{right}</div>
               </div>
             ))}
-            <p style={{ margin: "12px 0 0", color: "#71717A", fontSize: 12, lineHeight: 1.55 }}>
-              Scored on a rolling 30-day window, so the team that started first doesn&apos;t win on back catalogue. Lifetime totals and estimated spend show as context and never score.
+            <p style={{ margin: "12px 0 0", color: "#71717A", fontSize: 12, lineHeight: 1.55, textAlign: "center" }}>
+              Rolling 30 days, so the older team doesn&apos;t win on back catalogue.
             </p>
           </div>
         </div>
       </section>
 
-      <section style={{ marginTop: 36, ...panel }}>
-        <h2 style={{ margin: 0, color: "#FAFAFA", fontSize: 18 }}>Buyer-fit checklist</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginTop: 16 }} className="teams-grid">
-          {["AI pair-programming rollout", "client billing for agent work", "platform budget review", "privacy-sensitive codebases"].map((item) => (
-            <div key={item} style={{ border: "1px solid #18181B", borderRadius: 8, padding: 12, color: "#A1A1AA", fontSize: 12, fontFamily: MONO }}>
-              {item}
-            </div>
-          ))}
-        </div>
-      </section>
 
       <section id="team-access" style={{ marginTop: 36, ...panel }}>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.8fr) minmax(280px, 1.2fr)", gap: 20 }} className="teams-hero">
           <div>
             <h2 style={{ margin: 0, color: "#FAFAFA", fontSize: 20 }}>Pilot with a real team</h2>
             <p style={{ margin: "10px 0 0", color: "#71717A", fontSize: 13, lineHeight: 1.6 }}>
-              Share buyer context. burnlog stores this as a lead so pilots, pricing, and support can be handled outside the public leaderboard.
+              Tell us what you need to control. We&apos;ll take it from there.
             </p>
           </div>
           <TeamLeadForm />
