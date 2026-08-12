@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
@@ -40,6 +40,24 @@ export function EmbedClient({
         ["HTML", "for a site or portfolio", "…"],
         ["Widget", "a live card, ~4KB, no dependencies", "…"],
       ];
+
+  // The widget preview runs the real script rather than a mock, so what you see
+  // is what your page gets. It mounts inline instead of in an iframe: a srcdoc
+  // frame inherits the page's `frame-ancestors 'none'`, so it renders blank in
+  // production while working fine locally where no CSP header is set.
+  const widgetSlot = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const slot = widgetSlot.current;
+    if (!slot) return;
+    slot.textContent = "";
+    const script = document.createElement("script");
+    script.src = "/widget.js";
+    script.setAttribute("data-user", name);
+    slot.appendChild(script);
+    return () => {
+      slot.textContent = "";
+    };
+  }, [name]);
 
   async function copy(key: string, text: string) {
     try {
@@ -104,14 +122,8 @@ export function EmbedClient({
               </button>
             </div>
             <code style={codeBlock}>{code}</code>
-            {label === "Widget" && origin !== "" && (
-              <iframe
-                key={name}
-                title="Widget preview"
-                sandbox="allow-scripts"
-                srcDoc={`<body style="margin:0;background:transparent"><script src="${origin}/widget.js" data-user="${name}"></script></body>`}
-                style={{ width: "100%", maxWidth: 360, height: 180, border: "none", marginTop: 12 }}
-              />
+            {label === "Widget" && (
+              <div ref={widgetSlot} style={{ marginTop: 12, minHeight: 158 }} />
             )}
           </div>
         ))}
