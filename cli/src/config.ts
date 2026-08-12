@@ -19,23 +19,69 @@ const DEFAULTS: Config = {
   claudeProjectsDir: join(homedir(), ".claude", "projects"),
 };
 
+/**
+ * Which fields the environment overrode on the last load.
+ *
+ * Without this, a one-off `BURNLOG_API_URL=... burnlog sync` permanently
+ * rewrites the stored url: loadConfig() overlays the env value, then any
+ * command that calls saveConfig() (sync writes `lastSync`) persists the whole
+ * object including the override. An env var is meant to be temporary, so it
+ * must never survive into the file.
+ */
+const envOverrides = new Set<keyof Config>();
+
 export function loadConfig(): Config {
-  if (!existsSync(CONFIG_PATH)) return { ...DEFAULTS, apiKey: process.env.BURNLOG_API_KEY };
+  envOverrides.clear();
+  const applyEnv = (cfg: Config): Config => {
+    if (process.env.BURNLOG_API_URL) {
+      cfg.apiUrl = process.env.BURNLOG_API_URL;
+      envOverrides.add("apiUrl");
+    }
+    if (process.env.BURNLOG_API_KEY) {
+      cfg.apiKey = process.env.BURNLOG_API_KEY;
+      envOverrides.add("apiKey");
+    }
+    return cfg;
+  };
+
+  if (!existsSync(CONFIG_PATH)) return applyEnv({ ...DEFAULTS });
   try {
     const raw = readFileSync(CONFIG_PATH, "utf8");
-    const parsed = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Config>) };
-    // BURNLOG_API_URL env always wins over stored value.
-    if (process.env.BURNLOG_API_URL) parsed.apiUrl = process.env.BURNLOG_API_URL;
-    if (process.env.BURNLOG_API_KEY) parsed.apiKey = process.env.BURNLOG_API_KEY;
-    return parsed;
+    return applyEnv({ ...DEFAULTS, ...(JSON.parse(raw) as Partial<Config>) });
   } catch {
-    return { ...DEFAULTS, apiKey: process.env.BURNLOG_API_KEY };
+    return applyEnv({ ...DEFAULTS });
   }
 }
 
 export function saveConfig(cfg: Config): void {
   if (!existsSync(CONFIG_DIR)) mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+
+  // Start from what's on disk so env-derived values are never persisted.
+  let stored: Partial<Config> = {};
+  if (existsSync(CONFIG_PATH)) {
+    try {
+      stored = JSON.parse(readFileSync(CONFIG_PATH, "utf8")) as Partial<Config>;
+    } catch {
+      stored = {};
+    }
+  }
+
+  const next: Partial<Config> = { ...cfg };
+  for (const key of envOverrides) {
+    if (key in stored) next[key] = stored[key] as never;
+    else delete next[key];
+  }
+
+  writeFileSync(CONFIG_PATH, JSON.stringify(next, null, 2), { mode: 0o600 });
+}
+
+/** Explicit writes (login/logout) must win over the env-override guard. */
+export function saveConfigField<K extends keyof Config>(key: K, value: Config[K]): void {
+  const cfg = loadConfig();
+  // Clear *after* loading — loadConfig() rebuilds the override set.
+  envOverrides.delete(key);
+  cfg[key] = value;
+  saveConfig(cfg);
 }
 
 export function configPath(): string {
