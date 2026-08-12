@@ -31,8 +31,12 @@ export type H2HMetric = {
 /** Differences under this are noise, not a win. */
 const TIE_BAND = 0.05;
 
-/** Recent-form window, in days. Must be <= the 84-day heatmap. */
-const FORM_DAYS = 30;
+/**
+ * Recent-form window, in days. Must be <= the 84-day heatmap.
+ * Exported so team-vs-team (lib/companyH2h.ts) judges the same stretch of
+ * time — two h2h pages that disagree about "recent" would be worse than none.
+ */
+export const FORM_DAYS = 30;
 
 function tailSum(heatmap: number[], days: number): number {
   return heatmap.slice(-days).reduce((s, v) => s + v, 0);
