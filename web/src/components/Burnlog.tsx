@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Landing } from "./Landing";
+import { compareUsers, outcomeOf, verdictOf } from "@/lib/h2h";
+import { BoardScope, type Scope } from "./BoardScope";
+import { ClubFeed } from "./ClubFeed";
 import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
@@ -148,62 +151,6 @@ function UserAvatar({ user, size = 36, color }: { user: UserStats; size?: number
 
 
 
-
-type Metric = {
-  label: string;
-  left: number;
-  right: number;
-  format: (v: number) => string;
-  lowerIsBetter?: boolean;
-};
-
-function buildMetrics(l: UserStats, r: UserStats): Metric[] {
-  return [
-    {
-      label: "Total Tokens",
-      left: l.totalTokens,
-      right: r.totalTokens,
-      format: (v) => formatTokens(v),
-    },
-    {
-      label: "Weekly Tokens",
-      left: l.weeklyTokens,
-      right: r.weeklyTokens,
-      format: (v) => formatTokens(v),
-    },
-    {
-      label: "Streak",
-      left: l.streak,
-      right: r.streak,
-      format: (v) => `${v}d`,
-    },
-    {
-      label: "Tok / Commit",
-      left: l.tokensPerCommit,
-      right: r.tokensPerCommit,
-      format: (v) => v.toLocaleString(),
-      lowerIsBetter: true,
-    },
-    {
-      label: "Est. Spend",
-      left: l.totalTokens * DOLLARS_PER_TOKEN,
-      right: r.totalTokens * DOLLARS_PER_TOKEN,
-      format: (v) => formatUSD(v),
-    },
-  ];
-}
-
-function countWins(metrics: Metric[]): { left: number; right: number } {
-  let left = 0;
-  let right = 0;
-  for (const m of metrics) {
-    const leftBetter = m.lowerIsBetter ? m.left < m.right : m.left > m.right;
-    const rightBetter = m.lowerIsBetter ? m.right < m.left : m.right > m.left;
-    if (leftBetter) left++;
-    else if (rightBetter) right++;
-  }
-  return { left, right };
-}
 
 function estSpend(tokens: number): number {
   return tokens * DOLLARS_PER_TOKEN;
@@ -699,7 +646,11 @@ export function Burnlog({
   signOutAction?: () => Promise<void>;
   signInAction?: () => Promise<void>;
 }) {
-  const [tab, setTab] = useState<"leaderboard" | "clubs" | "h2h" | "profile" | "badges">("leaderboard");
+  const [tab, setTab] = useState<"leaderboard" | "clubs" | "h2h" | "badges">("leaderboard");
+  // Board scope: the world, or just people you've actually added.
+  const [scope, setScope] = useState<Scope>("world");
+  const [scopedUsers, setScopedUsers] = useState<UserStats[] | null>(null);
+  const [scopeLoading, setScopeLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserStats | null>(
     (currentUsername && users.find((u) => u.username === currentUsername)) || users[0] || null,
   );
@@ -1140,8 +1091,9 @@ export function Burnlog({
     }, 60_000);
     return () => clearInterval(interval);
   }, []);
-  // Use liveUsers for rendering but keep original users as fallback
-  const activeUsers = liveUsers;
+  // Use liveUsers for rendering but keep original users as fallback.
+  // A non-world scope is fetched client-side and takes precedence.
+  const activeUsers = scopedUsers ?? liveUsers;
 
   // Copy-to-clip feedback
   const [copied, setCopied] = useState<string | null>(null);
@@ -1188,6 +1140,29 @@ export function Burnlog({
     return () => { if (chatPollRef.current) clearInterval(chatPollRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeClub?.id, clubSubTab, clubAnnouncements.length]);
+
+  useEffect(() => {
+    if (scope === "world") {
+      setScopedUsers(null);
+      return;
+    }
+    let cancelled = false;
+    setScopeLoading(true);
+    fetch(`/api/leaderboard?scope=${scope}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { ok: boolean; users?: UserStats[] }) => {
+        if (!cancelled) setScopedUsers(d.ok ? (d.users ?? []) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setScopedUsers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setScopeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scope]);
 
   const rank = selectedUser ? getRank(selectedUser.totalTokens) : RANKS[0];
 
@@ -1411,8 +1386,15 @@ export function Burnlog({
   const topModelMax = Math.max(...selectedUser.topModels.map((m) => m.tokens), 1);
 
   // H2H metrics
-  const h2hMetrics = h2hLeft && h2hRight ? buildMetrics(h2hLeft, h2hRight) : [];
-  const h2hWins = countWins(h2hMetrics);
+  const h2hMetrics =
+    h2hLeft && h2hRight
+      ? compareUsers(h2hLeft, h2hRight, formatTokens, (v) => formatUSD(v * DOLLARS_PER_TOKEN))
+      : [];
+  const h2hVerdict =
+    h2hLeft && h2hRight
+      ? verdictOf(h2hMetrics, h2hLeft.name, h2hRight.name)
+      : { left: 0, right: 0, ties: 0, winner: "draw" as const, summary: "" };
+  const h2hWins = { left: h2hVerdict.left, right: h2hVerdict.right };
   const activeClubBudgetPct = activeClub
     ? budgetPct(activeClub.monthlyTokens, activeClub.monthlyBudgetTokens)
     : 0;
@@ -1448,7 +1430,6 @@ export function Burnlog({
                 ["clubs", "Clubs"],
                 ["h2h", "H2H"],
                 ["badges", "Embed"],
-                ...(currentUsername ? [["profile", "Profile"] as const] : []),
               ] as const
             ).map(([key, label]) => (
               <button key={key} style={styles.navBtn(tab === key)} onClick={() => setTab(key)}>
@@ -1484,8 +1465,17 @@ export function Burnlog({
         {/* LEADERBOARD TAB */}
         {tab === "leaderboard" && (
           <div style={styles.section}>
+            <BoardScope
+              scope={scope}
+              onScope={setScope}
+              signedIn={Boolean(currentUsername)}
+              onFriendChange={() => setScope((s) => s)}
+            />
             <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>Leaderboard</div>
+              <div style={styles.sectionTitle}>
+                {scope === "friends" ? "Friends" : "Leaderboard"}
+                {scopeLoading && <span style={{ color: "#3F3F46", fontSize: 10 }}> · loading</span>}
+              </div>
               <div
                 style={{
                   display: "flex",
@@ -2054,7 +2044,7 @@ export function Burnlog({
                     <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>Total </span><span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(activeClub.totalTokens)}</span></div>
                     <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>This Week </span><span style={{ color: "#FAFAFA", fontWeight: 700 }}>{formatTokens(activeClub.weeklyTokens)}</span></div>
                     <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>MTD </span><span style={{ color: "#FAFAFA", fontWeight: 700 }}>{formatTokens(activeClub.monthlyTokens)}</span></div>
-                    <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>Est Spend </span><span style={{ color: "#A1A1AA", fontWeight: 700 }}>{formatUSD(estSpend(activeClub.totalTokens))}</span></div>
+                    <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>Est API Cost </span><span style={{ color: "#A1A1AA", fontWeight: 700 }}>{formatUSD(estSpend(activeClub.totalTokens))}</span></div>
                   </div>
                   <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #18181B" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 8 }}>
@@ -2342,104 +2332,9 @@ export function Burnlog({
                 )}
 
                 {/* Chat Room */}
-                {clubSubTab === "feed" && (() => {
-                  const myId = activeClub.members.find((m) => m.username === currentUsername)?.id;
-                  const isAdmin = activeClub.isOwner;
-                  return (
-                    <div style={{ ...styles.card, padding: 0, display: "flex", flexDirection: "column", height: 520, overflow: "hidden" }}>
-                      {/* Messages */}
-                      <div
-                        ref={chatScrollRef}
-                        style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 2 }}
-                      >
-                        {clubAnnouncements.length === 0 && (
-                          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#3F3F46", fontFamily: MONO, fontSize: 12 }}>
-                            {activeClub.isMember ? "No messages yet. Say something." : "No messages yet. Join to chat."}
-                          </div>
-                        )}
-                        {clubAnnouncements.map((a, i) => {
-                          const isMe = myId === a.author.id;
-                          const canDelete = isAdmin || isMe;
-                          const prevAuthor = i > 0 ? clubAnnouncements[i - 1].author.id : null;
-                          const grouped = prevAuthor === a.author.id;
-                          return (
-                            <div
-                              key={a.id}
-                              style={{ display: "flex", gap: 10, padding: grouped ? "1px 0" : "8px 0 1px", alignItems: "flex-start", position: "relative" }}
-                              className="chat-msg"
-                            >
-                              <div style={{ width: 28, flexShrink: 0 }}>
-                                {!grouped && (
-                                  a.author.image ? (
-                                    <img src={a.author.image} alt={a.author.username ?? ""} width={28} height={28} style={{ borderRadius: "50%", border: "1px solid #27272A" }} />
-                                  ) : (
-                                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#18181B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#52525B", fontFamily: MONO }}>
-                                      {(a.author.name ?? a.author.username ?? "?")[0]?.toUpperCase()}
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                {!grouped && (
-                                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: isMe ? "#D97706" : "#E4E4E7", fontFamily: MONO }}>
-                                      {a.author.username}
-                                      {a.author.id === activeClub.owner.id && (
-                                        <span style={{ fontSize: 9, color: "#D97706", background: "#D9770615", padding: "1px 5px", borderRadius: 3, marginLeft: 6, fontWeight: 600, letterSpacing: 0.5 }}>ADMIN</span>
-                                      )}
-                                    </span>
-                                    <span style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>
-                                      {new Date(a.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                                    </span>
-                                  </div>
-                                )}
-                                <div style={{ fontSize: 13, color: "#D4D4D8", lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{a.content}</div>
-                              </div>
-                              {canDelete && (
-                                <button
-                                  onClick={() => deleteMessage(a.id)}
-                                  title="Delete message"
-                                  style={{ background: "none", border: "none", color: "#3F3F46", cursor: "pointer", fontSize: 13, padding: "2px 4px", opacity: 0.4, transition: "opacity 0.15s", flexShrink: 0, alignSelf: "center" }}
-                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; (e.currentTarget as HTMLElement).style.color = "#EF4444"; }}
-                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.4"; (e.currentTarget as HTMLElement).style.color = "#3F3F46"; }}
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Input bar */}
-                      {activeClub.isMember ? (
-                        <div style={{ padding: "10px 16px 14px", borderTop: "1px solid #18181B", display: "flex", gap: 10, alignItems: "center" }}>
-                          <input
-                            value={newAnnouncement}
-                            onChange={(e) => setNewAnnouncement(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && newAnnouncement.trim()) { e.preventDefault(); postAnnouncement(); } }}
-                            placeholder="Type a message..."
-                            maxLength={500}
-                            style={{ flex: 1, background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#E4E4E7", fontFamily: MONO, outline: "none", transition: "border-color 0.15s" }}
-                            onFocus={(e) => { e.currentTarget.style.borderColor = "#D97706"; }}
-                            onBlur={(e) => { e.currentTarget.style.borderColor = "#18181B"; }}
-                          />
-                          <button
-                            onClick={postAnnouncement}
-                            disabled={postingAnnouncement || !newAnnouncement.trim()}
-                            style={{ ...primaryBtn, padding: "10px 18px", fontSize: 11, borderRadius: 8, opacity: postingAnnouncement || !newAnnouncement.trim() ? 0.4 : 1, cursor: postingAnnouncement ? "wait" : "pointer" }}
-                          >
-                            Send
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ padding: "14px 16px", borderTop: "1px solid #18181B", textAlign: "center", fontSize: 12, color: "#3F3F46", fontFamily: MONO }}>
-                          Join this club to chat
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {clubSubTab === "feed" && (
+                  <ClubFeed clubId={activeClub.id} isMember={activeClub.isMember} />
+                )}
               </div>
             )}
           </div>
@@ -2564,8 +2459,9 @@ export function Burnlog({
             {/* Metric rows */}
             <div style={{ ...styles.card, marginBottom: 20 }}>
               {h2hMetrics.map((m) => {
-                const leftWin = m.lowerIsBetter ? m.left < m.right : m.left > m.right;
-                const rightWin = m.lowerIsBetter ? m.right < m.left : m.right > m.left;
+                const outcome = outcomeOf(m);
+                const leftWin = outcome === "left";
+                const rightWin = outcome === "right";
                 return (
                   <div
                     key={m.label}
@@ -2599,9 +2495,9 @@ export function Burnlog({
                       }}
                     >
                       {m.label}
-                      {m.lowerIsBetter && (
-                        <div style={{ fontSize: 8, color: "#3F3F46" }}>(lower is better)</div>
-                      )}
+                      <div style={{ fontSize: 8, color: "#27272A", textTransform: "none", letterSpacing: 0, marginTop: 3 }}>
+                        {m.unscored ? "context only" : m.hint}
+                      </div>
                     </div>
                     <div
                       style={{
@@ -2617,6 +2513,22 @@ export function Burnlog({
                   </div>
                 );
               })}
+              {h2hVerdict.summary && (
+                <div
+                  style={{
+                    marginTop: 18,
+                    padding: "14px 18px",
+                    borderRadius: 10,
+                    background: h2hVerdict.winner === "draw" ? "#0F0F11" : "#D9770610",
+                    border: `1px solid ${h2hVerdict.winner === "draw" ? "#18181B" : "#D9770633"}`,
+                  }}
+                >
+                  <div style={{ fontSize: 14, color: "#E4E4E7", lineHeight: 1.6 }}>{h2hVerdict.summary}</div>
+                  <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginTop: 8, lineHeight: 1.6 }}>
+                    Last 30 days only, so tenure doesn&apos;t decide it. Within 5% counts as a tie.
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Provider breakdown side-by-side */}
@@ -2664,384 +2576,6 @@ export function Burnlog({
         )}
 
         {/* PROFILE TAB */}
-        {tab === "profile" && (
-          <div style={styles.section}>
-            <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>Profile · <a href={`/u/${selectedUser.username}`} style={{ color: "inherit", textDecoration: "none" }}>@{selectedUser.username}</a></div>
-              <div style={{ display: "flex", gap: 4 }}>
-                {users.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => setSelectedUser(u)}
-                    style={{
-                      cursor: "pointer",
-                      background: "none",
-                      border: selectedUser.id === u.id
-                        ? `2px solid ${getRank(u.totalTokens).color}`
-                        : `1px solid transparent`,
-                      borderRadius: "50%",
-                      padding: 0,
-                    }}
-                  >
-                    <UserAvatar user={u} size={32} color={getRank(u.totalTokens).color} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={styles.profileCard}>
-              <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginBottom: 24 }}>
-                <UserAvatar user={selectedUser} size={64} color={rank.color} />
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}
-                  >
-                    <span style={{ fontSize: 22, fontWeight: 800, color: "#FAFAFA" }}>
-                      {selectedUser.name}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: rank.color,
-                        background: `${rank.color}15`,
-                        padding: "3px 10px",
-                        borderRadius: 4,
-                        border: `1px solid ${rank.color}33`,
-                        fontFamily: MONO,
-                      }}
-                    >
-                      {rank.icon} {rank.name}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "#52525B", marginBottom: 8, fontFamily: MONO }}>
-                    @{selectedUser.username}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#E4E4E7" }}>
-                    {selectedUser.bio ?? "—"}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(4, 1fr)",
-                  gap: 12,
-                  padding: "20px 0",
-                  borderTop: "1px solid #18181B",
-                  borderBottom: "1px solid #18181B",
-                  marginBottom: 20,
-                }}
-              >
-                {[
-                  { label: "Total Burned", value: formatTokens(selectedUser.totalTokens) },
-                  { label: "This Week", value: formatTokens(selectedUser.weeklyTokens) },
-                  { label: "Streak", value: `${selectedUser.streak} days` },
-                  { label: "Tok/Req", value: selectedUser.tokensPerCommit.toLocaleString() },
-                ].map((s, i) => (
-                  <div key={i}>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "#3F3F46",
-                        letterSpacing: 1.5,
-                        textTransform: "uppercase",
-                        marginBottom: 4,
-                        fontFamily: MONO,
-                      }}
-                    >
-                      {s.label}
-                    </div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>
-                      {s.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Sources strip */}
-              {selectedUser.sources.length > 0 && (
-                <div style={{ marginBottom: 24 }}>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#52525B",
-                      marginBottom: 10,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      fontFamily: MONO,
-                    }}
-                  >
-                    Sources
-                  </div>
-                  <SourcesStrip sources={selectedUser.sources} />
-                </div>
-              )}
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#52525B",
-                      marginBottom: 10,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      fontFamily: MONO,
-                    }}
-                  >
-                    Weekly Burn
-                  </div>
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100 }}>
-                    {selectedUser.weeklyHistory.map((v, i) => {
-                      const max = Math.max(...selectedUser.weeklyHistory, 1);
-                      const h = (v / max) * 90;
-                      return (
-                        <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                          <div
-                            style={{
-                              height: h,
-                              background:
-                                i === 6
-                                  ? `linear-gradient(180deg, ${rank.color} 0%, ${rank.color}44 100%)`
-                                  : "#18181B",
-                              borderRadius: "4px 4px 0 0",
-                              transition: "height 0.5s ease",
-                              marginBottom: 6,
-                            }}
-                          />
-                          <div style={{ fontSize: 9, color: "#3F3F46", fontFamily: MONO }}>{DAYS[i]}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#52525B",
-                      marginBottom: 10,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      fontFamily: MONO,
-                    }}
-                  >
-                    Provider Split
-                  </div>
-                  <ProviderBar providers={selectedUser.providers} />
-                  <div style={{ marginTop: 16 }}>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "#3F3F46",
-                        letterSpacing: 1,
-                        textTransform: "uppercase",
-                        marginBottom: 8,
-                        fontFamily: MONO,
-                      }}
-                    >
-                      Top Models
-                    </div>
-                    {selectedUser.topModels.length === 0 ? (
-                      <div style={{ fontSize: 11, color: "#3F3F46" }}>—</div>
-                    ) : (
-                      selectedUser.topModels.map((m) => (
-                        <div key={m.model} style={styles.modelRow}>
-                          <span style={{ color: "#FAFAFA", fontWeight: 600 }}>{m.model}</span>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div
-                              style={{
-                                width: 60,
-                                height: 4,
-                                background: "#18181B",
-                                borderRadius: 2,
-                                overflow: "hidden",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: `${(m.tokens / topModelMax) * 100}%`,
-                                  height: "100%",
-                                  background: rank.color,
-                                }}
-                              />
-                            </div>
-                            <span style={{ color: "#D97706", fontWeight: 700 }}>
-                              {formatTokens(m.tokens)}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Activity Heatmap — full-width */}
-              <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #18181B" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "baseline",
-                    marginBottom: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#52525B",
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      fontFamily: MONO,
-                    }}
-                  >
-                    Burn Activity · 12 Weeks
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#3F3F46", fontFamily: MONO }}>
-                    <span>less</span>
-                    {[0.12, 0.28, 0.45, 0.7, 1].map((a) => (
-                      <span
-                        key={a}
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: 3,
-                          background: `rgba(217,119,6,${a})`,
-                          display: "inline-block",
-                        }}
-                      />
-                    ))}
-                    <span>more</span>
-                  </div>
-                </div>
-                <ActivityHeatmap heatmap={selectedUser.heatmap} />
-              </div>
-            </div>
-
-            {/* Account section — only when viewing own profile */}
-            {currentUsername && selectedUser.username === currentUsername && (
-              <div
-                style={{
-                  ...styles.profileCard,
-                  marginTop: 20,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "#52525B",
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    marginBottom: 16,
-                    fontFamily: MONO,
-                  }}
-                >
-                  Account
-                </div>
-
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#FAFAFA", marginBottom: 12 }}>
-                    Setup — track your token burn
-                  </div>
-
-                  {/* Step 1 */}
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>1. Generate an API key</div>
-                    <button
-                      onClick={createKey}
-                      disabled={keyLoading}
-                      style={{ ...primaryBtn, cursor: keyLoading ? "wait" : "pointer", opacity: keyLoading ? 0.6 : 1 }}
-                    >
-                      {keyLoading ? "generating..." : "generate new key"}
-                    </button>
-                    {apiKey && (
-                      <div style={{ marginTop: 12 }}>
-                        <div
-                          onClick={() => copyToClip("apikey", apiKey)}
-                          style={{ padding: "14px 16px", background: "#0F0F11", border: "1px solid #D9770644", borderRadius: 8, fontSize: 12, color: "#D97706", wordBreak: "break-all", fontFamily: MONO, cursor: "pointer", position: "relative" }}
-                        >
-                          <div style={{ fontSize: 10, color: "#52525B", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                            {copied === "apikey" ? "copied!" : "click to copy — won’t be shown again"}
-                          </div>
-                          {apiKey}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Step 2 */}
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>2. Install the CLI</div>
-                    <div
-                      onClick={() => copyToClip("install", "npm i -g @sxnalabs/burnlog")}
-                      style={{ padding: "10px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 12, color: "#E4E4E7", fontFamily: MONO, cursor: "pointer" }}
-                    >
-                      <span style={{ color: "#52525B" }}>$ </span>npm i -g @sxnalabs/burnlog
-                      <span style={{ float: "right", color: "#3F3F46", fontSize: 10 }}>{copied === "install" ? "copied!" : "click to copy"}</span>
-                    </div>
-                  </div>
-
-                  {/* Step 3 */}
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>3. Login with your key</div>
-                    <div
-                      onClick={() => copyToClip("login", `burnlog login ${apiKey ?? "<your-key>"}`)}
-                      style={{ padding: "10px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 12, color: "#E4E4E7", fontFamily: MONO, cursor: "pointer" }}
-                    >
-                      <span style={{ color: "#52525B" }}>$ </span>burnlog login {apiKey ? <span style={{ color: "#D97706" }}>{apiKey}</span> : "<your-key>"}
-                      <span style={{ float: "right", color: "#3F3F46", fontSize: 10 }}>{copied === "login" ? "copied!" : "click to copy"}</span>
-                    </div>
-                  </div>
-
-                  {/* Step 4 */}
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, fontWeight: 700, marginBottom: 6 }}>4. Auto-sync with Claude Code</div>
-                    <div style={{ fontSize: 12, color: "#52525B", fontFamily: MONO, lineHeight: 1.6, marginBottom: 8 }}>
-                      This adds a hook to Claude Code that syncs your tokens after every session.
-                    </div>
-                    <div
-                      onClick={() => copyToClip("hook", "burnlog install")}
-                      style={{ padding: "10px 14px", background: "#0F0F11", border: "1px solid #18181B", borderRadius: 8, fontSize: 12, color: "#E4E4E7", fontFamily: MONO, cursor: "pointer" }}
-                    >
-                      <span style={{ color: "#52525B" }}>$ </span>burnlog install
-                      <span style={{ float: "right", color: "#3F3F46", fontSize: 10 }}>{copied === "hook" ? "copied!" : "click to copy"}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO, marginTop: 6, lineHeight: 1.5 }}>
-                      Or run <code style={{ color: "#52525B" }}>burnlog sync</code> manually anytime. Use <code style={{ color: "#52525B" }}>burnlog daemon</code> for continuous background sync.
-                    </div>
-                  </div>
-
-                  <div style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO, padding: "10px 14px", background: "#0F0F1188", borderRadius: 8, lineHeight: 1.6 }}>
-                    Supports Claude Code and Codex out of the box. Only token counts are sent — never prompts, code, or file paths.
-                  </div>
-                </div>
-
-                {signOutAction && (
-                  <form action={signOutAction}>
-                    <button
-                      type="submit"
-                      style={{
-                        padding: "8px 14px",
-                        background: "transparent",
-                        color: "#52525B",
-                        border: "1px solid #18181B",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        cursor: "pointer",
-                        fontFamily: MONO,
-                      }}
-                    >
-                      Sign out
-                    </button>
-                  </form>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* BADGES / EMBED TAB */}
         {tab === "badges" && (

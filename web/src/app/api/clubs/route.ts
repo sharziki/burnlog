@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { getClubUsage } from "@/lib/clubUsage";
+import { getClubUsageBatch } from "@/lib/clubUsage";
 import { clubLimits, clubPlan } from "@/lib/clubPlan";
 
 function slugify(name: string): string {
@@ -125,9 +125,14 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
+  // One batched read instead of six queries per club.
+  const usageByClub = await getClubUsageBatch(
+    clubs.map((c) => ({ id: c.id, memberIds: c.memberships.map((m) => m.userId) })),
+  );
+
   const result = await Promise.all(
     clubs.map(async (c) => {
-      const usage = await getClubUsage(c.id, c.memberships.map((m) => m.userId));
+      const usage = usageByClub.get(c.id)!;
       return {
         id: c.id,
         name: c.name,

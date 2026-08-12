@@ -4,6 +4,7 @@ import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
 import type { UserStats } from "@/lib/stats";
+import { compareUsers, outcomeOf, verdictOf } from "@/lib/h2h";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
@@ -21,16 +22,6 @@ function formatUSD(n: number): string {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
   if (n >= 1) return `$${n.toFixed(2)}`;
   return `$${n.toFixed(4)}`;
-}
-
-function buildMetrics(l: UserStats, r: UserStats): Metric[] {
-  return [
-    { label: "Total Tokens", left: l.totalTokens, right: r.totalTokens, format: (v) => formatTokens(v) },
-    { label: "Weekly Tokens", left: l.weeklyTokens, right: r.weeklyTokens, format: (v) => formatTokens(v) },
-    { label: "Streak", left: l.streak, right: r.streak, format: (v) => `${v}d` },
-    { label: "Tok / Session", left: l.tokensPerCommit, right: r.tokensPerCommit, format: (v) => v.toLocaleString(), lowerIsBetter: true },
-    { label: "Est. Spend", left: l.totalTokens * DOLLARS_PER_TOKEN, right: r.totalTokens * DOLLARS_PER_TOKEN, format: (v) => formatUSD(v) },
-  ];
 }
 
 function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
@@ -59,16 +50,10 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
 export function H2HClient({ left, right }: { left: UserStats; right: UserStats }) {
   const leftRank = getRank(left.totalTokens);
   const rightRank = getRank(right.totalTokens);
-  const metrics = buildMetrics(left, right);
-
-  let leftWins = 0;
-  let rightWins = 0;
-  for (const m of metrics) {
-    const lb = m.lowerIsBetter ? m.left < m.right : m.left > m.right;
-    const rb = m.lowerIsBetter ? m.right < m.left : m.right > m.left;
-    if (lb) leftWins++;
-    else if (rb) rightWins++;
-  }
+  const metrics = compareUsers(left, right, formatTokens, (v) => formatUSD(v * DOLLARS_PER_TOKEN));
+  const verdict = verdictOf(metrics, left.name, right.name);
+  const leftWins = verdict.left;
+  const rightWins = verdict.right;
 
   return (
     <div style={{ fontFamily: SANS, background: "#09090B", color: "#E4E4E7", minHeight: "100vh", position: "relative", overflow: "hidden" }}>
@@ -123,8 +108,9 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
         {/* Metric rows */}
         <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 14, padding: 28, marginBottom: 24 }}>
           {metrics.map((m) => {
-            const leftWin = m.lowerIsBetter ? m.left < m.right : m.left > m.right;
-            const rightWin = m.lowerIsBetter ? m.right < m.left : m.right > m.left;
+            const outcome = outcomeOf(m);
+            const leftWin = outcome === "left";
+            const rightWin = outcome === "right";
             return (
               <div
                 key={m.label}
@@ -135,7 +121,9 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
                 </div>
                 <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1, textTransform: "uppercase", textAlign: "center" }}>
                   {m.label}
-                  {m.lowerIsBetter && <div style={{ fontSize: 8, color: "#3F3F46" }}>(lower is better)</div>}
+                  <div style={{ fontSize: 8, color: "#27272A", textTransform: "none", letterSpacing: 0, marginTop: 3 }}>
+                    {m.unscored ? "context only" : m.hint}
+                  </div>
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: rightWin ? "#D97706" : "#52525B", textAlign: "left", paddingLeft: 16 }}>
                   {m.format(m.right)}
@@ -158,6 +146,27 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
               @{right.username} providers
             </div>
             <ProviderBar providers={right.providers} />
+          </div>
+        </div>
+
+        {/* Verdict — say why, not just what */}
+        <div
+          style={{
+            background: verdict.winner === "draw" ? "#0C0C0E" : "#D9770610",
+            border: `1px solid ${verdict.winner === "draw" ? "#18181B" : "#D9770633"}`,
+            borderRadius: 12,
+            padding: "18px 22px",
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: MONO, marginBottom: 8 }}>
+            Verdict
+          </div>
+          <div style={{ fontSize: 15, color: "#E4E4E7", lineHeight: 1.6 }}>{verdict.summary}</div>
+          <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginTop: 10, lineHeight: 1.6 }}>
+            Scored on the last 30 days only, so tenure doesn&apos;t decide it. Rows within 5% count
+            as a tie. All-time and cost are shown for context but never scored — cost is derived
+            from tokens, so scoring both would count the same thing twice.
           </div>
         </div>
 

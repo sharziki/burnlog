@@ -7,6 +7,18 @@ import { formatTokens } from "../format.js";
 const BATCH = 500;
 
 export async function sync(args: string[]): Promise<void> {
+  // `burnlog sync me` reads like a sentence and people will type it. Sync,
+  // then show the long-range report rather than complaining about an argument.
+  if (args[0] === "me") {
+    await syncOnly(args.slice(1));
+    const { me } = await import("./me.js");
+    await me(args.slice(1));
+    return;
+  }
+  return syncOnly(args);
+}
+
+async function syncOnly(args: string[]): Promise<void> {
   const quiet = args.includes("--quiet") || args.includes("-q");
   const log = (msg: string) => {
     if (!quiet) console.log(msg);

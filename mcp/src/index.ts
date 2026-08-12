@@ -152,10 +152,13 @@ const server = new McpServer(
     instructions:
       "burnlog — query your AI token burn and rank, join orgs, and run challenges. Tools:\n" +
       "  get_my_rank, get_my_stats, get_my_clubs, get_leaderboard, find_user, list_orgs, join_org,\n" +
-      "  get_my_challenges, create_challenge, join_challenge.\n" +
+      "  get_my_challenges, create_challenge, join_challenge,\n" +
+      "  get_my_history, list_friends, manage_friend, find_people, get_club_feed, post_to_club.\n" +
       "Use the read tools when the user asks about token usage, rank, team budgets, streak, or leaderboard comparisons.\n" +
       "Use list_orgs to discover joinable orgs (teams/clubs) and join_org to join one (by slug; private orgs need an inviteCode).\n" +
-      "Use create_challenge when the user wants to compete with someone — it returns a shareable invite link.",
+      "Use create_challenge when the user wants to compete with someone — it returns a shareable invite link.\n" +
+      "Use get_my_history for 'how much have I burned in 6 months', cost, or environmental-impact questions.\n" +
+      "Use get_club_feed/post_to_club to read or join the discussion about MCP servers, skills, and agent setups.",
   },
 );
 
@@ -542,6 +545,227 @@ server.registerTool(
     const code = args.code.replace(/^.*\/c\//, "").replace(/[^a-z0-9]/gi, "");
     await apiPost<{ ok: boolean }>(`/api/challenges/${code}/join`, {});
     return textResult(`joined — ${baseUrl}/c/${code}`);
+  },
+);
+
+// ---------- History & impact ----------
+
+type HistoryResponse = {
+  ok: boolean;
+  days: number;
+  totals: {
+    tokens: number;
+    calls: number;
+    activeDays: number;
+    dailyAverage: number;
+    estimatedCostUsd: number;
+  };
+  impact: { kwh: number; gCo2e: number; litres: number };
+  peak: { date: string; tokens: number } | null;
+  monthly: { month: string; tokens: number }[];
+  models: { model: string; tokens: number }[];
+  sources: { source: string; tokens: number }[];
+};
+
+server.registerTool(
+  "get_my_history",
+  {
+    description:
+      "Long-range burn history for the current user: daily totals rolled up by month, top models, per-agent split, estimated API cost, and estimated environmental impact. Use for questions like 'how much have I burned in the last 6 months', 'which model do I use most', 'what has this cost me', or 'what's my carbon footprint'.",
+    inputSchema: {
+      days: z
+        .number()
+        .int()
+        .min(1)
+        .max(400)
+        .optional()
+        .describe("Window length in days. Defaults to 180."),
+    },
+  },
+  async (args) => {
+    const days = args.days ?? 180;
+    const d = await apiGet<HistoryResponse>(`/api/me/history?days=${days}`);
+    const lines: string[] = [];
+    lines.push(`last ${d.days} days`);
+    lines.push(
+      `  ${formatTokens(d.totals.tokens)} tokens · ${d.totals.calls} calls · $${d.totals.estimatedCostUsd.toFixed(2)} est. API cost`,
+    );
+    lines.push(
+      `  active ${d.totals.activeDays}/${d.days} days · avg ${formatTokens(d.totals.dailyAverage)}/active day`,
+    );
+    const co2 =
+      d.impact.gCo2e >= 1000 ? `${(d.impact.gCo2e / 1000).toFixed(1)} kg` : `${Math.round(d.impact.gCo2e)} g`;
+    lines.push(
+      `  estimated impact: ${d.impact.kwh.toFixed(2)} kWh · ${co2} CO2e · ${d.impact.litres.toFixed(1)} L water (rough)`,
+    );
+    if (d.peak) lines.push(`  peak day: ${d.peak.date} (${formatTokens(d.peak.tokens)})`);
+    if (d.monthly.length) {
+      lines.push("", "by month:");
+      for (const m of d.monthly) lines.push(`  ${m.month}  ${formatTokens(m.tokens)}`);
+    }
+    if (d.sources.length) {
+      lines.push("", "by agent:");
+      for (const s of d.sources) lines.push(`  ${s.source.padEnd(14)} ${formatTokens(s.tokens)}`);
+    }
+    if (d.models.length) {
+      lines.push("", "top models:");
+      for (const m of d.models.slice(0, 8)) lines.push(`  ${m.model.padEnd(28)} ${formatTokens(m.tokens)}`);
+    }
+    return textResult(lines.join("\n"));
+  },
+);
+
+// ---------- Friends ----------
+
+type FriendsResponse = {
+  ok: boolean;
+  friends: { username: string | null; name: string | null }[];
+  incoming: { user: { username: string | null } }[];
+  outgoing: { user: { username: string | null } }[];
+};
+
+server.registerTool(
+  "list_friends",
+  {
+    description:
+      "List the current user's burnlog friends plus any pending friend requests in either direction.",
+    inputSchema: {},
+  },
+  async () => {
+    const d = await apiGet<FriendsResponse>("/api/friends");
+    const lines: string[] = [];
+    lines.push(
+      d.friends.length
+        ? `friends (${d.friends.length}): ${d.friends.map((f) => "@" + f.username).join(", ")}`
+        : "no friends yet",
+    );
+    if (d.incoming.length)
+      lines.push(`pending requests to you: ${d.incoming.map((r) => "@" + r.user.username).join(", ")}`);
+    if (d.outgoing.length)
+      lines.push(`requests you sent: ${d.outgoing.map((r) => "@" + r.user.username).join(", ")}`);
+    return textResult(lines.join("\n"));
+  },
+);
+
+server.registerTool(
+  "manage_friend",
+  {
+    description:
+      "Send, accept, decline, or remove a burnlog friend by username. Requesting someone who already requested you accepts automatically.",
+    inputSchema: {
+      username: z.string().min(1).max(64).describe("GitHub username of the other person."),
+      action: z
+        .enum(["request", "accept", "decline", "remove"])
+        .default("request")
+        .describe("What to do with that relationship."),
+    },
+  },
+  async (args) => {
+    const d = await apiPost<{ ok: boolean; status?: string }>("/api/friends", {
+      username: args.username,
+      action: args.action,
+    });
+    return textResult(`@${args.username} → ${d.status ?? "done"}`);
+  },
+);
+
+server.registerTool(
+  "find_people",
+  {
+    description:
+      "Search burnlog users by username or display name. Returns their total burn and your relationship to them.",
+    inputSchema: {
+      query: z.string().min(2).max(64).describe("Name or username fragment."),
+    },
+  },
+  async (args) => {
+    const d = await apiGet<{
+      ok: boolean;
+      people: { username: string; name: string; totalTokens: number; status: string }[];
+    }>(`/api/people?q=${encodeURIComponent(args.query)}`, false);
+    if (!d.people.length) return textResult(`nobody matching "${args.query}"`);
+    return textResult(
+      d.people
+        .map((p) => `@${p.username.padEnd(18)} ${formatTokens(p.totalTokens).padStart(8)}  ${p.status}`)
+        .join("\n"),
+    );
+  },
+);
+
+// ---------- Club feed ----------
+
+type ClubPost = {
+  id: string;
+  title: string | null;
+  body: string;
+  tags: string[];
+  createdAt: string;
+  author: { username: string | null };
+  replies: { body: string; author: { username: string | null } }[];
+};
+
+server.registerTool(
+  "get_club_feed",
+  {
+    description:
+      "Read a burnlog club's discussion feed — where members post about MCP servers, skills, agent setups, and costs. Use when the user asks what their club is discussing, or wants to find setups other people are running.",
+    inputSchema: {
+      clubId: z.string().min(1).max(64).describe("Club id (from get_my_clubs or list_orgs)."),
+      tag: z
+        .string()
+        .max(32)
+        .optional()
+        .describe("Filter to one topic tag, e.g. mcp, skills, agents, prompts."),
+    },
+  },
+  async (args) => {
+    const query = args.tag ? `?tag=${encodeURIComponent(args.tag)}` : "";
+    const d = await apiGet<{ ok: boolean; posts: ClubPost[] }>(
+      `/api/clubs/${args.clubId}/posts${query}`,
+    );
+    if (!d.posts.length) return textResult("no posts in that club yet");
+    return textResult(
+      d.posts
+        .map((p) => {
+          const head = `@${p.author.username}${p.tags.length ? ` [${p.tags.join(", ")}]` : ""}`;
+          const title = p.title ? `\n  ${p.title}` : "";
+          const replies = p.replies.length
+            ? "\n" + p.replies.map((r) => `    ↳ @${r.author.username}: ${r.body}`).join("\n")
+            : "";
+          return `${head}${title}\n  ${p.body}${replies}`;
+        })
+        .join("\n\n"),
+    );
+  },
+);
+
+server.registerTool(
+  "post_to_club",
+  {
+    description:
+      "Post to a burnlog club feed, or reply to an existing post. Use to share an MCP setup, a skill, or a finding with the club. Requires membership.",
+    inputSchema: {
+      clubId: z.string().min(1).max(64).describe("Club id."),
+      body: z.string().min(1).max(8000).describe("Post body."),
+      title: z.string().max(120).optional().describe("Optional title."),
+      tags: z
+        .string()
+        .max(120)
+        .optional()
+        .describe("Comma-separated topic tags, e.g. 'mcp,setup'."),
+      postId: z
+        .string()
+        .max(64)
+        .optional()
+        .describe("Set to reply to an existing post instead of creating one."),
+    },
+  },
+  async (args) => {
+    const d = await apiPost<{ ok: boolean; postId?: string; replyId?: string }>(
+      `/api/clubs/${args.clubId}/posts`,
+      { body: args.body, title: args.title, tags: args.tags, postId: args.postId },
+    );
+    return textResult(d.replyId ? "reply posted" : `posted (${d.postId})`);
   },
 );
 

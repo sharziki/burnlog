@@ -4,6 +4,7 @@ import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/lib/achievements";
+import { ImpactPanel } from "@/components/ImpactPanel";
 import type { UserStats } from "@/lib/stats";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -296,7 +297,7 @@ export function ProfileClient({
         {/* ─── Stats Grid ─── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 32 }}>
           {[
-            { label: "Total Tokens", value: formatTokens(user.totalTokens), sub: `$${spend >= 1 ? spend.toFixed(2) : spend.toFixed(4)} est. spend` },
+            { label: "Total Tokens", value: formatTokens(user.totalTokens), sub: `$${spend >= 1 ? spend.toFixed(2) : spend.toFixed(4)} est. API cost` },
             { label: "Weekly Tokens", value: formatTokens(user.weeklyTokens), sub: null },
             { label: "Streak", value: `${user.streak}d`, sub: user.longestStreak > user.streak ? `best: ${user.longestStreak}d` : user.streak > 0 ? "personal best!" : "no active streak" },
             { label: "Sessions", value: user.commits.toLocaleString(), sub: user.tokensPerCommit ? `~${formatTokens(user.tokensPerCommit)} tok/session` : null },
@@ -418,6 +419,11 @@ export function ProfileClient({
               </div>
             )}
           </div>
+        </div>
+
+        {/* ─── Environmental impact ─── */}
+        <div style={{ marginTop: 20 }}>
+          <ImpactPanel tokens={user.totalTokens} title={`ENVIRONMENTAL IMPACT · ${user.username}`} />
         </div>
 
         {/* ─── Trophy case ─── */}

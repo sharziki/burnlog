@@ -22,19 +22,22 @@ export async function Nav() {
         maxWidth: 1100,
         margin: "0 auto",
         padding: "32px 24px 24px",
-        display: "flex",
-        justifyContent: "space-between",
+        // Three equal columns rather than flex: it centres the links against
+        // the *header*, not against whatever width the logo and account
+        // controls happen to leave over.
+        display: "grid",
+        gridTemplateColumns: "1fr auto 1fr",
         alignItems: "center",
         borderBottom: "1px solid #18181B",
         position: "relative",
         zIndex: 1,
       }}
     >
-      <a href="/" style={{ textDecoration: "none" }}>
+      <a href="/" style={{ textDecoration: "none", justifySelf: "start" }}>
         <Logo size={32} />
       </a>
 
-      <nav style={{ display: "flex", gap: 4, marginLeft: 28, marginRight: "auto" }} className="nav-links">
+      <nav style={{ display: "flex", gap: 4, justifySelf: "center" }} className="nav-links">
         {NAV_LINKS.map(([href, label]) => (
           <a
             key={href}
@@ -46,6 +49,7 @@ export async function Nav() {
               padding: "8px 10px",
               borderRadius: 6,
               textDecoration: "none",
+              whiteSpace: "nowrap",
             }}
           >
             {label}
@@ -54,7 +58,7 @@ export async function Nav() {
       </nav>
 
       {user?.username ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>
           <NotificationBell />
           <a
             href={`/u/${user.username}`}
@@ -85,6 +89,7 @@ export async function Nav() {
         </div>
       ) : (
         <form
+          style={{ justifySelf: "end" }}
           action={async () => {
             "use server";
             await signIn("github");

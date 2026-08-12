@@ -15,6 +15,7 @@ import { setup } from "./commands/setup.js";
 import { wrap } from "./commands/wrap.js";
 import { challenge } from "./commands/challenge.js";
 import { log } from "./commands/log.js";
+import { me } from "./commands/me.js";
 
 function readVersion(): string {
   try {
@@ -41,6 +42,7 @@ ${pc.bold("counting tokens")}
   ${pc.cyan("sync")}    [--quiet]  upload new burn events to the leaderboard
   ${pc.cyan("wrap")}    -- <cmd>   count any command's LLM calls (any provider)
   ${pc.cyan("log")}     <tokens>   record usage by hand (dashboards, batch jobs)
+  ${pc.cyan("me")}      [--days n] your burn over time (default 180 days)
   ${pc.cyan("install")}            install a Claude Code hook (auto-sync on session end)
   ${pc.cyan("uninstall")}          remove the Claude Code hook
   ${pc.cyan("daemon")}             run a background watcher that syncs every 30s
@@ -108,6 +110,10 @@ async function main(): Promise<void> {
       break;
     case "log":
       log(rest);
+      break;
+    case "me":
+      // `burnlog sync me` reads naturally, so accept it as an alias.
+      await me(rest);
       break;
     // Bare `burnlog` runs the whole onboarding rather than printing help —
     // the first command should do something useful, not explain itself.

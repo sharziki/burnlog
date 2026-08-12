@@ -38,6 +38,10 @@ model User {
   hostedChallenges  Challenge[]        @relation("challengeHost")
   wonChallenges     Challenge[]        @relation("challengeWinner")
   challengeEntries  ChallengeEntry[]
+  sentFriendships   Friendship[]       @relation("friendshipRequester")
+  gotFriendships    Friendship[]       @relation("friendshipAddressee")
+  clubPosts         ClubPost[]
+  clubPostReplies   ClubPostReply[]
 }
 
 model Account {
@@ -155,6 +159,7 @@ model Club {
   memberships   ClubMembership[]
   announcements ClubAnnouncement[]
   auditEvents   ClubAuditEvent[]
+  posts         ClubPost[]
 }
 
 model ClubAuditEvent {
@@ -283,6 +288,68 @@ model Achievement {
 
   @@unique([userId, key])
   @@index([userId])
+}
+
+// ---------- Friends ----------
+
+/// A friendship is ONE row, not two. `requesterId`/`addresseeId` record who
+/// asked whom (so a pending request has a direction), but once accepted the
+/// relationship is symmetric and must be queried from both sides.
+/// `pairKey` is the sorted "<idA>:<idB>" and is uniquely indexed, which makes
+/// "are these two friends" a single lookup and makes duplicate requests in
+/// either direction impossible at the database level.
+model Friendship {
+  id          String    @id @default(cuid())
+  requesterId String
+  addresseeId String
+  pairKey     String    @unique
+  /// "pending" | "accepted" | "blocked"
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  requester User @relation("friendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("friendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
+}
+
+// ---------- Club feed ----------
+
+/// A post in a club. Clubs are meant to be somewhere people talk about MCPs,
+/// skills, and setups — not just a leaderboard with a name.
+model ClubPost {
+  id        String   @id @default(cuid())
+  clubId    String
+  authorId  String
+  /// Optional short title; a post can be just a body.
+  title     String?
+  body      String
+  /// Free-form lowercase tags, comma separated, e.g. "mcp,skills".
+  tags      String?
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club    Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  author  User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replies ClubPostReply[]
+
+  @@index([clubId, pinned, createdAt])
+}
+
+model ClubPostReply {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  post   ClubPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
 }
 
 // ---------- Sales ----------

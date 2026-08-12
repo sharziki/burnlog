@@ -22,6 +22,7 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: "burnlog",
     type: "website",
+    images: [{ url: `${siteUrl}/og`, width: 1200, height: 630, alt: "burnlog" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -29,8 +30,18 @@ export const metadata: Metadata = {
     description:
       "Track every token you push through Claude Code, Codex, and other AI coding agents.",
     creator: "@sharziki",
+    images: [`${siteUrl}/og`],
   },
-  icons: { icon: "/favicon.svg" },
+  // SVG first for crisp tabs; PNG/ICO for the surfaces that won't take SVG
+  // (Safari, some launchers, link-preview scrapers).
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "48x48" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
   manifest: "/manifest.json",
   authors: [{ name: "Sharvil Saxena", url: "https://github.com/sharziki" }],
   creator: "SXNA Labs",

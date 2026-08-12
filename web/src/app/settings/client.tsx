@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FriendRequests } from "@/components/FriendRequests";
 
 export function SettingsClient({
   username,
@@ -79,6 +80,36 @@ export function SettingsClient({
             Sign out
           </button>
         </form>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <a
+          href={`/u/${username}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            background: "#0A0A0A",
+            border: "1px solid #141414",
+            borderRadius: 14,
+            padding: 20,
+            textDecoration: "none",
+          }}
+        >
+          {image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt="" width={44} height={44} style={{ borderRadius: 10 }} />
+          )}
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", color: "#FAFAFA", fontSize: 15, fontWeight: 700 }}>{name}</span>
+            <span style={{ display: "block", color: "#6B7280", fontSize: 11 }}>@{username}</span>
+          </span>
+          <span style={{ color: "#D97706", fontSize: 11 }}>view public profile →</span>
+        </a>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <FriendRequests />
       </div>
 
       <div
