@@ -75,7 +75,7 @@ export async function GET(req: Request) {
     series.push({ date, tokens: row?.total ?? 0, calls: row?.calls ?? 0 });
   }
 
-  const total = totals._sum.totalTokens ?? 0;
+  const total = Number(totals._sum.totalTokens ?? 0);
   const activeDays = series.filter((s) => s.tokens > 0).length;
   const peak = series.reduce(
     (best, s) => (s.tokens > best.tokens ? s : best),
@@ -105,9 +105,9 @@ export async function GET(req: Request) {
     peak: peak.date ? peak : null,
     series,
     monthly: [...monthly.entries()].map(([month, tokens]) => ({ month, tokens })),
-    models: byModel.map((m) => ({ model: m.model, tokens: m._sum.totalTokens ?? 0 })),
+    models: byModel.map((m) => ({ model: m.model, tokens: Number(m._sum.totalTokens ?? 0) })),
     sources: bySource
-      .map((s) => ({ source: s.source, tokens: s._sum.totalTokens ?? 0 }))
+      .map((s) => ({ source: s.source, tokens: Number(s._sum.totalTokens ?? 0) }))
       .sort((a, b) => b.tokens - a.tokens),
   });
 }

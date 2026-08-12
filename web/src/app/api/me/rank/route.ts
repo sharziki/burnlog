@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   });
 
   const myRow = totals.find((t) => t.userId === auth.key.userId);
-  const myTotal = myRow?._sum.totalTokens ?? 0;
+  const myTotal = Number(myRow?._sum.totalTokens ?? 0);
   const position =
     totals.findIndex((t) => t.userId === auth.key.userId) + 1 || totals.length + 1;
   const rank = getRank(myTotal);

@@ -76,7 +76,7 @@ export async function GET(req: Request) {
         clubs,
         teamApiKeys,
         leads,
-        mtdTokens: mtdTokens._sum.totalTokens ?? 0,
+        mtdTokens: Number(mtdTokens._sum.totalTokens ?? 0),
         estimatedMrrUsd: teamSeats * (CLUB_PLANS.team.monthlyPriceUsdPerSeat ?? 0),
         forcedPlanOverrides,
         overLimitClubs: planLimitRows.filter((club) => {

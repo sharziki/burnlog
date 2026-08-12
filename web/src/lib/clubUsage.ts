@@ -43,7 +43,7 @@ export async function getClubUsageBatch(
           where: { userId: { in: allMemberIds }, clubId: null, ...where },
           _sum: { totalTokens: true },
         })
-      : Promise.resolve([] as { userId: string; _sum: { totalTokens: number | null } }[]);
+      : Promise.resolve([] as { userId: string; _sum: { totalTokens: bigint | null } }[]);
 
   const byClub = (where: object) =>
     prisma.burnEvent.groupBy({
@@ -61,10 +61,12 @@ export async function getClubUsageBatch(
     byClub({ timestamp: { gte: monthStart } }),
   ]);
 
-  const userMap = (rows: { userId: string; _sum: { totalTokens: number | null } }[]) =>
-    new Map(rows.map((r) => [r.userId, r._sum.totalTokens ?? 0]));
-  const clubMap = (rows: { clubId: string | null; _sum: { totalTokens: number | null } }[]) =>
-    new Map(rows.map((r) => [r.clubId ?? "", r._sum.totalTokens ?? 0]));
+  // `_sum` over the BIGINT token columns is a JS BigInt; narrowing here is what
+  // keeps ClubUsage a bag of plain numbers for every caller downstream.
+  const userMap = (rows: { userId: string; _sum: { totalTokens: bigint | null } }[]) =>
+    new Map(rows.map((r) => [r.userId, Number(r._sum.totalTokens ?? 0)]));
+  const clubMap = (rows: { clubId: string | null; _sum: { totalTokens: bigint | null } }[]) =>
+    new Map(rows.map((r) => [r.clubId ?? "", Number(r._sum.totalTokens ?? 0)]));
 
   const totalByUser = userMap(uTotal);
   const weekByUser = userMap(uWeek);
@@ -142,15 +144,17 @@ export async function getClubUsage(clubId: string, memberIds: string[]): Promise
       }),
     ]);
 
-  const memberTotalMap = new Map(memberTotals.map((t) => [t.userId, t._sum.totalTokens ?? 0]));
-  const memberWeeklyMap = new Map(memberWeekly.map((t) => [t.userId, t._sum.totalTokens ?? 0]));
-  const memberMonthlyMap = new Map(memberMonthly.map((t) => [t.userId, t._sum.totalTokens ?? 0]));
+  const memberTotalMap = new Map(memberTotals.map((t) => [t.userId, Number(t._sum.totalTokens ?? 0)]));
+  const memberWeeklyMap = new Map(memberWeekly.map((t) => [t.userId, Number(t._sum.totalTokens ?? 0)]));
+  const memberMonthlyMap = new Map(
+    memberMonthly.map((t) => [t.userId, Number(t._sum.totalTokens ?? 0)]),
+  );
   const memberTotal = [...memberTotalMap.values()].reduce((s, n) => s + n, 0);
   const memberWeek = [...memberWeeklyMap.values()].reduce((s, n) => s + n, 0);
   const memberMonth = [...memberMonthlyMap.values()].reduce((s, n) => s + n, 0);
-  const serviceTotalTokens = serviceTotal._sum.totalTokens ?? 0;
-  const serviceWeeklyTokens = serviceWeekly._sum.totalTokens ?? 0;
-  const serviceMonthlyTokens = serviceMonthly._sum.totalTokens ?? 0;
+  const serviceTotalTokens = Number(serviceTotal._sum.totalTokens ?? 0);
+  const serviceWeeklyTokens = Number(serviceWeekly._sum.totalTokens ?? 0);
+  const serviceMonthlyTokens = Number(serviceMonthly._sum.totalTokens ?? 0);
 
   return {
     memberTotalMap,

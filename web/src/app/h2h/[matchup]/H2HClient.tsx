@@ -59,6 +59,7 @@ export function H2HClient({
   viewer: string | null;
 }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   /**
    * Restored with the page. "Challenge Them" used to live on the board's H2H
@@ -68,6 +69,7 @@ export function H2HClient({
   async function challengeThem() {
     const opponent = viewer === left.username ? right.username : left.username;
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch("/api/challenges", {
         method: "POST",
@@ -76,9 +78,9 @@ export function H2HClient({
       });
       const data = (await res.json()) as { ok: boolean; message?: string; challenge?: { url: string } };
       if (data.ok && data.challenge) window.location.href = data.challenge.url;
-      else alert(data.message ?? "Couldn't start that challenge.");
+      else setError(data.message ?? "Couldn't start that challenge.");
     } catch {
-      alert("Network error — try again.");
+      setError("Network error — try again.");
     } finally {
       setBusy(false);
     }
@@ -150,14 +152,15 @@ export function H2HClient({
             return (
               <div
                 key={m.label}
-                style={{ display: "grid", gridTemplateColumns: "1fr 140px 1fr", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #18181B", fontFamily: MONO }}
+                className="h2h-metric"
+                style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 140px minmax(0, 1fr)", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #18181B", fontFamily: MONO }}
               >
                 <div style={{ fontSize: 16, fontWeight: 700, color: leftWin ? "#D97706" : "#52525B", textAlign: "right", paddingRight: 16 }}>
                   {m.format(m.left)}
                 </div>
                 <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1, textTransform: "uppercase", textAlign: "center" }}>
                   {m.label}
-                  <div style={{ fontSize: 8, color: "#27272A", textTransform: "none", letterSpacing: 0, marginTop: 3 }}>
+                  <div style={{ fontSize: 10, color: "#3F3F46", textTransform: "none", letterSpacing: 0, marginTop: 3, lineHeight: 1.35 }}>
                     {m.unscored ? "context only" : m.hint}
                   </div>
                 </div>
@@ -170,7 +173,7 @@ export function H2HClient({
         </div>
 
         {/* Provider breakdown */}
-        <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 14, padding: 28, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
+        <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 14, padding: 28, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 24, marginBottom: 32 }} className="profile-pair">
           <div>
             <div style={{ fontSize: 10, color: "#3F3F46", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10, fontFamily: MONO }}>
               @{left.username} providers
@@ -187,7 +190,7 @@ export function H2HClient({
 
         {/* Settle it for real — the comparison is the setup, the sprint is the point. */}
         {viewer && (viewer === left.username || viewer === right.username) && (
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+          <div style={{ display: "grid", justifyItems: "center", gap: 10, marginBottom: 24 }}>
             <button
               onClick={challengeThem}
               disabled={busy}
@@ -205,6 +208,11 @@ export function H2HClient({
             >
               {busy ? "Starting…" : "Challenge them — 7-day sprint"}
             </button>
+            {error && (
+              <div role="alert" style={{ fontFamily: MONO, fontSize: 11, color: "#D97706", textAlign: "center", maxWidth: 420 }}>
+                {error}
+              </div>
+            )}
           </div>
         )}
 

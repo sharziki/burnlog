@@ -13,6 +13,9 @@ export async function Nav() {
 
   return (
     <header
+      // The class is the only responsive hook this header has — everything
+      // else here is inline, so the phone layout lives in globals.css.
+      className="app-header"
       style={{
         maxWidth: 1100,
         margin: "0 auto",

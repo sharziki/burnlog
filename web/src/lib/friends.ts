@@ -201,7 +201,7 @@ export async function searchPeople(
       : Promise.resolve([]),
   ]);
 
-  const totalMap = new Map(totals.map((t) => [t.userId, t._sum.totalTokens ?? 0]));
+  const totalMap = new Map(totals.map((t) => [t.userId, Number(t._sum.totalTokens ?? 0)]));
   const friendMap = new Map(friendships.map((f) => [f.pairKey, f]));
 
   return users

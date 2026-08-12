@@ -70,8 +70,9 @@ want to know in advance.
 
 ## Environment
 
-Eight variables live in Vercel (Production). They are the *only* config —
-there is no `.env` in production.
+Eight required variables live in Vercel (Production), plus the optional billing
+trio in the next section. They are the *only* config — there is no `.env` in
+production.
 
 ```
 DATABASE_URL           postgres on runtime-01, sslmode=require, connection_limit=1
@@ -91,6 +92,55 @@ the CLI; the canonical copy of `DATABASE_URL` is `BURNLOG_DATABASE_URL` in
 **An empty env list is the failure mode that took burnlog.net down.** With no
 `AUTH_SECRET`, Auth.js throws `MissingSecret` on *every* request and sign-in
 500s. If auth breaks after any project change, check `env ls` first.
+
+## Billing
+
+Three more variables, and they are the only ones in this file that are
+optional. The Company tier ($30/mo) is sold through Stripe Checkout.
+
+```
+STRIPE_SECRET_KEY      sk_live_… — https://dashboard.stripe.com/apikeys
+STRIPE_WEBHOOK_SECRET  whsec_… — signing secret of the endpoint below
+STRIPE_PRICE_ID        price_… — the recurring $30/mo Company price
+```
+
+**With none of them set the app builds and runs exactly as before**, and the
+Company tier is unbilled rather than unavailable: companies work, and
+`/companies` says in as many words that billing is off on this deployment.
+That is the self-hosting path, and it is deliberate — an unpaid tier that
+silently behaves like a paid one is the thing worth avoiding, not a free one
+that admits it.
+
+Set all three or none. `STRIPE_SECRET_KEY` without `STRIPE_PRICE_ID` leaves
+checkout returning `503 billing_unconfigured`, because there is deliberately no
+hardcoded price to fall back to — the tier is sold at whatever `STRIPE_PRICE_ID`
+points at, and a constant in the code would keep charging last quarter's number.
+
+### The webhook is the only thing that grants the tier
+
+Point a Stripe endpoint at `https://burnlog.net/api/billing/webhook` and
+subscribe it to:
+
+```
+checkout.session.completed
+customer.subscription.created
+customer.subscription.updated
+customer.subscription.deleted
+```
+
+Nothing the browser sends can mark a company as paid. `POST /api/billing/checkout`
+hands back a Stripe URL and writes no subscription state; the webhook verifies
+the signature against the **raw** request body and is the only writer of
+`Company.subscriptionStatus`.
+
+If a payment succeeds but the company still reads "no subscription", the
+webhook is the thing to check — the endpoint's delivery log in the Stripe
+dashboard will show either a 400 (wrong `STRIPE_WEBHOOK_SECRET`) or a 503
+(the key never made it into Vercel).
+
+Locally, `stripe listen --forward-to localhost:3000/api/billing/webhook` prints
+a `whsec_…` of its own; that is the value `STRIPE_WEBHOOK_SECRET` needs in dev,
+not the dashboard's.
 
 ## The database
 

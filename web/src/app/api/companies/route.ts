@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { authFromBearer } from "@/lib/bearerAuth";
+import { sessionOrBearerUserId } from "@/lib/bearerAuth";
 import { prisma } from "@/lib/db";
+import { describeCompanyBilling } from "@/lib/billing";
 import { companyLimits, companyPlan } from "@/lib/clubPlan";
-import { slugifyCompany } from "@/lib/companies";
-import { getTeamBurnProfilesBatch } from "@/lib/companyUsage";
+import { listCompaniesForUser, slugifyCompany } from "@/lib/companies";
 
 export const dynamic = "force-dynamic";
 
@@ -15,86 +14,23 @@ function bad(status: number, error: string, message: string) {
   return NextResponse.json({ ok: false, error, message }, { status });
 }
 
-/**
- * Companies are managed from the dashboard (session cookie) and read back by
- * the CLI (bearer API key). Resolve whichever credential the caller brought.
- */
-async function currentUserId(req: Request): Promise<string | null> {
-  const session = await auth();
-  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
-  if (sessionUserId) return sessionUserId;
-
-  if (req.headers.get("authorization")?.startsWith("Bearer ")) {
-    const result = await authFromBearer(req);
-    if ("key" in result) return result.key.userId;
-  }
-  return null;
-}
-
 export async function GET(req: Request) {
-  const userId = await currentUserId(req);
+  const userId = await sessionOrBearerUserId(req);
   // No anonymous listing: a company maps to a customer's org chart, so there
   // is no "browse all companies" the way there is for public clubs.
   if (!userId) return NextResponse.json({ ok: true, companies: [] });
 
-  const companies = await prisma.company.findMany({
-    where: {
-      OR: [{ ownerId: userId }, { teams: { some: { memberships: { some: { userId } } } } }],
-    },
-    include: {
-      owner: { select: { username: true, name: true, image: true } },
-      teams: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          memberships: { select: { userId: true } },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // One batched read across every team of every company, not per company.
-  const profiles = await getTeamBurnProfilesBatch(
-    companies.flatMap((c) =>
-      c.teams.map((t) => ({
-        id: t.id,
-        name: t.name,
-        slug: t.slug,
-        memberIds: t.memberships.map((m) => m.userId),
-      })),
-    ),
-  );
-  const byTeam = new Map(profiles.map((p) => [p.id, p]));
-
-  const result = companies.map((c) => {
-    const teams = c.teams.map((t) => byTeam.get(t.id)!);
-    const sum = (pick: (p: (typeof teams)[number]) => number) =>
-      teams.reduce((s, p) => s + pick(p), 0);
-    return {
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      plan: companyPlan(c.plan),
-      limits: companyLimits(c.plan),
-      createdAt: c.createdAt,
-      owner: c.owner,
-      isOwner: c.ownerId === userId,
-      teamCount: teams.length,
-      memberCount: sum((p) => p.memberCount),
-      totalTokens: sum((p) => p.totalTokens),
-      windowTokens: sum((p) => p.windowTokens),
-    };
-  });
-  result.sort((a, b) => b.windowTokens - a.windowTokens);
-
-  return NextResponse.json({ ok: true, companies: result });
+  return NextResponse.json({ ok: true, companies: await listCompaniesForUser(userId) });
 }
 
+/**
+ * Creating a company is free; *using* one is not. The row is what checkout
+ * needs something to attach a subscription to, so the paywall sits on the
+ * writes (see companyIsWritable) rather than here, where refusing would leave
+ * a would-be customer with nothing to pay for.
+ */
 export async function POST(req: Request) {
-  const userId = await currentUserId(req);
+  const userId = await sessionOrBearerUserId(req);
   if (!userId) return bad(401, "unauthorized", "sign in to create a company");
 
   let body: Record<string, unknown>;
@@ -138,6 +74,7 @@ export async function POST(req: Request) {
         description: company.description,
         plan: companyPlan(company.plan),
         limits: companyLimits(company.plan),
+        billing: describeCompanyBilling(company),
       },
     },
     { status: 201 },

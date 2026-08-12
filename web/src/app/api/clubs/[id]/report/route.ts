@@ -110,7 +110,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }),
   ]);
 
-  const totalMap = new Map(totals.map((t) => [t.userId, t._sum]));
+  // BIGINT sums narrow here so the CSV cells and the spend multiplication below
+  // stay plain numbers — `bigint * number` throws.
+  const totalMap = new Map(
+    totals.map((t) => [
+      t.userId,
+      {
+        inputTokens: Number(t._sum.inputTokens ?? 0),
+        outputTokens: Number(t._sum.outputTokens ?? 0),
+        totalTokens: Number(t._sum.totalTokens ?? 0),
+      },
+    ]),
+  );
   const eventMap = new Map(events.map((e) => [e.userId, e]));
   const serviceKeyIds = serviceTotals.flatMap((s) => (s.apiKeyId ? [s.apiKeyId] : []));
   const serviceKeys = serviceKeyIds.length
@@ -121,10 +132,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     : [];
   const serviceLabelMap = new Map(serviceKeys.map((k) => [k.id, k.label ?? "team key"]));
   const serviceWeeklyMap = new Map(
-    serviceWeekly.map((s) => [s.apiKeyId ?? LEGACY_TEAM_KEY, s._sum.totalTokens ?? 0]),
+    serviceWeekly.map((s) => [s.apiKeyId ?? LEGACY_TEAM_KEY, Number(s._sum.totalTokens ?? 0)]),
   );
   const serviceMtdMap = new Map(
-    serviceMtd.map((s) => [s.apiKeyId ?? LEGACY_TEAM_KEY, s._sum.totalTokens ?? 0]),
+    serviceMtd.map((s) => [s.apiKeyId ?? LEGACY_TEAM_KEY, Number(s._sum.totalTokens ?? 0)]),
   );
   const header = [
     "club",
@@ -180,13 +191,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       service.apiKeyId ? serviceLabelMap.get(service.apiKeyId) ?? "revoked team key" : "Team API keys",
       "",
       service._count._all,
-      service._sum.inputTokens ?? 0,
-      service._sum.outputTokens ?? 0,
-      service._sum.totalTokens ?? 0,
+      Number(service._sum.inputTokens ?? 0),
+      Number(service._sum.outputTokens ?? 0),
+      Number(service._sum.totalTokens ?? 0),
       serviceWeeklyMap.get(key) ?? 0,
       serviceMtdMap.get(key) ?? 0,
       club.monthlyBudgetTokens,
-      ((service._sum.totalTokens ?? 0) * DOLLARS_PER_TOKEN).toFixed(2),
+      (Number(service._sum.totalTokens ?? 0) * DOLLARS_PER_TOKEN).toFixed(2),
       service._max.timestamp?.toISOString() ?? "",
     ]);
   }

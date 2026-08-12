@@ -117,11 +117,16 @@ model BurnEvent {
   model               String
   /// Inferred from model name for the provider split chart.
   provider            String // "anthropic" | "openai" | "google" | "other"
-  inputTokens         Int
-  outputTokens        Int
-  cacheCreationTokens Int      @default(0)
-  cacheReadTokens     Int      @default(0)
-  totalTokens         Int
+  /// BIGINT, not INT4: a single heavy session aggregate clears 2.1B, and the
+  /// old ceiling meant those events were rejected outright. Prisma hands these
+  /// back as JS BigInt, which JSON.stringify throws on — every read path
+  /// converts with Number() at the query boundary. Token counts stay far under
+  /// Number.MAX_SAFE_INTEGER, so nothing is lost in the narrowing.
+  inputTokens         BigInt
+  outputTokens        BigInt
+  cacheCreationTokens BigInt   @default(0)
+  cacheReadTokens     BigInt   @default(0)
+  totalTokens         BigInt
   timestamp           DateTime
   createdAt           DateTime @default(now())
 
@@ -152,6 +157,22 @@ model Company {
   /// the sensible default rather than "free" — see lib/clubPlan.ts.
   plan        String   @default("company")
   createdAt   DateTime @default(now())
+
+  /// ---- Stripe subscription ----
+  /// The customer outlives any one subscription: cancel and resubscribe and
+  /// this stays put, which is what lets the portal and a second checkout find
+  /// the same billing history instead of opening a duplicate account.
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  /// Stripe's own status verbatim ("active" | "trialing" | "past_due" |
+  /// "canceled" | ...), never a value burnlog invents. Only the webhook writes
+  /// it — see lib/billing.ts for which values still count as paid.
+  subscriptionStatus   String    @default("inactive")
+  /// End of the paid period, straight off the subscription item. Display only:
+  /// entitlement is decided by `subscriptionStatus`, because Stripe moves this
+  /// date on renewal and a clock-based gate would lock people out on any
+  /// webhook we missed.
+  currentPeriodEnd     DateTime?
 
   owner User   @relation("companyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   teams Club[]

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { authFromBearer } from "@/lib/bearerAuth";
+import { sessionOrBearerUserId } from "@/lib/bearerAuth";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
 import { outcomeOf, verdictOf } from "@/lib/h2h";
@@ -22,28 +21,23 @@ function bad(status: number, error: string, message: string) {
   return NextResponse.json({ ok: false, error, message }, { status });
 }
 
-async function currentUserId(req: Request): Promise<string | null> {
-  const session = await auth();
-  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
-  if (sessionUserId) return sessionUserId;
-
-  if (req.headers.get("authorization")?.startsWith("Bearer ")) {
-    const result = await authFromBearer(req);
-    if ("key" in result) return result.key.userId;
-  }
-  return null;
-}
-
 /** GET /api/companies/:id/h2h?a=<team>&b=<team> — team ids or slugs. */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const userId = await currentUserId(req);
+  const userId = await sessionOrBearerUserId(req);
   const company = await loadCompanyForViewer(id, userId);
   if (!company) return bad(404, "not_found", "no such company");
 
   const url = new URL(req.url);
   const aRef = url.searchParams.get("a") ?? "";
   const bRef = url.searchParams.get("b") ?? "";
+  // A lapsed subscription loses the ongoing feature, not the archive.
+  if (!company.billing.writable) {
+    return NextResponse.json(
+      { ok: false, error: "subscription_required", message: "team vs team needs an active Company subscription" },
+      { status: 402 },
+    );
+  }
   const a = findTeam(company, aRef);
   const b = findTeam(company, bRef);
   if (!a || !b) return bad(400, "unknown_team", "pass ?a= and ?b= as team ids or slugs");

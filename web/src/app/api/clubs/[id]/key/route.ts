@@ -48,7 +48,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       _sum: { totalTokens: true },
     }),
   ]);
-  const usageMap = new Map(usage.map((row) => [row.apiKeyId, row._sum.totalTokens ?? 0]));
+  const usageMap = new Map(usage.map((row) => [row.apiKeyId, Number(row._sum.totalTokens ?? 0)]));
 
   return NextResponse.json({
     ok: true,

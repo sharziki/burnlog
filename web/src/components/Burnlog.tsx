@@ -247,6 +247,10 @@ const primaryBtn: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
+// A UA checkbox renders 13x13. That's a miss on a phone even when the label
+// beside it is tappable, so give it real size everywhere it appears.
+const CHECKBOX: React.CSSProperties = { width: 18, height: 18, flexShrink: 0, accentColor: "#D97706" };
+
 export function Burnlog({
   users,
   currentUsername,
@@ -592,17 +596,6 @@ export function Burnlog({
     if (res.ok) setTeamKeys((prev) => prev.filter((k) => k.id !== keyId));
   }
 
-  // Onboarding CTA banner
-  const [ctaDismissed, setCtaDismissed] = useState(true); // default true to avoid flash
-  useEffect(() => {
-    setCtaDismissed(localStorage.getItem("burnlog:cta-dismissed") === "1");
-  }, []);
-  const showOnboardingCta = currentUsername && selectedUser && selectedUser.totalTokens === 0 && !ctaDismissed;
-  function dismissCta() {
-    localStorage.setItem("burnlog:cta-dismissed", "1");
-    setCtaDismissed(true);
-  }
-
   // Auto-refresh leaderboard data
   const [liveUsers, setLiveUsers] = useState(users);
   useEffect(() => {
@@ -931,6 +924,10 @@ export function Burnlog({
                 </div>
               ))}
             </div>
+            {/* The checklist is the first thing a new account should see and it
+                hides itself once all four steps are done, so it sits above the
+                scope switch rather than below the table header. */}
+            {currentUsername && <GetStarted username={currentUsername} />}
             <BoardScope
               scope={scope}
               onScope={setScope}
@@ -983,68 +980,6 @@ export function Burnlog({
               <span>Tokens</span>
               <span>Rank</span>
             </div>
-
-            {/* Onboarding CTA */}
-            {showOnboardingCta && (
-              <div
-                style={{
-                  background: "#0C0C0E",
-                  border: "1px solid #18181B",
-                  borderRadius: 12,
-                  padding: "20px 24px",
-                  marginBottom: 16,
-                  position: "relative",
-                }}
-              >
-                <button
-                  onClick={dismissCta}
-                  style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "#3F3F46", cursor: "pointer", fontSize: 16, padding: 4, lineHeight: 1 }}
-                >
-                  &times;
-                </button>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#FAFAFA", marginBottom: 4 }}>
-                  You&apos;re on the board &mdash; now light it up.
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <div
-                    onClick={() => copyToClip("onboard", "npx @sxnalabs/burnlog")}
-                    style={{
-                      flex: 1,
-                      padding: "10px 14px",
-                      background: "#0F0F11",
-                      border: "1px solid #18181B",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      color: "#D97706",
-                      fontFamily: MONO,
-                      cursor: "pointer",
-                      overflowX: "auto",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <span style={{ color: "#3F3F46" }}>$ </span>npx @sxnalabs/burnlog
-                  </div>
-                  <button
-                    onClick={() => copyToClip("onboard", "npx @sxnalabs/burnlog")}
-                    style={{
-                      ...primaryBtn,
-                      padding: "10px 16px",
-                      fontSize: 11,
-                      borderRadius: 8,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {copied === "onboard" ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {sortedUsers.map((user, i) => {
               const r = getRank(user.totalTokens);
@@ -1382,8 +1317,10 @@ export function Burnlog({
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#27272A"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#18181B"; }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                {/* Wrapping instead of competing for one row: at phone width
+                    the name, slug and meta each broke over 2-3 lines. */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 14, alignItems: "center", minWidth: 0 }}>
                     {club.image ? (
                       <img src={club.image} alt={club.name} width={44} height={44} style={{ borderRadius: 10, objectFit: "cover", border: "1px solid #18181B" }} />
                     ) : (
@@ -1391,12 +1328,12 @@ export function Burnlog({
                         {club.name[0]?.toUpperCase()}
                       </div>
                     )}
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 16, fontWeight: 700, color: "#FAFAFA" }}>{club.name}</div>
                       <div style={{ fontSize: 11, color: "#52525B", fontFamily: MONO }}>/{club.slug}</div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     {club.isOwner && (
                       <span style={{ fontSize: 10, fontWeight: 700, color: "#D97706", background: "#D9770615", padding: "4px 10px", borderRadius: 4, border: "1px solid #D9770633", fontFamily: MONO, letterSpacing: 0.5 }}>OWNER</span>
                     )}
@@ -1425,7 +1362,7 @@ export function Burnlog({
                 </button>
 
                 <div style={{ ...styles.card, marginBottom: 16 }}>
-                  <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
                     {activeClub.image ? (
                       <img src={activeClub.image} alt={activeClub.name} width={56} height={56} style={{ borderRadius: 12, objectFit: "cover", border: "1px solid #18181B" }} />
                     ) : (
@@ -1433,7 +1370,7 @@ export function Burnlog({
                         {activeClub.name[0]?.toUpperCase()}
                       </div>
                     )}
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: "1 1 180px", minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <div style={{ fontSize: 20, fontWeight: 700, color: "#FAFAFA" }}>{activeClub.name}</div>
                         {activeClub.isPrivate && (
@@ -1505,7 +1442,7 @@ export function Burnlog({
                       {clubError}
                     </div>
                   )}
-                  <div style={{ display: "flex", gap: 20, fontSize: 11, fontFamily: MONO }}>
+                  <div className="club-stats" style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 11, fontFamily: MONO }}>
                     <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>Total </span><span style={{ color: "#D97706", fontWeight: 700 }}>{formatTokens(activeClub.totalTokens)}</span></div>
                     <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>This Week </span><span style={{ color: "#FAFAFA", fontWeight: 700 }}>{formatTokens(activeClub.weeklyTokens)}</span></div>
                     <div><span style={{ color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>MTD </span><span style={{ color: "#FAFAFA", fontWeight: 700 }}>{formatTokens(activeClub.monthlyTokens)}</span></div>
@@ -1559,12 +1496,18 @@ export function Burnlog({
                       </div>
                     )}
                     {activeClub.isOwner && (
-                      <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                      // minmax(0, 1fr): the implicit `auto` track took its
+                      // max-content width from the input+button rows below,
+                      // which on a phone put Save/Test/Revoke outside the
+                      // viewport inside an overflow:hidden ancestor — unclipped
+                      // and untappable, not merely scrolled off.
+                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 10, marginTop: 12 }}>
                         <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#A1A1AA", fontFamily: MONO }}>
                           <input
                             type="checkbox"
                             checked={clubPrivateDraft}
                             onChange={(e) => setClubPrivateDraft(e.target.checked)}
+                            style={CHECKBOX}
                           />
                           Private team
                         </label>
@@ -1578,7 +1521,7 @@ export function Burnlog({
                             </button>
                           </div>
                         )}
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <input
                           value={clubBudgetDraft}
                           onChange={(e) => setClubBudgetDraft(e.target.value.replace(/\D/g, ""))}
@@ -1605,15 +1548,16 @@ export function Burnlog({
                           {savingClubBudget ? "Saving" : "Save"}
                         </button>
                       </div>
-                      <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#A1A1AA", fontFamily: MONO }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#A1A1AA", fontFamily: MONO, minWidth: 0 }}>
                         <input
                           type="checkbox"
                           checked={clubBlockIngestDraft}
                           onChange={(e) => setClubBlockIngestDraft(e.target.checked)}
+                          style={CHECKBOX}
                         />
                         Reject team-key ingest when MTD budget is spent
                       </label>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <input
                           value={clubWebhookDraft}
                           onChange={(e) => {
@@ -1643,7 +1587,7 @@ export function Burnlog({
                           {clubWebhookTest === "sending" ? "Testing" : clubWebhookTest === "ok" ? "OK" : clubWebhookTest === "error" ? "Failed" : "Test"}
                         </button>
                       </div>
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <input
                             value={teamKeyLabel}
                             onChange={(e) => setTeamKeyLabel(e.target.value)}
@@ -1658,7 +1602,7 @@ export function Burnlog({
                             placeholder="key monthly cap"
                             aria-label="Team API key monthly budget"
                             inputMode="numeric"
-                            style={{ width: 150, minWidth: 0, background: "#0F0F11", border: "1px solid #18181B", borderRadius: 6, color: "#E4E4E7", fontFamily: MONO, fontSize: 12, padding: "9px 12px", outline: "none" }}
+                            style={{ flex: "1 1 120px", minWidth: 0, maxWidth: 150, background: "#0F0F11", border: "1px solid #18181B", borderRadius: 6, color: "#E4E4E7", fontFamily: MONO, fontSize: 12, padding: "9px 12px", outline: "none" }}
                           />
                           <button
                             onClick={createTeamApiKey}
@@ -1682,7 +1626,7 @@ export function Burnlog({
                           </code>
                         )}
                         {teamKeys.length > 0 && (
-                          <div style={{ display: "grid", gap: 6 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 6 }}>
                             <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO }}>
                               {teamKeys.length}/{teamKeyLimit} active team keys
                             </div>
@@ -1723,13 +1667,13 @@ export function Burnlog({
                 {/* Club Leaderboard */}
                 {clubSubTab === "leaderboard" && (
                   <div>
-                    <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 100px", padding: "0 16px 8px", fontSize: 10, color: "#3F3F46", letterSpacing: 1, textTransform: "uppercase", fontFamily: MONO }}>
+                    <div className="club-grid" style={{ display: "grid", gridTemplateColumns: "40px minmax(0, 1fr) 120px 100px", padding: "0 16px 8px", fontSize: 10, color: "#3F3F46", letterSpacing: 1, textTransform: "uppercase", fontFamily: MONO }}>
                       <span>#</span><span>Member</span><span>Weekly</span><span>Total</span>
                     </div>
                     {activeClub.members.map((m, i) => {
                       const r = getRank(m.totalTokens);
                       return (
-                        <div key={m.id} style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 100px", alignItems: "center", padding: "12px 16px", borderRadius: 10, background: i % 2 === 0 ? "#0C0C0E" : "transparent", border: "1px solid transparent", marginBottom: 2 }}>
+                        <div key={m.id} className="club-grid" style={{ display: "grid", gridTemplateColumns: "40px minmax(0, 1fr) 120px 100px", alignItems: "center", padding: "12px 16px", borderRadius: 10, background: i % 2 === 0 ? "#0C0C0E" : "transparent", border: "1px solid transparent", marginBottom: 2 }}>
                           <span style={{ fontSize: 14, fontWeight: 800, color: i === 0 ? "#D97706" : i === 1 ? "#E4E4E7" : i === 2 ? "#92400E" : "#3F3F46", fontFamily: MONO }}>{i + 1}</span>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             {m.image ? (

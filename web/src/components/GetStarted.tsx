@@ -225,7 +225,9 @@ const cmd: React.CSSProperties = {
 };
 
 const action: React.CSSProperties = {
-  display: "inline-block",
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 40,
   marginTop: 10,
   fontFamily: MONO,
   fontSize: 11,

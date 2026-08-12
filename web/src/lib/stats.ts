@@ -48,10 +48,21 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return null;
 
-  const events = await prisma.burnEvent.findMany({
-    where: { userId },
-    orderBy: { timestamp: "desc" },
-  });
+  // Token columns are BIGINT, so Prisma hands back JS BigInt. Narrow once
+  // here and every arithmetic and JSON path below stays plain numbers.
+  const events = (
+    await prisma.burnEvent.findMany({
+      where: { userId },
+      orderBy: { timestamp: "desc" },
+    })
+  ).map((e) => ({
+    ...e,
+    inputTokens: Number(e.inputTokens),
+    outputTokens: Number(e.outputTokens),
+    cacheCreationTokens: Number(e.cacheCreationTokens),
+    cacheReadTokens: Number(e.cacheReadTokens),
+    totalTokens: Number(e.totalTokens),
+  }));
 
   const total = events.reduce((s, e) => s + e.totalTokens, 0);
   const now = Date.now();
@@ -239,9 +250,11 @@ export async function getLeaderboard(scope: LeaderboardScope = {}): Promise<User
     }),
   ]);
 
-  const totalMap = new Map(totals.map((t) => [t.userId, t._sum.totalTokens ?? 0]));
+  // `_sum` over a BIGINT column comes back as BigInt; Number() here keeps the
+  // maps, the sorts, and the JSON response on plain numbers.
+  const totalMap = new Map(totals.map((t) => [t.userId, Number(t._sum.totalTokens ?? 0)]));
   const countMap = new Map(totals.map((t) => [t.userId, t._count._all]));
-  const weeklyMap = new Map(weekly.map((t) => [t.userId, t._sum.totalTokens ?? 0]));
+  const weeklyMap = new Map(weekly.map((t) => [t.userId, Number(t._sum.totalTokens ?? 0)]));
   const lastMap = new Map(lastActive.map((t) => [t.userId, t._max.timestamp ?? null]));
 
   const heatmapStartMs = heatmapStart.getTime();
@@ -268,14 +281,14 @@ export async function getLeaderboard(scope: LeaderboardScope = {}): Promise<User
   const providersByUser = new Map<string, Record<string, number>>();
   for (const row of providerRows) {
     const rec = providersByUser.get(row.userId) ?? {};
-    rec[row.provider] = (rec[row.provider] ?? 0) + (row._sum.totalTokens ?? 0);
+    rec[row.provider] = (rec[row.provider] ?? 0) + Number(row._sum.totalTokens ?? 0);
     providersByUser.set(row.userId, rec);
   }
 
   const sourcesByUser = new Map<string, { source: string; tokens: number }[]>();
   for (const row of sourceRows) {
     const list = sourcesByUser.get(row.userId) ?? [];
-    list.push({ source: row.source, tokens: row._sum.totalTokens ?? 0 });
+    list.push({ source: row.source, tokens: Number(row._sum.totalTokens ?? 0) });
     sourcesByUser.set(row.userId, list);
   }
 

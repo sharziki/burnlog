@@ -39,13 +39,21 @@ function formatUSD(n: number): string {
 }
 
 // --- Sparkline ---
+/**
+ * `width`/`height` are the coordinate space, not the rendered size: the SVG
+ * scales to whatever column it lands in. A fixed 360px width here was wider
+ * than the whole phone viewport and dragged 175px of the profile off-screen,
+ * where an `overflow: hidden` ancestor amputated it with no way to scroll back.
+ */
 function Sparkline({ data, color = "#FAFAFA", height = 40, width = 120 }: { data: number[]; color?: string; height?: number; width?: number }) {
-  if (!data.length) return <svg width={width} height={height} />;
+  const box = { width: "100%", height: "auto", display: "block" } as const;
+  const viewBox = `0 0 ${width} ${height}`;
+  if (!data.length) return <svg viewBox={viewBox} style={box} />;
   const allZero = data.every((v) => v === 0);
   if (allZero) {
     const mid = height / 2;
     return (
-      <svg width={width} height={height}>
+      <svg viewBox={viewBox} style={box}>
         <line x1={0} y1={mid} x2={width} y2={mid} stroke="#27272A" strokeWidth={1.5} strokeDasharray="4 4" strokeLinecap="round" />
       </svg>
     );
@@ -62,7 +70,7 @@ function Sparkline({ data, color = "#FAFAFA", height = 40, width = 120 }: { data
     .join(" ");
   const lastY = height - ((data[data.length - 1] - min) / range) * (height - 4) - 2;
   return (
-    <svg width={width} height={height} style={{ overflow: "visible" }}>
+    <svg viewBox={viewBox} style={{ ...box, overflow: "visible" }}>
       <polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={width} cy={lastY} r={3} fill={color} />
     </svg>
@@ -298,7 +306,9 @@ export function ProfileClient({
         </div>
 
         {/* ─── Stats Grid ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 32 }}>
+        {/* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so the
+            four cards resolved wider than their container and sheared off. */}
+        <div className="profile-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 32 }}>
           {[
             { label: "Total Tokens", value: formatTokens(user.totalTokens), sub: `${formatUsd(spend)} est. API cost` },
             { label: "Weekly Tokens", value: formatTokens(user.weeklyTokens), sub: null },
@@ -348,7 +358,7 @@ export function ProfileClient({
         </div>
 
         {/* ─── Weekly Sparkline + Provider Split ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+        <div className="profile-pair" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12, marginBottom: 24 }}>
           <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
             <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
               7-DAY TREND
@@ -364,7 +374,7 @@ export function ProfileClient({
         </div>
 
         {/* ─── Sources + Top Models ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+        <div className="profile-pair" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12, marginBottom: 24 }}>
           {/* Sources */}
           <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
             <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>

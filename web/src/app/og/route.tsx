@@ -21,7 +21,7 @@ export async function GET() {
       prisma.burnEvent.aggregate({ _sum: { totalTokens: true } }),
       prisma.user.count({ where: { username: { not: null } } }),
     ]);
-    burned = agg._sum.totalTokens ?? 0;
+    burned = Number(agg._sum.totalTokens ?? 0);
     burners = users;
   } catch {
     // Leave the stat strip out rather than fail the image.

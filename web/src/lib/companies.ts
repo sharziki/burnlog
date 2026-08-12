@@ -1,5 +1,7 @@
 import { prisma } from "./db";
 import { companyLimits, companyPlan, type ClubPlan } from "./clubPlan";
+import { describeCompanyBilling, type CompanyBillingView } from "./billing";
+import { getTeamBurnProfilesBatch } from "./companyUsage";
 
 /**
  * Companies contain clubs. A club inside a company is called a "team" in every
@@ -37,6 +39,7 @@ export type CompanyView = {
   teams: CompanyTeamRow[];
   /** Owner-only actions: attaching teams, changing the roster. */
   canManage: boolean;
+  billing: CompanyBillingView;
 };
 
 /**
@@ -94,10 +97,92 @@ export async function loadCompanyForViewer(
     createdAt: company.createdAt,
     teams,
     canManage: isOwner,
+    billing: describeCompanyBilling(company),
   };
 }
 
 /** Resolve a team reference (club id or slug) against a loaded company. */
 export function findTeam(company: CompanyView, ref: string): CompanyTeamRow | null {
   return company.teams.find((t) => t.id === ref || t.slug === ref) ?? null;
+}
+
+export type CompanyListRow = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  plan: ClubPlan;
+  limits: ReturnType<typeof companyLimits>;
+  createdAt: Date;
+  owner: { username: string | null; name: string | null; image: string | null };
+  isOwner: boolean;
+  billing: CompanyBillingView;
+  teamCount: number;
+  memberCount: number;
+  totalTokens: number;
+  windowTokens: number;
+};
+
+/**
+ * Every company the user owns or has a team in, with its burn rolled up.
+ *
+ * Lives here rather than in the route because /companies renders the same list
+ * server-side; two copies of this query would drift the moment either grew a
+ * field, and the rollup is the part that has to match exactly.
+ */
+export async function listCompaniesForUser(userId: string): Promise<CompanyListRow[]> {
+  const companies = await prisma.company.findMany({
+    where: {
+      OR: [{ ownerId: userId }, { teams: { some: { memberships: { some: { userId } } } } }],
+    },
+    include: {
+      owner: { select: { username: true, name: true, image: true } },
+      teams: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          memberships: { select: { userId: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // One batched read across every team of every company, not per company.
+  const profiles = await getTeamBurnProfilesBatch(
+    companies.flatMap((c) =>
+      c.teams.map((t) => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+        memberIds: t.memberships.map((m) => m.userId),
+      })),
+    ),
+  );
+  const byTeam = new Map(profiles.map((p) => [p.id, p]));
+
+  const rows = companies.map((c) => {
+    const teams = c.teams.map((t) => byTeam.get(t.id)!);
+    const sum = (pick: (p: (typeof teams)[number]) => number) =>
+      teams.reduce((s, p) => s + pick(p), 0);
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      plan: companyPlan(c.plan),
+      limits: companyLimits(c.plan),
+      createdAt: c.createdAt,
+      owner: c.owner,
+      isOwner: c.ownerId === userId,
+      billing: describeCompanyBilling(c),
+      teamCount: teams.length,
+      memberCount: sum((p) => p.memberCount),
+      totalTokens: sum((p) => p.totalTokens),
+      windowTokens: sum((p) => p.windowTokens),
+    };
+  });
+  rows.sort((a, b) => b.windowTokens - a.windowTokens);
+  return rows;
 }

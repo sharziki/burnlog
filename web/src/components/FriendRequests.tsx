@@ -149,12 +149,30 @@ function Row({
         opacity: busy ? 0.5 : 1,
       }}
     >
-      <a href={`/u/${person.username}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, textDecoration: "none" }}>
+      <a href={`/u/${person.username}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, minHeight: 40, textDecoration: "none" }}>
         {person.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={person.image} alt="" width={28} height={28} style={{ borderRadius: "50%", border: "1px solid #27272A" }} />
         ) : (
-          <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#18181B" }} />
+          // Initials, matching BoardScope and the board rows. `image` only
+          // ever comes from GitHub OAuth, so without this every row here was
+          // a blank dot for people the board renders with initials.
+          <span
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              background: "#18181B",
+              display: "grid",
+              placeItems: "center",
+              fontFamily: MONO,
+              fontSize: 10,
+              color: "#71717A",
+              flexShrink: 0,
+            }}
+          >
+            {(person.name ?? person.username ?? "?").slice(0, 2).toUpperCase()}
+          </span>
         )}
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", color: "#FAFAFA", fontSize: 13 }}>{person.name}</span>
@@ -203,6 +221,12 @@ const muted: React.CSSProperties = {
 
 const primaryBtn: React.CSSProperties = {
   padding: "6px 12px",
+  // Accept/Decline are the primary actions on /settings and measured 27px
+  // tall — a miss on a phone. Grid centring keeps the label optically placed
+  // now that the box is taller than the text.
+  minHeight: 40,
+  display: "inline-grid",
+  placeItems: "center",
   borderRadius: 6,
   border: "1px solid #D9770655",
   background: "#D9770618",
@@ -215,6 +239,12 @@ const primaryBtn: React.CSSProperties = {
 
 const ghostBtn: React.CSSProperties = {
   padding: "6px 12px",
+  // Accept/Decline are the primary actions on /settings and measured 27px
+  // tall — a miss on a phone. Grid centring keeps the label optically placed
+  // now that the box is taller than the text.
+  minHeight: 40,
+  display: "inline-grid",
+  placeItems: "center",
   borderRadius: 6,
   border: "1px solid #27272A",
   background: "transparent",

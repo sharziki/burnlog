@@ -93,7 +93,7 @@ export async function getTeamBurnProfilesBatch(teams: TeamInput[]): Promise<Team
           where: { userId: { in: memberIds }, clubId: null },
           _sum: { totalTokens: true },
         })
-      : noRows<{ userId: string; _sum: { totalTokens: number | null } }>([]),
+      : noRows<{ userId: string; _sum: { totalTokens: bigint | null } }>([]),
     prisma.burnEvent.groupBy({
       by: ["clubId"],
       where: { clubId: { in: clubIds } },
@@ -132,8 +132,12 @@ export async function getTeamBurnProfilesBatch(teams: TeamInput[]): Promise<Team
     dailyByClub.set(row.clubId, buckets);
   }
 
-  const totalByUser = new Map(userTotals.map((r) => [r.userId, r._sum.totalTokens ?? 0]));
-  const totalByClub = new Map(clubTotals.map((r) => [r.clubId ?? "", r._sum.totalTokens ?? 0]));
+  // BIGINT sums arrive as JS BigInt; narrow here so TeamBurnProfile stays all
+  // numbers and the h2h scoring in ./companyH2h.ts needs to know nothing.
+  const totalByUser = new Map(userTotals.map((r) => [r.userId, Number(r._sum.totalTokens ?? 0)]));
+  const totalByClub = new Map(
+    clubTotals.map((r) => [r.clubId ?? "", Number(r._sum.totalTokens ?? 0)]),
+  );
 
   const mixByUser = new Map<string, { sources: Set<string>; providers: Set<string> }>();
   for (const row of userMix) {

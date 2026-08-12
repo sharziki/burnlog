@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "./db";
 import { hashApiKey } from "./apiKey";
 import { rateLimit, clientIp } from "./rateLimit";
@@ -82,4 +83,24 @@ export async function authFromBearer(
   return {
     key: { id: keyRow.id, userId: keyRow.userId, clubId: keyRow.clubId, username: keyRow.user.username },
   };
+}
+
+/**
+ * Whoever is calling, however they proved it.
+ *
+ * The company and billing endpoints are driven from the dashboard by session
+ * cookie and read back by the CLI with a bearer key. Trying the bearer path
+ * only when the header is present keeps a signed-in browser off the API-key
+ * rate limiter.
+ */
+export async function sessionOrBearerUserId(req: Request): Promise<string | null> {
+  const session = await auth();
+  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
+  if (sessionUserId) return sessionUserId;
+
+  if (req.headers.get("authorization")?.startsWith("Bearer ")) {
+    const result = await authFromBearer(req);
+    if ("key" in result) return result.key.userId;
+  }
+  return null;
 }

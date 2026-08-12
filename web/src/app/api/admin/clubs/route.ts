@@ -65,7 +65,7 @@ export async function GET(req: Request) {
       },
       _sum: { totalTokens: true },
     });
-    const periodTokens = usage._sum.totalTokens ?? 0;
+    const periodTokens = Number(usage._sum.totalTokens ?? 0);
     const budgetPercentUsed = club.monthlyBudgetTokens > 0
       ? Math.round((periodTokens / club.monthlyBudgetTokens) * 1000) / 10
       : null;

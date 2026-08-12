@@ -323,14 +323,18 @@ export async function getChallenge(
     image: e.user.image,
   }));
 
-  const events = entrants.length
-    ? await prisma.burnEvent.findMany({
-        where: {
-          userId: { in: entrants.map((e) => e.userId) },
-          timestamp: { gte: challenge.startsAt, lt: challenge.endsAt },
-        },
-        select: { userId: true, totalTokens: true, provider: true, timestamp: true },
-      })
+  // totalTokens is BIGINT — narrowed here so `computeStandings` scores with
+  // plain arithmetic and the frozen finalScore stays a Float the DB accepts.
+  const events: WindowEvent[] = entrants.length
+    ? (
+        await prisma.burnEvent.findMany({
+          where: {
+            userId: { in: entrants.map((e) => e.userId) },
+            timestamp: { gte: challenge.startsAt, lt: challenge.endsAt },
+          },
+          select: { userId: true, totalTokens: true, provider: true, timestamp: true },
+        })
+      ).map((e) => ({ ...e, totalTokens: Number(e.totalTokens) }))
     : [];
 
   const standings = computeStandings(type, config, entrants, events);

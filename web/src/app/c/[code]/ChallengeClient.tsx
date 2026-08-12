@@ -312,11 +312,16 @@ export function ChallengeClient({
       {/* ---------- Standings ---------- */}
       <h2 style={sectionLabel}>Standings</h2>
       <div style={{ border: "1px solid #18181B", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ ...rowGrid, padding: "10px 16px", background: "#0C0C0E", borderBottom: "1px solid #18181B" }}>
+        <div className="standings-grid" style={{ ...rowGrid, padding: "10px 16px", background: "#0C0C0E", borderBottom: "1px solid #18181B" }}>
           <span style={headCell}>#</span>
           <span style={headCell}>Burner</span>
           <span style={{ ...headCell, textAlign: "right" }}>Tokens</span>
-          <span style={{ ...headCell, textAlign: "right" }}>{challenge.unit}</span>
+          {/* A sprint scores in tokens, so printing `unit` here gave two
+              columns both headed TOKENS — one raw, one the score. Name the
+              column by what it holds when the unit can't tell them apart. */}
+          <span style={{ ...headCell, textAlign: "right" }}>
+            {challenge.unit === "tokens" ? "Score" : challenge.unit}
+          </span>
         </div>
         {challenge.standings.map((s) => (
           <StandingRow
@@ -356,6 +361,7 @@ function StandingRow({
   return (
     <a
       href={`/u/${standing.username}`}
+      className="standings-grid"
       style={{
         ...rowGrid,
         padding: "14px 16px",
@@ -400,7 +406,7 @@ function StandingRow({
           <span style={{ display: "block", color: "#FAFAFA", fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {standing.name}
           </span>
-          <span style={{ display: "block", fontFamily: MONO, fontSize: 10, color: standing.note ? "#D97706" : "#52525B" }}>
+          <span style={{ display: "block", fontFamily: MONO, fontSize: 10, color: standing.note ? "#D97706" : "#52525B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {standing.note ?? `@${standing.username}`}
           </span>
         </span>

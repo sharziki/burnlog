@@ -40,33 +40,21 @@ const MAX_BODY_BYTES = 1_000_000; // 1 MB
 const MAX_STRING_FIELD = 256;
 
 /**
- * Token columns are Postgres INT4. Anything larger doesn't just get rejected —
- * it throws mid-insert and takes the whole batch with it, so a single heavy
- * session could silently cost a user a thousand good events. We clamp at the
- * column ceiling and skip the offender instead.
+ * There is no *plausibility* ceiling — an earlier version rejected anything
+ * over 5M on the theory that no single call could be that large, and that
+ * quietly deleted real burn from the heaviest users. Gaming is answered with
+ * attribution and anomaly reporting, not by discarding possibly-genuine data.
  *
- * (The real fix is BIGINT columns; until then the CLI splits oversized
- * session aggregates so nothing is actually lost.)
+ * There IS a hard technical ceiling, and removing it cost us once already.
+ * Every read path narrows these columns to a JS `number`, so a value above
+ * Number.MAX_SAFE_INTEGER cannot round-trip: it either loses precision
+ * silently (a 1e18 event read back 17 tokens light) or, above BIGINT's own
+ * limit, throws *inside* createMany and destroys the entire batch — up to
+ * 1000 good events lost to one malformed row, with a bare 500.
+ *
+ * So: reject per event, never per batch.
  */
-const INT4_MAX = 2_147_483_647;
-
-/**
- * There is deliberately NO per-call plausibility cap.
- *
- * An earlier version rejected anything over 5M from per-call sources on the
- * theory that no single request could be that large. That's the same mistake
- * as every other bug in this file's history: throwing away data because it
- * looked wrong. A cache-heavy request can legitimately clear 5M today, and
- * context windows only grow — the cap would have quietly deleted real burn
- * from exactly the heaviest users, who are the ones who care most.
- *
- * The only ceiling now is what the column can physically hold. Gaming is a
- * real concern, but the answer is attribution and anomaly *reporting*, not
- * silently discarding events that might be genuine.
- */
-function tokenCeilingFor(_source: string): number {
-  return INT4_MAX;
-}
+const MAX_EVENT_TOKENS = Number.MAX_SAFE_INTEGER;
 
 // Per-IP: 120 req/min guards unauthenticated abuse.
 // Per-user: 600 req/min — a full sync of years of logs batches to ~dozens
@@ -97,7 +85,11 @@ function validEvent(e: unknown): e is IngestEvent {
     typeof x.timestamp === "string" &&
     x.timestamp.length <= 64 &&
     Number.isFinite(x.inputTokens) &&
-    Number.isFinite(x.outputTokens)
+    Number.isFinite(x.outputTokens) &&
+    // Cache fields are optional, but if present they must be numbers — an
+    // undetected NaN here passes `total <= 0` and throws at insert.
+    (x.cacheCreationTokens === undefined || Number.isFinite(x.cacheCreationTokens)) &&
+    (x.cacheReadTokens === undefined || Number.isFinite(x.cacheReadTokens))
   );
 }
 
@@ -176,6 +168,8 @@ export async function POST(req: Request) {
   const minTs = now - 10 * 365 * 24 * 60 * 60 * 1000; // 10y past
   const maxTs = now + 5 * 60 * 1000; // 5 min skew
   const rows = [];
+  // Named rejections: `skipped` alone covers six different causes, which made
+  // a batch-destroying overflow completely invisible from the client side.
   const rejected: { requestId: string; reason: string }[] = [];
   let skipped = 0;
 
@@ -198,15 +192,18 @@ export async function POST(req: Request) {
       continue;
     }
 
-    // Reject implausible or unstorable events *individually*. Previously an
-    // oversized value threw inside createMany and lost the entire batch —
-    // up to 1000 perfectly good events — with a 500 and no explanation.
-    const ceiling = tokenCeilingFor(e.source);
-    if (total > ceiling || input > INT4_MAX || output > INT4_MAX || cacheCreate > INT4_MAX || cacheRead > INT4_MAX) {
+    // Skip the single unstorable event, never the batch.
+    if (
+      total > MAX_EVENT_TOKENS ||
+      input > MAX_EVENT_TOKENS ||
+      output > MAX_EVENT_TOKENS ||
+      cacheCreate > MAX_EVENT_TOKENS ||
+      cacheRead > MAX_EVENT_TOKENS
+    ) {
       skipped++;
       rejected.push({
         requestId: e.requestId.slice(0, 64),
-        reason: `event exceeds the ${INT4_MAX.toLocaleString()} storage ceiling — split it`,
+        reason: `event exceeds ${MAX_EVENT_TOKENS.toLocaleString()} tokens — split it`,
       });
       continue;
     }
@@ -245,7 +242,7 @@ export async function POST(req: Request) {
       where: { apiKeyId: keyRow.id, timestamp: { gte: monthStart } },
       _sum: { totalTokens: true },
     });
-    const currentMonthly = keyUsage._sum.totalTokens ?? 0;
+    const currentMonthly = Number(keyUsage._sum.totalTokens ?? 0);
     const incoming = rows.reduce((sum, row) => sum + row.totalTokens, 0);
     if (currentMonthly + incoming > keyRow.monthlyBudgetTokens) {
       return err(
@@ -277,7 +274,7 @@ export async function POST(req: Request) {
       }),
     ]);
     const currentMonthly =
-      (memberUsage?._sum.totalTokens ?? 0) + (serviceUsage._sum.totalTokens ?? 0);
+      Number(memberUsage?._sum.totalTokens ?? 0) + Number(serviceUsage._sum.totalTokens ?? 0);
     const incoming = rows.reduce((sum, row) => sum + row.totalTokens, 0);
     if (currentMonthly + incoming > keyRow.club.monthlyBudgetTokens) {
       return err(
@@ -352,7 +349,6 @@ export async function POST(req: Request) {
       ok: true,
       inserted,
       skipped,
-      // Named rejections — a silent skip count is impossible to debug.
       ...(rejected.length ? { rejected: rejected.slice(0, 20) } : {}),
       user: keyRow.user.username,
     },

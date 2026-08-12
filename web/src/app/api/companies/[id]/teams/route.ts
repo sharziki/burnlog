@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { authFromBearer } from "@/lib/bearerAuth";
+import { sessionOrBearerUserId } from "@/lib/bearerAuth";
 import { prisma } from "@/lib/db";
 import { loadCompanyForViewer } from "@/lib/companies";
 import { getTeamBurnProfilesBatch } from "@/lib/companyUsage";
@@ -11,21 +10,9 @@ function bad(status: number, error: string, message: string) {
   return NextResponse.json({ ok: false, error, message }, { status });
 }
 
-async function currentUserId(req: Request): Promise<string | null> {
-  const session = await auth();
-  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
-  if (sessionUserId) return sessionUserId;
-
-  if (req.headers.get("authorization")?.startsWith("Bearer ")) {
-    const result = await authFromBearer(req);
-    if ("key" in result) return result.key.userId;
-  }
-  return null;
-}
-
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const userId = await currentUserId(req);
+  const userId = await sessionOrBearerUserId(req);
   const company = await loadCompanyForViewer(id, userId);
   // 404 rather than 403 for outsiders — confirming a company exists is itself
   // the leak we're avoiding by not listing companies publicly.
@@ -61,6 +48,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       plan: company.plan,
       limits: company.limits,
       canManage: company.canManage,
+      billing: company.billing,
     },
     teams: result,
   });
@@ -68,12 +56,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const userId = await currentUserId(req);
+  const userId = await sessionOrBearerUserId(req);
   if (!userId) return bad(401, "unauthorized", "sign in to add a team");
 
   const company = await loadCompanyForViewer(id, userId);
   if (!company) return bad(404, "not_found", "no such company");
   if (!company.canManage) return bad(403, "not_owner", "only the company owner can add teams");
+  // The paywall. Everything else on a lapsed company keeps working; taking on
+  // teams is the thing being sold, so it's the thing that stops.
+  if (!company.billing.writable) {
+    return bad(
+      402,
+      "subscription_required",
+      "This company's subscription isn't active — subscribe to attach teams",
+    );
+  }
 
   let body: Record<string, unknown>;
   try {

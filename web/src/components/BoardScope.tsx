@@ -221,6 +221,7 @@ export function BoardScope({
                 disabled={busy === p.id || p.status === "self" || p.status === "friends" || p.status === "pending_out"}
                 style={{
                   padding: "6px 12px",
+                  minHeight: 40,
                   borderRadius: 6,
                   fontFamily: MONO,
                   fontSize: 10,

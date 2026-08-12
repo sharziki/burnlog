@@ -71,7 +71,7 @@ export async function GET(
     _sum: { totalTokens: true },
   });
 
-  const totalTokens = agg._sum.totalTokens ?? 0;
+  const totalTokens = Number(agg._sum.totalTokens ?? 0);
   const rank = getRank(totalTokens);
   const rightText = `${rank.icon} ${rank.name} \u00B7 ${formatTokens(totalTokens)} tokens`;
   const svg = buildBadge("burnlog", rightText, rank.color === "#FAFAFA" ? "#333" : rank.color);

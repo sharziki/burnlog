@@ -30,7 +30,7 @@ export async function GET() {
     friendIdsOf(userId),
   ]);
 
-  const tokens = burn._sum.totalTokens ?? 0;
+  const tokens = Number(burn._sum.totalTokens ?? 0);
 
   return NextResponse.json({
     ok: true,

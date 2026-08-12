@@ -7,6 +7,7 @@ const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, M
 const NAV_LINKS: [string, string][] = [
   ["/", "leaderboard"],
   ["/challenges", "challenges"],
+  ["/companies", "companies"],
   // /teams is the pricing page. Labelling it "teams" collided with the Teams
   // tab on the board (a different thing) and with a Company's teams (a third).
   // The nav word matches the destination; the page title matches the nav.
