@@ -31,6 +31,21 @@ ${pc.bold("flags")}
   --quiet        don't print the per-call burn line
 `;
 
+/**
+ * Tools burnlog already reads off disk. Wrapping these double counts.
+ * Matched on the command basename, so `/usr/local/bin/claude` still trips it.
+ */
+const SELF_LOGGING: { match: RegExp; tool: string; path: string }[] = [
+  { match: /^claude$/, tool: "Claude Code", path: "~/.claude/projects" },
+  { match: /^codex$/, tool: "Codex", path: "~/.codex/sessions" },
+  { match: /^hermes$/, tool: "Hermes", path: "~/.hermes/state.db" },
+];
+
+function detectSelfLogging(command: string): { tool: string; path: string } | null {
+  const base = (command.split("/").pop() ?? command).toLowerCase();
+  return SELF_LOGGING.find((s) => s.match.test(base)) ?? null;
+}
+
 export async function wrap(args: string[]): Promise<void> {
   if (args.includes("--list")) {
     console.log();
@@ -77,6 +92,22 @@ export async function wrap(args: string[]): Promise<void> {
       console.error(pc.dim("run `burnlog wrap --list` to see the supported set"));
       process.exit(1);
     }
+  }
+
+  // Wrapping a tool that already writes its own usage log means the same call
+  // gets counted twice: once at the wire by this proxy, once off disk by that
+  // tool's adapter. There is no way to reconcile them afterwards — the proxy
+  // never sees the provider's request id — so warn before the burn happens
+  // rather than silently inflating someone's numbers.
+  const selfLogging = detectSelfLogging(command[0]);
+  if (selfLogging) {
+    console.error(
+      pc.yellow("[burnlog] warning: ") +
+        pc.bold(selfLogging.tool) +
+        pc.yellow(" writes its own usage log, which burnlog already reads.\n") +
+        pc.dim(`           Wrapping it double counts every call — once here, once from ${selfLogging.path}.\n`) +
+        pc.dim("           Just run it normally; `burnlog sync` picks it up. Use wrap for tools that keep no log.\n"),
+    );
   }
 
   let captured = 0;

@@ -16,6 +16,7 @@ import { wrap } from "./commands/wrap.js";
 import { challenge } from "./commands/challenge.js";
 import { log } from "./commands/log.js";
 import { me } from "./commands/me.js";
+import { doctor } from "./commands/doctor.js";
 
 function readVersion(): string {
   try {
@@ -39,13 +40,14 @@ ${pc.bold("getting on the board")}
 
 ${pc.bold("counting tokens")}
   ${pc.cyan("scan")}               parse logs locally, show totals (dry run)
-  ${pc.cyan("sync")}    [--quiet]  upload new burn events to the leaderboard
+  ${pc.cyan("sync")}    [--quiet]  upload once, now — safe to re-run, duplicates are dropped
   ${pc.cyan("wrap")}    -- <cmd>   count any command's LLM calls (any provider)
   ${pc.cyan("log")}     <tokens>   record usage by hand (dashboards, batch jobs)
   ${pc.cyan("me")}      [--days n] your burn over time (default 180 days)
-  ${pc.cyan("install")}            install a Claude Code hook (auto-sync on session end)
-  ${pc.cyan("uninstall")}          remove the Claude Code hook
-  ${pc.cyan("daemon")}             run a background watcher that syncs every 30s
+  ${pc.cyan("install")}            set up auto-sync so you never run ${pc.bold("sync")} by hand again
+  ${pc.cyan("uninstall")}          remove auto-sync
+  ${pc.cyan("daemon")}             keep syncing every 30s while it runs (alternative to install)
+  ${pc.cyan("doctor")}             check for double counting, stale config, missing auto-sync
 
 ${pc.bold("competing")}
   ${pc.cyan("challenge")}          list / ${pc.bold("new")} / ${pc.bold("join <code>")}
@@ -110,6 +112,10 @@ async function main(): Promise<void> {
       break;
     case "log":
       log(rest);
+      break;
+    case "doctor":
+    case "check":
+      await doctor(rest);
       break;
     case "me":
       // `burnlog sync me` reads naturally, so accept it as an alias.

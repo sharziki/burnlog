@@ -101,11 +101,29 @@ export class CodexAdapter implements Adapter {
       }
 
       if (!sessionId || !lastUsage) continue;
+      // Codex's buckets NEST — they are not additive:
+      //   total_tokens          = input_tokens + output_tokens
+      //   cached_input_tokens  ⊂ input_tokens
+      //   reasoning_output_tokens ⊂ output_tokens
+      //
+      // Verified against 540/540 real sessions: input + output equals codex's
+      // own total_tokens in every single one. Summing all four (as this
+      // adapter used to) double-counts the cached prompt, which on
+      // cache-heavy agent sessions is nearly the entire figure — it inflated
+      // one real account by 1.98x, or 132 billion phantom tokens.
+      //
+      // Anthropic reports the opposite convention (cache_read is a SEPARATE
+      // bucket from input_tokens), which is why claude-code.ts is right to
+      // add its four together. Do not "unify" these two adapters.
       const input = lastUsage.input_tokens ?? 0;
       const cached = lastUsage.cached_input_tokens ?? 0;
       const output = lastUsage.output_tokens ?? 0;
-      const reasoning = lastUsage.reasoning_output_tokens ?? 0;
-      if (input + output + reasoning + cached === 0) continue;
+      if (input + output === 0) continue;
+
+      // Split input into fresh vs cached so the cache breakdown survives,
+      // while the parts still sum to codex's own total.
+      const freshInput = Math.max(0, input - cached);
+      const cacheRead = Math.min(cached, input);
 
       const modelName = model ?? "gpt-codex";
       events.push({
@@ -113,10 +131,11 @@ export class CodexAdapter implements Adapter {
         source: this.name,
         model: modelName,
         provider: providerFromModel(modelName),
-        inputTokens: input,
-        outputTokens: output + reasoning,
+        inputTokens: freshInput,
+        // reasoning_output_tokens is already inside output_tokens.
+        outputTokens: output,
         cacheCreationTokens: 0,
-        cacheReadTokens: cached,
+        cacheReadTokens: cacheRead,
         timestamp: lastTimestamp ?? sessionStart ?? new Date().toISOString(),
       });
     }
