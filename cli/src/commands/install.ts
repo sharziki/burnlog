@@ -61,8 +61,16 @@ export function install(args: string[]): void {
     hooks: [
       {
         type: "command",
+        // Detached, not merely backgrounded.
+        //
+        // A blocking hook gets killed when the session tears down — which
+        // shows up as "Hook cancelled" every time you exit — and a full sync
+        // walks thousands of log files, so it loses that race constantly.
+        // `setsid` puts the sync in its own session so it outlives the exit
+        // and finishes uploading in peace.
+        //
         // `|| true` so a sync failure never crashes Claude Code.
-        command: "burnlog sync --quiet || true",
+        command: "(setsid burnlog sync --quiet >/dev/null 2>&1 &) || true",
       },
     ],
   });

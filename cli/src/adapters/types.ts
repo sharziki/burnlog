@@ -47,12 +47,40 @@ export type ScanResult = {
   note?: string;
 };
 
+export type ScanOptions = {
+  /**
+   * Skip files not modified since this time.
+   *
+   * A full scan re-reads every log a user has ever produced — thousands of
+   * files — on every single sync. That made the Claude Code session-end hook
+   * slow enough to be killed mid-run. Adapters that read files should honour
+   * this; dedupe on the server means re-reading is only ever wasted work,
+   * never wrong, so ignoring it is safe but slow.
+   *
+   * Deliberately compared against file mtime with a safety margin, because a
+   * log being appended to right as we sync must not be skipped next time.
+   */
+  since?: Date;
+};
+
 export interface Adapter {
   readonly name: AdapterName;
   /** True if this source appears to exist on disk. */
   detect(): boolean;
-  /** Parse all available history into burn events. */
-  scan(): ScanResult;
+  /** Parse available history into burn events. */
+  scan(opts?: ScanOptions): ScanResult;
+}
+
+/**
+ * How far before `since` to still consider a file worth re-reading.
+ * Covers clock skew and a file appended to during the previous sync.
+ */
+export const INCREMENTAL_MARGIN_MS = 10 * 60 * 1000;
+
+/** Should this file be read, given the incremental window? */
+export function shouldRead(mtimeMs: number, since?: Date): boolean {
+  if (!since) return true;
+  return mtimeMs >= since.getTime() - INCREMENTAL_MARGIN_MS;
 }
 
 export function providerFromModel(model: string): BurnEvent["provider"] {

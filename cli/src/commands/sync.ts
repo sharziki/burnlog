@@ -33,7 +33,14 @@ async function syncOnly(args: string[]): Promise<void> {
     console.error(pc.red("no api key — run ") + pc.bold("burnlog login <key>"));
     process.exit(1);
   }
-  const results = scanAll();
+  // Incremental by default: only re-read logs touched since the last sync.
+  // A full re-read of years of history took long enough that the Claude Code
+  // session-end hook was cancelled mid-run. Server-side dedupe means a full
+  // scan is never *wrong*, just slow, so `--full` stays available for when
+  // history needs rebuilding (e.g. after an adapter fix).
+  const full = args.includes("--full");
+  const since = full ? undefined : cfg.lastSync ? new Date(cfg.lastSync) : undefined;
+  const results = scanAll({ since });
   // Session aggregates can exceed the server's per-event storage ceiling;
   // split them so the tokens are kept rather than rejected.
   const events = results.flatMap((r) => r.events).flatMap(splitOversized);

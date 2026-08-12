@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import type { Adapter, BurnEvent, ScanResult } from "./types.js";
-import { providerFromModel } from "./types.js";
+import type { Adapter, BurnEvent, ScanOptions, ScanResult } from "./types.js";
+import { providerFromModel, shouldRead } from "./types.js";
 
 type ClaudeLine = {
   type?: string;
@@ -32,7 +32,7 @@ export class ClaudeCodeAdapter implements Adapter {
     return existsSync(this.root);
   }
 
-  scan(): ScanResult {
+  scan(opts: ScanOptions = {}): ScanResult {
     if (!this.detect()) {
       return { source: this.name, events: [], scannedFiles: 0, totalLines: 0, note: "not installed" };
     }
@@ -68,9 +68,15 @@ export class ClaudeCodeAdapter implements Adapter {
       }
 
       for (const file of files) {
+        const full = join(dir, file);
+        try {
+          if (!shouldRead(statSync(full).mtimeMs, opts.since)) continue;
+        } catch {
+          continue;
+        }
         let content: string;
         try {
-          content = readFileSync(join(dir, file), "utf8");
+          content = readFileSync(full, "utf8");
         } catch {
           continue;
         }

@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "fs";
 import { basename, join } from "path";
 import { homedir } from "os";
-import type { Adapter, BurnEvent, ScanResult } from "./types.js";
-import { providerFromModel } from "./types.js";
+import type { Adapter, BurnEvent, ScanOptions, ScanResult } from "./types.js";
+import { providerFromModel, shouldRead } from "./types.js";
 
 /**
  * OpenAI Codex CLI — `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`
@@ -49,7 +49,7 @@ export class CodexAdapter implements Adapter {
     return existsSync(this.root);
   }
 
-  scan(): ScanResult {
+  scan(opts: ScanOptions = {}): ScanResult {
     if (!this.detect()) {
       return { source: this.name, events: [], scannedFiles: 0, totalLines: 0, note: "not installed" };
     }
@@ -59,6 +59,11 @@ export class CodexAdapter implements Adapter {
     let totalLines = 0;
 
     for (const file of files) {
+      try {
+        if (!shouldRead(statSync(file).mtimeMs, opts.since)) continue;
+      } catch {
+        continue;
+      }
       let content: string;
       try {
         content = readFileSync(file, "utf8");

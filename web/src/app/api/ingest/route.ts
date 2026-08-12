@@ -51,19 +51,21 @@ const MAX_STRING_FIELD = 256;
 const INT4_MAX = 2_147_483_647;
 
 /**
- * Sources that report ONE event per API call. No single model call can plausibly
- * move this many tokens — today's largest context windows are a couple of
- * million — so anything above it is a mistake or an attempt to game the board.
+ * There is deliberately NO per-call plausibility cap.
  *
- * Session-aggregating sources (codex, hermes) legitimately exceed this: their
- * "event" is a whole session of thousands of calls, so they're only bounded by
- * the column ceiling.
+ * An earlier version rejected anything over 5M from per-call sources on the
+ * theory that no single request could be that large. That's the same mistake
+ * as every other bug in this file's history: throwing away data because it
+ * looked wrong. A cache-heavy request can legitimately clear 5M today, and
+ * context windows only grow — the cap would have quietly deleted real burn
+ * from exactly the heaviest users, who are the ones who care most.
+ *
+ * The only ceiling now is what the column can physically hold. Gaming is a
+ * real concern, but the answer is attribution and anomaly *reporting*, not
+ * silently discarding events that might be genuine.
  */
-const PER_CALL_SOURCES = new Set(["claude-code", "proxy", "manual", "jsonl", "openclaw"]);
-const MAX_TOKENS_PER_CALL = 5_000_000;
-
-function tokenCeilingFor(source: string): number {
-  return PER_CALL_SOURCES.has(source) ? MAX_TOKENS_PER_CALL : INT4_MAX;
+function tokenCeilingFor(_source: string): number {
+  return INT4_MAX;
 }
 
 // Per-IP: 120 req/min guards unauthenticated abuse.
@@ -204,9 +206,7 @@ export async function POST(req: Request) {
       skipped++;
       rejected.push({
         requestId: e.requestId.slice(0, 64),
-        reason: total > MAX_TOKENS_PER_CALL && PER_CALL_SOURCES.has(e.source)
-          ? `single ${e.source} call cannot exceed ${MAX_TOKENS_PER_CALL.toLocaleString()} tokens`
-          : `event exceeds the ${INT4_MAX.toLocaleString()} storage ceiling — split it`,
+        reason: `event exceeds the ${INT4_MAX.toLocaleString()} storage ceiling — split it`,
       });
       continue;
     }

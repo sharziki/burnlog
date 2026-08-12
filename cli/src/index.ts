@@ -40,7 +40,7 @@ ${pc.bold("getting on the board")}
 
 ${pc.bold("counting tokens")}
   ${pc.cyan("scan")}               parse logs locally, show totals (dry run)
-  ${pc.cyan("sync")}    [--quiet]  upload once, now — safe to re-run, duplicates are dropped
+  ${pc.cyan("sync")}    [--full]   upload once, now — incremental; --full re-reads all history
   ${pc.cyan("wrap")}    -- <cmd>   count any command's LLM calls (any provider)
   ${pc.cyan("log")}     <tokens>   record usage by hand (dashboards, batch jobs)
   ${pc.cyan("me")}      [--days n] your burn over time (default 180 days)
