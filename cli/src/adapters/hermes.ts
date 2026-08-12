@@ -70,13 +70,20 @@ export class HermesAdapter implements Adapter {
         maxBuffer: 64 * 1024 * 1024,
         stdio: ["ignore", "pipe", "ignore"],
       });
-    } catch {
+    } catch (err) {
+      // Distinguish "no sqlite3 binary" from "the query failed" — conflating
+      // them sent people installing a package they already had, when the real
+      // cause was a hermes install too old to have the usage table.
+      const missingBinary =
+        (err as NodeJS.ErrnoException)?.code === "ENOENT";
       return {
         source: this.name,
         events: [],
         scannedFiles: 0,
         totalLines: 0,
-        note: "detected, but the `sqlite3` command is unavailable — install it to read hermes usage",
+        note: missingBinary
+          ? "detected, but the `sqlite3` command is unavailable — install it to read hermes usage"
+          : "detected, but state.db has no usage table yet (older hermes, or no sessions recorded)",
       };
     }
 
