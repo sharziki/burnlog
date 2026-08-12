@@ -37,8 +37,7 @@ export default function PrivacyPage() {
 
       <p style={{ color: "#A1A1AA" }}>
         burnlog is a leaderboard for how many tokens you burn through AI coding
-        agents. It is not an analytics tool for what you build with them. That
-        distinction is load-bearing, and it shapes the entire schema.
+        agents. It is not an analytics tool for what you build with them.
       </p>
 
       <Section title="What the CLI reads">

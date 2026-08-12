@@ -12,6 +12,10 @@ const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "10mb" },
   },
+  // Badges pasted from older snippets link at /@user, which was never a route.
+  async redirects() {
+    return [{ source: "/@:username", destination: "/u/:username", permanent: true }];
+  },
   async headers() {
     return [
       {

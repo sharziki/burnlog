@@ -335,9 +335,7 @@ export function ChallengeClient({
       </div>
 
       <p style={{ marginTop: 18, color: "#3F3F46", fontFamily: MONO, fontSize: 11, lineHeight: 1.7 }}>
-        Standings refresh every 20s and count only tokens burned inside the challenge window.
-        {challenge.type === "efficiency" && " Efficiency needs 20+ calls to qualify."}
-        {challenge.type === "provider" && " Provider Lock needs 10K+ tokens to qualify."}
+        Standings refresh every 20s. Only tokens burned inside the window count.
       </p>
     </main>
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
@@ -71,11 +72,16 @@ export default async function H2HPage({ params }: Props) {
   ]);
   if (!leftUser || !rightUser) notFound();
 
-  const [leftStats, rightStats] = await Promise.all([
+  const [leftStats, rightStats, session] = await Promise.all([
     getUserStats(leftUser.id),
     getUserStats(rightUser.id),
+    auth(),
   ]);
   if (!leftStats || !rightStats) notFound();
 
-  return <H2HClient left={leftStats} right={rightStats} />;
+  // Only a participant can start the sprint, so the button needs to know who
+  // is looking.
+  const viewer = (session?.user as { username?: string } | undefined)?.username ?? null;
+
+  return <H2HClient viewer={viewer} left={leftStats} right={rightStats} />;
 }

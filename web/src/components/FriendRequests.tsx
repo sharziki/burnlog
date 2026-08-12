@@ -12,7 +12,7 @@ type Request = { id: string; user: Person; createdAt: string };
  * This is account management, which is why it lives here rather than on the
  * public board.
  */
-export function FriendRequests() {
+export function FriendRequests({ me }: { me: string }) {
   const [friends, setFriends] = useState<Person[]>([]);
   const [incoming, setIncoming] = useState<Request[]>([]);
   const [outgoing, setOutgoing] = useState<Request[]>([]);
@@ -100,7 +100,8 @@ export function FriendRequests() {
           <div style={subLabel}>{friends.length} friend{friends.length === 1 ? "" : "s"}</div>
           {friends.map((f) => (
             <Row key={f.id} person={f} busy={busy === f.username}>
-              <a href={`/h2h/${f.username}`} style={ghostBtn}>
+              {/* /h2h/[matchup] parses a `left-vs-right` slug; a bare username 404s. */}
+              <a href={`/h2h/${me}-vs-${f.username}`} style={ghostBtn}>
                 H2H
               </a>
               <button style={ghostBtn} onClick={() => act(f.username, "remove")}>

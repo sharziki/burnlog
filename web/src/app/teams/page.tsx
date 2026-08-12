@@ -3,7 +3,7 @@ import { CLUB_PLANS } from "@/lib/clubPlan";
 import { TeamLeadForm } from "./TeamLeadForm";
 
 export const metadata: Metadata = {
-  title: "teams",
+  title: "pricing",
   description: "burnlog for engineering teams tracking AI coding spend and usage.",
 };
 

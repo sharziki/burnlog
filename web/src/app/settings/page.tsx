@@ -1,4 +1,5 @@
 import { auth, signIn, signOut } from "@/auth";
+import { prisma } from "@/lib/db";
 import { SettingsClient } from "./client";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,18 @@ export default async function SettingsPage() {
   } | undefined;
 
   if (user?.id) {
+    // The public profile fields live on User; settings is where they're edited.
+    const row = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { bio: true, github: true, twitter: true, website: true },
+    });
+    const profile = {
+      bio: row?.bio ?? "",
+      github: row?.github ?? "",
+      twitter: row?.twitter ?? "",
+      website: row?.website ?? "",
+    };
+
     async function signOutAction() {
       "use server";
       await signOut({ redirectTo: "/" });
@@ -23,6 +36,7 @@ export default async function SettingsPage() {
         username={user.username ?? "user"}
         name={user.name ?? user.username ?? "burnlog user"}
         image={user.image ?? null}
+        profile={profile}
         signOutAction={signOutAction}
       />
     );

@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!club) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 
   if (club.ownerId !== userId) {
-    return NextResponse.json({ ok: false, error: "forbidden", message: "Only the club owner can kick members" }, { status: 403 });
+    return NextResponse.json({ ok: false, error: "forbidden", message: "Only the team owner can kick members" }, { status: 403 });
   }
 
   const body = (await req.json()) as { userId?: string };

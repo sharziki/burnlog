@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { FriendRequests } from "@/components/FriendRequests";
+import { ProfileEditor } from "@/components/ProfileEditor";
 
 export function SettingsClient({
   username,
   name,
   image,
+  profile,
   signOutAction,
 }: {
   username: string;
   name: string;
   image: string | null;
+  profile: { bio: string; github: string; twitter: string; website: string };
   signOutAction: () => Promise<void>;
 }) {
   const [key, setKey] = useState<string | null>(null);
@@ -101,6 +104,9 @@ export function SettingsClient({
             <img src={image} alt="" width={44} height={44} style={{ borderRadius: 10 }} />
           )}
           <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 10, color: "#6B7280", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
+              signed in as
+            </span>
             <span style={{ display: "block", color: "#FAFAFA", fontSize: 15, fontWeight: 700 }}>{name}</span>
             <span style={{ display: "block", color: "#6B7280", fontSize: 11 }}>@{username}</span>
           </span>
@@ -109,36 +115,11 @@ export function SettingsClient({
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <FriendRequests />
+        <ProfileEditor initial={profile} />
       </div>
 
-      <div
-        style={{
-          background: "#0A0A0A",
-          border: "1px solid #141414",
-          borderRadius: 14,
-          padding: 28,
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ fontSize: 11, color: "#6B7280", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>
-          signed in as
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {image && (
-            <img
-              src={image}
-              alt={username}
-              width={48}
-              height={48}
-              style={{ borderRadius: "50%", border: "2px solid #D9770644" }}
-            />
-          )}
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{name}</div>
-            <div style={{ fontSize: 12, color: "#6B7280" }}>@{username}</div>
-          </div>
-        </div>
+      <div style={{ marginBottom: 16 }}>
+        <FriendRequests me={username} />
       </div>
 
       <div
@@ -151,7 +132,7 @@ export function SettingsClient({
       >
         <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>CLI API key</div>
         <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
-          The burnlog CLI uses this key to upload token usage parsed from your ~/.claude logs. Generate one, run <code style={{ color: "#D97706" }}>burnlog login &lt;key&gt;</code> on your machine, then <code style={{ color: "#D97706" }}>burnlog sync</code>.
+          Generate a key, then run <code style={{ color: "#D97706" }}>burnlog login &lt;key&gt;</code> on the machine you burn on.
         </div>
         <button
           onClick={createKey}

@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     const still = await prisma.club.findUnique({ where: { slug } });
     if (still) {
       return NextResponse.json(
-        { ok: false, error: "slug_taken", message: "Club name too similar to an existing club" },
+        { ok: false, error: "slug_taken", message: "Team name too similar to an existing team" },
         { status: 409 },
       );
     }

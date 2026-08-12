@@ -48,12 +48,6 @@ export function Footer() {
         </span>
       </div>
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        <a href="/settings" style={{ color: "#52525B", textDecoration: "none" }}>
-          settings
-        </a>
-        <a href="/teams" style={{ color: "#52525B", textDecoration: "none" }}>
-          teams
-        </a>
         <a href="/privacy" style={{ color: "#52525B", textDecoration: "none" }}>
           privacy
         </a>

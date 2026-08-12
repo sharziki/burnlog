@@ -28,15 +28,14 @@ export default function SecurityPage() {
 
       <p style={{ color: "#A1A1AA" }}>
         burnlog is designed for teams that need AI-agent cost visibility without
-        collecting prompts, code, repo names, or paths. The security model starts
-        with data minimization, then adds controls for access, ingest, budgets,
-        and auditability.
+        collecting prompts, code, repo names, or paths.
       </p>
 
       <Section title="Data boundary">
         <p>
-          Ingest stores token counts, model/provider/source tags, timestamps, and
-          opaque request ids. It rejects or ignores everything else. Prompt text,
+          Ingest accepts token counts, model/provider/source tags, timestamps, and
+          opaque request ids, and nothing else — see the full field list in the{" "}
+          <a href="/privacy" style={{ color: "#D97706" }}>privacy model</a>. Prompt text,
           completions, file paths, working directories, shell output, tool output,
           repo names, and source code are not part of the schema.
         </p>

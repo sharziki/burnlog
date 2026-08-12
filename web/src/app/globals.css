@@ -104,6 +104,7 @@ html { scroll-behavior: smooth; }
 .hover-lift { transition: border-color .15s ease, background .15s ease, transform .15s ease; }
 .hover-lift:hover { border-color: #D9770644; background: #0F0F11; }
 
+.nav-links { flex-wrap: wrap; }
 .nav-links a { transition: color .15s ease, background .15s ease; }
 .nav-links a:hover { color: #FAFAFA; background: #131316; }
 
@@ -139,9 +140,6 @@ html { scroll-behavior: smooth; }
   .landing-three,
   .landing-proof {
     grid-template-columns: 1fr !important;
-  }
-  .nav-links {
-    display: none !important;
   }
 }
 

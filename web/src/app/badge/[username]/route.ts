@@ -46,9 +46,12 @@ export async function GET(
   { params }: { params: Promise<{ username: string }> },
 ) {
   const { username } = await params;
+  // Badges pasted from older snippets carry a `.svg` suffix that never matched a
+  // username, so they rendered as "user not found". Tolerate both forms.
+  const slug = username.endsWith(".svg") ? username.slice(0, -4) : username;
 
   const user = await prisma.user.findFirst({
-    where: { username },
+    where: { username: slug },
     select: { id: true },
   });
 

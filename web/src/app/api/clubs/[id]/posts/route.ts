@@ -114,7 +114,7 @@ export async function POST(
   });
   if (!membership) {
     return NextResponse.json(
-      { ok: false, error: "not_member", message: "join the club to post" },
+      { ok: false, error: "not_member", message: "join the team to post" },
       { status: 403 },
     );
   }

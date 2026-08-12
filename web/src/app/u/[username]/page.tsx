@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
@@ -59,6 +60,9 @@ export default async function ProfilePage({ params }: Props) {
   });
   if (!user) notFound();
 
+  const session = await auth();
+  const viewer = (session?.user as { username?: string } | undefined)?.username ?? null;
+
   const [stats, achievements, entered] = await Promise.all([
     getUserStats(user.id),
     getAchievements(user.id),
@@ -86,6 +90,7 @@ export default async function ProfilePage({ params }: Props) {
       joinedAt={user.createdAt.toISOString()}
       achievements={achievements.map((a) => a.key)}
       challenges={challenges}
+      viewer={viewer}
     />
   );
 }

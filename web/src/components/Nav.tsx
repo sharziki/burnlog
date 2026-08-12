@@ -42,6 +42,9 @@ export async function Nav() {
       {user?.username ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>
           <NotificationBell />
+          {/* The avatar goes to your profile: it's the most frequent
+              self-check, and pointing it at Settings turned one click into
+              three. Settings gets its own link beside it. */}
           <a
             href={`/u/${user.username}`}
             style={{
@@ -67,6 +70,24 @@ export async function Nav() {
               />
             )}
             @{user.username}
+          </a>
+          <a
+            href="/settings"
+            aria-label="Settings"
+            title="Settings"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "8px 10px",
+              border: "1px solid #18181B",
+              borderRadius: 6,
+              color: "#71717A",
+              fontFamily: MONO,
+              fontSize: 12,
+              textDecoration: "none",
+            }}
+          >
+            ⚙
           </a>
         </div>
       ) : (

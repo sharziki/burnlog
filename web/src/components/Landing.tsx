@@ -69,7 +69,6 @@ function Hero({
           <p style={{ fontSize: 17, color: "#A1A1AA", lineHeight: 1.65, margin: "22px 0 0", maxWidth: 500 }}>
             Every token your agents burn — Claude Code, Codex, Cursor, your own — counted,
             ranked, and put on a board against everyone else plugged in.
-            Tokens only. Your prompts never leave your machine.
           </p>
 
           <div style={{ marginTop: 30 }}>
@@ -91,29 +90,13 @@ function Hero({
           </div>
 
           <div style={{ marginTop: 22, fontFamily: MONO, fontSize: 11, color: "#3F3F46" }}>
-            free · open-source CLI · no card
+            free · open-source CLI · no card · tokens only
           </div>
         </div>
 
         <RankLadder stats={stats} />
       </div>
 
-      {stats.totalBurned > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12, marginTop: 52 }} className="landing-proof">
-          {[
-            ["tokens burned", formatTokens(stats.totalBurned)],
-            ["this week", formatTokens(stats.weeklyTotal)],
-            ["burners", String(stats.activeUsers)],
-          ].map(([label, value]) => (
-            <div key={label} style={{ ...card, padding: "18px 20px" }}>
-              <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700, color: "#F59E0B", letterSpacing: -0.5 }}>
-                {value}
-              </div>
-              <div style={{ ...eyebrow, color: "#52525B", marginTop: 6 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
@@ -187,7 +170,7 @@ const PROVIDERS = [
 
 function Compatibility() {
   return (
-    <Section eyebrowText="works with what you already run" title="If it burns tokens, burnlog counts it.">
+    <Section eyebrowText="compatibility" title="If it burns tokens, burnlog counts it.">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">
         <div style={{ ...card, padding: 24 }}>
           <div style={{ ...eyebrow, marginBottom: 14 }}>agents — read from local logs</div>
@@ -199,8 +182,7 @@ function Compatibility() {
             ))}
           </div>
           <p style={bodyText}>
-            Tools that keep a usage log are read straight off disk. Nothing but token
-            counts and a random id ever gets uploaded.
+            Tools that keep a usage log are read straight off disk.
           </p>
         </div>
 
@@ -232,19 +214,19 @@ function HowItWorks() {
       n: "01",
       title: "Run one command",
       code: INSTALL,
-      body: "Finds your agents, shows your numbers, signs you in, syncs. No config file, no account-first wall.",
+      body: "Finds your agents, signs you in, syncs. No config.",
     },
     {
       n: "02",
       title: "Catch everything else",
       code: "burnlog wrap -- <anything>",
-      body: "Counts any LLM call from any tool across 14 providers, even when there's no log to read.",
+      body: "Counts calls no log file ever sees.",
     },
     {
       n: "03",
       title: "Settle it",
       code: "burnlog challenge new",
-      body: "Sprints, streak races, head-to-heads. Share one link and let the numbers argue.",
+      body: "Share one link and let the numbers argue.",
     },
   ];
   return (
@@ -283,10 +265,10 @@ function Competition() {
       body: "Thirteen unlockables from First Burn to Billion Club, earned from real usage and displayed as a trophy case on your profile.",
     },
     {
-      title: "Clubs",
-      body: "Private leaderboards for your team, batch, or group chat — with shared budgets, alerts, and CSV exports when finance asks.",
+      title: "Teams",
+      body: "Private leaderboards with shared budgets, alerts, and CSV exports when finance asks.",
       href: "/teams",
-      cta: "burnlog for teams",
+      cta: "See team pricing",
     },
     {
       title: "Head-to-head",
@@ -405,7 +387,7 @@ function FinalCta({ signInAction }: { signInAction?: () => Promise<void> }) {
           Your burn is already happening.
         </h2>
         <p style={{ fontSize: 15, color: "#71717A", margin: "12px auto 0", maxWidth: 440, lineHeight: 1.6 }}>
-          It may as well count for something. One command and you&apos;re on the board.
+          One command and you&apos;re on the board.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 26, flexWrap: "wrap" }}>
           <div style={{ display: "flex" }}>

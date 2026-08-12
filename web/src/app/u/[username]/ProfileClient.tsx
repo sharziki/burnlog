@@ -147,11 +147,14 @@ export function ProfileClient({
   joinedAt,
   achievements,
   challenges,
+  viewer,
 }: {
   user: UserStats;
   joinedAt: string;
   achievements: string[];
   challenges: ProfileChallenge[];
+  /** Signed-in viewer's username, for the compare link. Null when logged out. */
+  viewer: string | null;
 }) {
   const unlockedKeys = new Set(achievements);
   const rank = getRank(user.totalTokens);
@@ -421,6 +424,30 @@ export function ProfileClient({
           </div>
         </div>
 
+        {/* ─── Compare ───
+            /h2h lost every entry point when the board's H2H tab was removed,
+            leaving a working page reachable only by typing the URL. */}
+        {viewer && viewer !== user.username && (
+          <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a
+              href={`/h2h/${viewer}-vs-${user.username}`}
+              style={{
+                padding: "11px 18px",
+                borderRadius: 8,
+                border: "1px solid #D9770655",
+                background: "#D9770618",
+                color: "#D97706",
+                fontFamily: MONO,
+                fontSize: 12,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              Compare with @{user.username}
+            </a>
+          </div>
+        )}
+
         {/* ─── Environmental impact ─── */}
         <div style={{ marginTop: 20 }}>
           <ImpactPanel tokens={user.totalTokens} title={`ENVIRONMENTAL IMPACT · ${user.username}`} />
@@ -525,24 +552,6 @@ export function ProfileClient({
               {`![burnlog](https://burnlog.net/badge/${user.username})`}
             </code>
           </div>
-        </div>
-
-        {/* Back link */}
-        <div style={{ marginTop: 32, textAlign: "center" }}>
-          <a
-            href="/"
-            style={{
-              fontSize: 12,
-              color: "#52525B",
-              textDecoration: "none",
-              fontFamily: MONO,
-              padding: "8px 16px",
-              border: "1px solid #18181B",
-              borderRadius: 6,
-            }}
-          >
-            ← back to leaderboard
-          </a>
         </div>
       </div>
     </div>

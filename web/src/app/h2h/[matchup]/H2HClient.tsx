@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
@@ -47,7 +48,42 @@ function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
   );
 }
 
-export function H2HClient({ left, right }: { left: UserStats; right: UserStats }) {
+export function H2HClient({
+  left,
+  right,
+  viewer,
+}: {
+  left: UserStats;
+  right: UserStats;
+  /** Signed-in viewer, so the rematch button knows who is challenging. */
+  viewer: string | null;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  /**
+   * Restored with the page. "Challenge Them" used to live on the board's H2H
+   * tab and was deleted along with it — a working capability removed rather
+   * than moved. It belongs here, where the comparison already is.
+   */
+  async function challengeThem() {
+    const opponent = viewer === left.username ? right.username : left.username;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/challenges", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: `${viewer} vs ${opponent}`, type: "sprint", days: 7 }),
+      });
+      const data = (await res.json()) as { ok: boolean; message?: string; challenge?: { url: string } };
+      if (data.ok && data.challenge) window.location.href = data.challenge.url;
+      else alert(data.message ?? "Couldn't start that challenge.");
+    } catch {
+      alert("Network error — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const leftRank = getRank(left.totalTokens);
   const rightRank = getRank(right.totalTokens);
   const metrics = compareUsers(left, right, formatTokens, (v) => formatUSD(v * DOLLARS_PER_TOKEN));
@@ -149,6 +185,29 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
           </div>
         </div>
 
+        {/* Settle it for real — the comparison is the setup, the sprint is the point. */}
+        {viewer && (viewer === left.username || viewer === right.username) && (
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+            <button
+              onClick={challengeThem}
+              disabled={busy}
+              style={{
+                padding: "12px 22px",
+                borderRadius: 8,
+                border: "none",
+                background: "#D97706",
+                color: "#09090B",
+                fontFamily: MONO,
+                fontSize: 12.5,
+                fontWeight: 800,
+                cursor: busy ? "wait" : "pointer",
+              }}
+            >
+              {busy ? "Starting…" : "Challenge them — 7-day sprint"}
+            </button>
+          </div>
+        )}
+
         {/* Verdict — say why, not just what */}
         <div
           style={{
@@ -165,16 +224,8 @@ export function H2HClient({ left, right }: { left: UserStats; right: UserStats }
           <div style={{ fontSize: 15, color: "#E4E4E7", lineHeight: 1.6 }}>{verdict.summary}</div>
           <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginTop: 10, lineHeight: 1.6 }}>
             Scored on the last 30 days only, so tenure doesn&apos;t decide it. Rows within 5% count
-            as a tie. All-time and cost are shown for context but never scored — cost is derived
-            from tokens, so scoring both would count the same thing twice.
+            as a tie. Cost is shown for context but never scored.
           </div>
-        </div>
-
-        {/* Back link */}
-        <div style={{ textAlign: "center" }}>
-          <a href="/" style={{ fontSize: 12, color: "#52525B", textDecoration: "none", fontFamily: MONO, padding: "8px 16px", border: "1px solid #18181B", borderRadius: 6 }}>
-            ← back to leaderboard
-          </a>
         </div>
       </div>
     </div>

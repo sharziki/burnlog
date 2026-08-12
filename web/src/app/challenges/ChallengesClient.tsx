@@ -45,8 +45,7 @@ export function ChallengesClient({
         Talk is cheap. Tokens aren&apos;t.
       </h1>
       <p style={{ margin: "14px 0 0", color: "#A1A1AA", fontSize: 15, lineHeight: 1.7, maxWidth: 620 }}>
-        Pick a format, share one link, and settle it with real numbers. Standings pull straight
-        from your synced burn — nothing to log by hand.
+        Pick a format, share one link, and settle it with real numbers.
       </p>
 
       <div style={{ marginTop: 24 }}>
@@ -79,21 +78,6 @@ export function ChallengesClient({
         ) : (
           open.map((c) => <ChallengeCard key={c.id} challenge={c} />)
         )}
-      </Section>
-
-      <Section title="Formats">
-        {types.map((t) => (
-          <div key={t.id} style={card}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: "#D97706", fontFamily: MONO, fontSize: 16 }}>{t.icon}</span>
-              <span style={{ color: "#FAFAFA", fontSize: 15, fontWeight: 600 }}>{t.label}</span>
-              <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 10, color: "#3F3F46" }}>
-                {t.durations.join(" / ")}d
-              </span>
-            </div>
-            <p style={{ margin: "8px 0 0", color: "#71717A", fontSize: 13, lineHeight: 1.55 }}>{t.blurb}</p>
-          </div>
-        ))}
       </Section>
     </main>
   );
