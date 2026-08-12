@@ -67,3 +67,48 @@ export function providerFromModel(model: string): BurnEvent["provider"] {
 export function totalTokens(e: BurnEvent): number {
   return e.inputTokens + e.outputTokens + e.cacheCreationTokens + e.cacheReadTokens;
 }
+
+/**
+ * The server stores token counts in Postgres INT4, so an event above this
+ * can't be written. Session-aggregating adapters (codex, hermes) roll up
+ * thousands of calls into one event and can genuinely exceed it.
+ */
+export const MAX_EVENT_TOKENS = 2_147_483_647;
+
+/**
+ * Split an event whose totals exceed the storage ceiling into parts that fit.
+ *
+ * The event is already a synthetic aggregate of a whole session, so dividing
+ * that aggregate changes nothing about what's being reported — the sum is
+ * preserved exactly, including the remainder. Ids get a deterministic `#n`
+ * suffix so re-syncing stays idempotent.
+ *
+ * Without this the server rejects the event and those tokens are lost
+ * silently; before the server was fixed, it took the entire batch with it.
+ */
+export function splitOversized(event: BurnEvent): BurnEvent[] {
+  const total = totalTokens(event);
+  if (total <= MAX_EVENT_TOKENS) return [event];
+
+  const parts = Math.ceil(total / MAX_EVENT_TOKENS);
+  const out: BurnEvent[] = [];
+
+  // Divide each bucket, giving the remainder to the first part so the parts
+  // sum to exactly the original.
+  const share = (value: number, index: number): number => {
+    const base = Math.floor(value / parts);
+    return index === 0 ? base + (value - base * parts) : base;
+  };
+
+  for (let i = 0; i < parts; i++) {
+    out.push({
+      ...event,
+      requestId: `${event.requestId}#${i + 1}`,
+      inputTokens: share(event.inputTokens, i),
+      outputTokens: share(event.outputTokens, i),
+      cacheCreationTokens: share(event.cacheCreationTokens, i),
+      cacheReadTokens: share(event.cacheReadTokens, i),
+    });
+  }
+  return out;
+}

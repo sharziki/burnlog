@@ -1,6 +1,6 @@
 import pc from "picocolors";
 import { loadConfig, saveConfig } from "../config.js";
-import { scanAll, totalTokens } from "../adapters/index.js";
+import { scanAll, totalTokens, splitOversized } from "../adapters/index.js";
 import { ingest, fetchRank } from "../api.js";
 import { formatTokens } from "../format.js";
 
@@ -34,7 +34,9 @@ async function syncOnly(args: string[]): Promise<void> {
     process.exit(1);
   }
   const results = scanAll();
-  const events = results.flatMap((r) => r.events);
+  // Session aggregates can exceed the server's per-event storage ceiling;
+  // split them so the tokens are kept rather than rejected.
+  const events = results.flatMap((r) => r.events).flatMap(splitOversized);
   if (!events.length) {
     if (quiet) return;
     console.log(pc.yellow("no events found across any adapter"));

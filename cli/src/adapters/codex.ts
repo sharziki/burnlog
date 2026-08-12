@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "fs";
-import { join } from "path";
+import { basename, join } from "path";
 import { homedir } from "os";
 import type { Adapter, BurnEvent, ScanResult } from "./types.js";
 import { providerFromModel } from "./types.js";
@@ -19,10 +19,10 @@ import { providerFromModel } from "./types.js";
  *     model_context_window: number
  *   }
  *
- * The file is append-only, so `total_token_usage` grows over the session. We
- * only read the LAST token_count in each file and record a single BurnEvent
- * per session, keyed by session_meta.id. Output_tokens on the event is the
- * session total.
+ * Each file is append-only, so `total_token_usage` grows within it. We read
+ * the LAST token_count per file and emit one BurnEvent per FILE — keyed by
+ * filename, not by session_meta.id, because codex reuses a session id across
+ * resumed runs (see the long note further down).
  */
 type CodexLine = {
   timestamp?: string;
@@ -125,9 +125,24 @@ export class CodexAdapter implements Adapter {
       const freshInput = Math.max(0, input - cached);
       const cacheRead = Math.min(cached, input);
 
+      // Dedupe key must be the ROLLOUT FILE, not the session id.
+      //
+      // Codex reuses a session id across resumed runs: one real account had
+      // 187 separate rollout files sharing a single id. Keying on the session
+      // made the server's (user, source, requestId) unique index collapse all
+      // 187 into one and silently discard 106 BILLION tokens — the sync
+      // reported success the whole time.
+      //
+      // Those files are independent runs, not cumulative snapshots of one:
+      // their totals are non-monotonic (1.26B, then 11.6M, then 7.9M...),
+      // and each run's tokens were separately sent and separately billed.
+      // So each file is its own event. The filename already carries a unique
+      // id, which makes this stable across re-scans.
+      const fileKey = basename(file, ".jsonl");
+
       const modelName = model ?? "gpt-codex";
       events.push({
-        requestId: sessionId,
+        requestId: fileKey,
         source: this.name,
         model: modelName,
         provider: providerFromModel(modelName),

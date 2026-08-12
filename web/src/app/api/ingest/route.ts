@@ -39,6 +39,33 @@ const MAX_EVENTS_PER_REQUEST = 1000;
 const MAX_BODY_BYTES = 1_000_000; // 1 MB
 const MAX_STRING_FIELD = 256;
 
+/**
+ * Token columns are Postgres INT4. Anything larger doesn't just get rejected —
+ * it throws mid-insert and takes the whole batch with it, so a single heavy
+ * session could silently cost a user a thousand good events. We clamp at the
+ * column ceiling and skip the offender instead.
+ *
+ * (The real fix is BIGINT columns; until then the CLI splits oversized
+ * session aggregates so nothing is actually lost.)
+ */
+const INT4_MAX = 2_147_483_647;
+
+/**
+ * Sources that report ONE event per API call. No single model call can plausibly
+ * move this many tokens — today's largest context windows are a couple of
+ * million — so anything above it is a mistake or an attempt to game the board.
+ *
+ * Session-aggregating sources (codex, hermes) legitimately exceed this: their
+ * "event" is a whole session of thousands of calls, so they're only bounded by
+ * the column ceiling.
+ */
+const PER_CALL_SOURCES = new Set(["claude-code", "proxy", "manual", "jsonl", "openclaw"]);
+const MAX_TOKENS_PER_CALL = 5_000_000;
+
+function tokenCeilingFor(source: string): number {
+  return PER_CALL_SOURCES.has(source) ? MAX_TOKENS_PER_CALL : INT4_MAX;
+}
+
 // Per-IP: 120 req/min guards unauthenticated abuse.
 // Per-user: 600 req/min — a full sync of years of logs batches to ~dozens
 // of requests at 500 events/batch, so 600/min is very forgiving.
@@ -147,6 +174,7 @@ export async function POST(req: Request) {
   const minTs = now - 10 * 365 * 24 * 60 * 60 * 1000; // 10y past
   const maxTs = now + 5 * 60 * 1000; // 5 min skew
   const rows = [];
+  const rejected: { requestId: string; reason: string }[] = [];
   let skipped = 0;
 
   for (const e of body.events) {
@@ -167,6 +195,22 @@ export async function POST(req: Request) {
       skipped++;
       continue;
     }
+
+    // Reject implausible or unstorable events *individually*. Previously an
+    // oversized value threw inside createMany and lost the entire batch —
+    // up to 1000 perfectly good events — with a 500 and no explanation.
+    const ceiling = tokenCeilingFor(e.source);
+    if (total > ceiling || input > INT4_MAX || output > INT4_MAX || cacheCreate > INT4_MAX || cacheRead > INT4_MAX) {
+      skipped++;
+      rejected.push({
+        requestId: e.requestId.slice(0, 64),
+        reason: total > MAX_TOKENS_PER_CALL && PER_CALL_SOURCES.has(e.source)
+          ? `single ${e.source} call cannot exceed ${MAX_TOKENS_PER_CALL.toLocaleString()} tokens`
+          : `event exceeds the ${INT4_MAX.toLocaleString()} storage ceiling — split it`,
+      });
+      continue;
+    }
+
     const ts = Date.parse(e.timestamp);
     if (!Number.isFinite(ts) || ts < minTs || ts > maxTs) {
       skipped++;
@@ -308,6 +352,8 @@ export async function POST(req: Request) {
       ok: true,
       inserted,
       skipped,
+      // Named rejections — a silent skip count is impossible to debug.
+      ...(rejected.length ? { rejected: rejected.slice(0, 20) } : {}),
       user: keyRow.user.username,
     },
     {

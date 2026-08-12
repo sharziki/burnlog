@@ -5,7 +5,7 @@ import { JsonlAdapter } from "./jsonl.js";
 import { OpenclawAdapter } from "./openclaw.js";
 import type { Adapter, BurnEvent, ScanResult } from "./types.js";
 
-export { totalTokens, providerFromModel } from "./types.js";
+export { totalTokens, providerFromModel, splitOversized, MAX_EVENT_TOKENS } from "./types.js";
 export type { Adapter, BurnEvent, ScanResult, AdapterName } from "./types.js";
 
 export const adapters: Adapter[] = [

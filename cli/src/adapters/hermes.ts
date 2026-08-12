@@ -56,7 +56,7 @@ export class HermesAdapter implements Adapter {
 
     // Open read-only via a file: URI so a running Hermes is never disturbed.
     const sql = `
-      SELECT session_id, model, api_call_count,
+      SELECT session_id, model, billing_provider, task, api_call_count,
              input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
              COALESCE(last_seen, first_seen) AS seen
       FROM session_model_usage
@@ -109,9 +109,13 @@ export class HermesAdapter implements Adapter {
       if (!sessionId) continue;
 
       events.push({
-        // One event per (session, model) — matches the table's grain, so a
-        // re-scan dedupes cleanly on the server's (user, source, requestId).
-        requestId: `${sessionId}:${model}`,
+        // The table's real grain is (session, model, billing_provider, task) —
+        // keying on (session, model) alone collided on 35 of 206 rows and the
+        // server's unique index silently dropped them. Include the rest of the
+        // natural key so a re-scan still dedupes but nothing is lost.
+        requestId: [sessionId, model, row.billing_provider ?? "", row.task ?? ""]
+          .join(":")
+          .slice(0, 200),
         source: this.name,
         model,
         provider: providerFromModel(model),
