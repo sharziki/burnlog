@@ -30,6 +30,7 @@ model User {
   apiKeys           ApiKey[]
   burnEvents        BurnEvent[]
   ownedClubs        Club[]             @relation("clubOwner")
+  ownedCompanies    Company[]          @relation("companyOwner")
   clubMemberships   ClubMembership[]
   clubAnnouncements ClubAnnouncement[]
   notifications     Notification[]
@@ -136,6 +137,28 @@ model BurnEvent {
   @@index([userId, model])
 }
 
+// ---------- Companies ----------
+
+/// A company is a container for clubs — "teams" once they live under one.
+/// It owns no burn of its own: every number on a company is rolled up from its
+/// teams, so a club joining or leaving a company can never rewrite history.
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  ownerId     String
+  /// Companies exist because someone bought the $30/mo tier, so "company" is
+  /// the sensible default rather than "free" — see lib/clubPlan.ts.
+  plan        String   @default("company")
+  createdAt   DateTime @default(now())
+
+  owner User   @relation("companyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  teams Club[]
+
+  @@index([ownerId])
+}
+
 // ---------- Clubs ----------
 
 model Club {
@@ -151,15 +174,23 @@ model Club {
   blockIngestOnBudget Boolean  @default(false)
   budgetWebhookUrl    String?
   ownerId             String
+  /// Set when this club has been attached to a company as one of its teams.
+  /// Null is the normal case — a standalone club is still a first-class thing.
+  companyId           String?
   createdAt           DateTime @default(now())
 
   owner         User               @relation("clubOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /// SetNull, not Cascade: a club predates the company it was attached to, so
+  /// deleting the company must release its teams, never delete them.
+  company       Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
   apiKeys       ApiKey[]
   burnEvents    BurnEvent[]
   memberships   ClubMembership[]
   announcements ClubAnnouncement[]
   auditEvents   ClubAuditEvent[]
   posts         ClubPost[]
+
+  @@index([companyId])
 }
 
 model ClubAuditEvent {

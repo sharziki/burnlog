@@ -19,7 +19,23 @@ const features = [
   ["Privacy-first ingest", "Tokens and opaque request ids only. No prompts, paths, code, or repo names."],
 ];
 
-const plans = [
+const companyPoints = [
+  ["Teams stay teams", "Attach clubs you already own. Rosters, keys, and budgets don't move."],
+  ["One rollup", "Company-wide burn without asking every lead for a spreadsheet."],
+  ["Head-to-head", "Point two teams at each other on recent form, not lifetime totals."],
+];
+
+type Plan = {
+  name: string;
+  price: string;
+  sub?: string;
+  fit: string;
+  items: string[];
+  /** Draws the amber outline. One plan at a time, or it stops meaning anything. */
+  featured?: boolean;
+};
+
+const plans: Plan[] = [
   {
     name: "Open source",
     price: "$0",
@@ -32,6 +48,19 @@ const plans = [
     sub: "per active member / month",
     fit: "engineering groups tracking shared AI spend",
     items: ["private teams", "team API keys", "budget alerts", "CSV exports"],
+  },
+  {
+    name: "Company",
+    price: `$${CLUB_PLANS.company.monthlyPriceUsdFlat}`,
+    sub: "flat / month, all teams",
+    fit: "orgs running several teams under one roof",
+    items: [
+      `up to ${CLUB_PLANS.company.teamLimit} teams in one company`,
+      "team vs team head-to-head",
+      "company-wide rollups",
+      "everything in Team",
+    ],
+    featured: true,
   },
   {
     name: "Business",
@@ -102,10 +131,24 @@ export default function TeamsPage() {
 
       <section style={{ marginTop: 36 }}>
         <h2 style={sectionTitle}>Pricing direction</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }} className="teams-grid">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }} className="teams-grid">
           {plans.map((p) => (
-            <div key={p.name} style={{ ...panel, minHeight: 230 }}>
-              <div style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, letterSpacing: 1, textTransform: "uppercase" }}>{p.name}</div>
+            <div
+              key={p.name}
+              style={{
+                ...panel,
+                minHeight: 230,
+                ...(p.featured ? { borderColor: "#D97706", background: "#0F0D0A" } : null),
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "#D97706", fontFamily: MONO, letterSpacing: 1, textTransform: "uppercase" }}>{p.name}</span>
+                {p.featured && (
+                  <span style={{ fontSize: 9, color: "#09090B", background: "#D97706", fontFamily: MONO, letterSpacing: 1, textTransform: "uppercase", padding: "2px 6px", borderRadius: 4, fontWeight: 800 }}>
+                    new
+                  </span>
+                )}
+              </div>
               <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 8 }}>
                 <span style={{ color: "#FAFAFA", fontSize: 30, fontWeight: 800, fontFamily: MONO }}>{p.price}</span>
                 {p.sub && <span style={{ color: "#52525B", fontSize: 11 }}>{p.sub}</span>}
@@ -116,6 +159,49 @@ export default function TeamsPage() {
               </ul>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section style={{ marginTop: 36 }}>
+        <h2 style={sectionTitle}>Company: teams under one roof</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(280px, 0.9fr)", gap: 20, alignItems: "start" }} className="teams-hero">
+          <div style={panel}>
+            <p style={{ margin: 0, color: "#A1A1AA", fontSize: 14, lineHeight: 1.7 }}>
+              A company holds up to {CLUB_PLANS.company.teamLimit} teams for one flat ${CLUB_PLANS.company.monthlyPriceUsdFlat} a month. Each team keeps its own roster, keys, and budget; the company adds the rollup across all of them — and lets you put two of your own teams head-to-head.
+            </p>
+            <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
+              {companyPoints.map(([title, body]) => (
+                <div key={title} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: 10, alignItems: "baseline" }}>
+                  <span style={{ color: "#D97706", fontFamily: MONO, fontSize: 11 }}>—</span>
+                  <div>
+                    <div style={{ color: "#FAFAFA", fontSize: 13 }}>{title}</div>
+                    <div style={{ color: "#71717A", fontSize: 12, lineHeight: 1.55, marginTop: 2 }}>{body}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ ...panel, padding: 20 }}>
+            <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO, textTransform: "uppercase", letterSpacing: 1 }}>
+              Team vs team · last 30 days
+            </div>
+            {[
+              ["Recent form", "8.2M", "6.9M", "left"],
+              ["Peak day", "1.1M", "1.4M", "right"],
+              ["Active days", "27/30", "26/30", "tie"],
+              ["Contributors", "9", "6", "left"],
+              ["Range", "5", "5", "tie"],
+            ].map(([label, left, right, side]) => (
+              <div key={label} style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: "1px solid #18181B" }}>
+                <div style={{ textAlign: "right", fontFamily: MONO, fontSize: 13, color: side === "left" ? "#D97706" : "#A1A1AA", fontWeight: side === "left" ? 800 : 400 }}>{left}</div>
+                <div style={{ fontSize: 9, color: "#52525B", fontFamily: MONO, textTransform: "uppercase", letterSpacing: 1, textAlign: "center", minWidth: 88 }}>{label}</div>
+                <div style={{ fontFamily: MONO, fontSize: 13, color: side === "right" ? "#D97706" : "#A1A1AA", fontWeight: side === "right" ? 800 : 400 }}>{right}</div>
+              </div>
+            ))}
+            <p style={{ margin: "12px 0 0", color: "#71717A", fontSize: 12, lineHeight: 1.55 }}>
+              Scored on a rolling 30-day window, so the team that started first doesn&apos;t win on back catalogue. Lifetime totals and estimated spend show as context and never score.
+            </p>
+          </div>
         </div>
       </section>
 
