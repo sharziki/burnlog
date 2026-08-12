@@ -1,14 +1,9 @@
 import { auth, signIn } from "@/auth";
 import { NotificationBell } from "./NotificationBell";
 import { Logo } from "./Logo";
+import { NavLinks } from "./NavLinks";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-
-const NAV_LINKS: [string, string][] = [
-  ["/", "leaderboard"],
-  ["/challenges", "challenges"],
-  ["/teams", "teams"],
-];
 
 export async function Nav() {
   const session = await auth();
@@ -30,32 +25,19 @@ export async function Nav() {
         alignItems: "center",
         borderBottom: "1px solid #18181B",
         position: "relative",
-        zIndex: 1,
+        // The header creates a stacking context, so anything it contains —
+        // notably the notification dropdown — is confined to this z-index no
+        // matter how high its own is. The page content also sits at 1 and
+        // comes later in the DOM, so at parity it painted over the dropdown.
+        // Lift the whole header above the content instead.
+        zIndex: 50,
       }}
     >
       <a href="/" style={{ textDecoration: "none", justifySelf: "start" }}>
         <Logo size={32} />
       </a>
 
-      <nav style={{ display: "flex", gap: 4, justifySelf: "center" }} className="nav-links">
-        {NAV_LINKS.map(([href, label]) => (
-          <a
-            key={href}
-            href={href}
-            style={{
-              fontFamily: MONO,
-              fontSize: 11,
-              color: "#71717A",
-              padding: "8px 10px",
-              borderRadius: 6,
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
+      <NavLinks />
 
       {user?.username ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>

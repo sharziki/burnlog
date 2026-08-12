@@ -34,3 +34,6 @@ pnpm-debug.log*
 .vscode/
 .idea/
 *.swp
+
+# agent worktrees (transient, not part of the repo)
+.claude/worktrees/
