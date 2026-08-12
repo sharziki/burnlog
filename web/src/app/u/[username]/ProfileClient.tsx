@@ -2,14 +2,13 @@
 
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
-import { dollarsPerToken } from "@/lib/cost";
+import { estimateCostUsd, formatUsd } from "@/lib/cost";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/lib/achievements";
 import { ImpactPanel } from "@/components/ImpactPanel";
 import type { UserStats } from "@/lib/stats";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
-const DOLLARS_PER_TOKEN = dollarsPerToken();
 
 const SOURCE_LABELS: Record<string, string> = {
   "claude-code": "Claude Code",
@@ -158,7 +157,8 @@ export function ProfileClient({
 }) {
   const unlockedKeys = new Set(achievements);
   const rank = getRank(user.totalTokens);
-  const spend = user.totalTokens * DOLLARS_PER_TOKEN;
+  // Cache-aware: a flat per-token rate overstated a real account 10x.
+  const spend = estimateCostUsd(user.buckets);
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
   return (
@@ -300,7 +300,7 @@ export function ProfileClient({
         {/* ─── Stats Grid ─── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 32 }}>
           {[
-            { label: "Total Tokens", value: formatTokens(user.totalTokens), sub: `$${spend >= 1 ? spend.toFixed(2) : spend.toFixed(4)} est. API cost` },
+            { label: "Total Tokens", value: formatTokens(user.totalTokens), sub: `${formatUsd(spend)} est. API cost` },
             { label: "Weekly Tokens", value: formatTokens(user.weeklyTokens), sub: null },
             { label: "Streak", value: `${user.streak}d`, sub: user.longestStreak > user.streak ? `best: ${user.longestStreak}d` : user.streak > 0 ? "personal best!" : "no active streak" },
             { label: "Sessions", value: user.commits.toLocaleString(), sub: user.tokensPerCommit ? `~${formatTokens(user.tokensPerCommit)} tok/session` : null },

@@ -21,6 +21,13 @@ export type UserStats = {
   heatmap: number[]; // 84 buckets = 12 weeks x 7 days, chronological oldest→newest
   tokensPerCommit: number;
   commits: number;
+  /** Token split, so cost can price cached reads differently from fresh input. */
+  buckets: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
+  };
   lastActive: string | null; // ISO timestamp of most recent burn event
 };
 
@@ -126,6 +133,16 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
   const commits = events.length;
   const tokensPerCommit = commits ? Math.round(total / commits) : 0;
 
+  const buckets = events.reduce(
+    (acc, e) => ({
+      inputTokens: acc.inputTokens + e.inputTokens,
+      outputTokens: acc.outputTokens + e.outputTokens,
+      cacheReadTokens: acc.cacheReadTokens + e.cacheReadTokens,
+      cacheCreationTokens: acc.cacheCreationTokens + e.cacheCreationTokens,
+    }),
+    { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
+  );
+
   // Use DB-stored longestStreak if available, otherwise fall back to computed streak
   const longestStreak = Math.max(user.longestStreak ?? 0, streak);
 
@@ -150,6 +167,7 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     heatmap,
     tokensPerCommit,
     commits,
+    buckets,
     lastActive: events.length > 0 ? events[0].timestamp.toISOString() : null,
   };
 }
@@ -317,6 +335,9 @@ export async function getLeaderboard(scope: LeaderboardScope = {}): Promise<User
       heatmap,
       tokensPerCommit: commits ? Math.round(total / commits) : 0,
       commits,
+      // The board renders no cost figure, so the split isn't worth another
+      // wide group-by here; the profile computes it from full stats.
+      buckets: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
       lastActive: last ? last.toISOString() : null,
     };
   });

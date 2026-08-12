@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Landing } from "./Landing";
 import { BoardScope, type Scope } from "./BoardScope";
 import { ClubFeed } from "./ClubFeed";
+import { GetStarted } from "./GetStarted";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
