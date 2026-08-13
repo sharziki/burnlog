@@ -48,6 +48,9 @@ export function Footer() {
         </span>
       </div>
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+        <a href="/tools" style={{ color: "#52525B", textDecoration: "none" }}>
+          supported agents
+        </a>
         <a href="/privacy" style={{ color: "#52525B", textDecoration: "none" }}>
           privacy
         </a>

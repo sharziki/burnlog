@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { abs } from "@/lib/seo";
+import { TOOLS } from "@/lib/tools";
 import { isFullSurface } from "@/lib/surface";
 
 // Users sign up and burn tokens continuously, so a sitemap baked at build time
@@ -23,6 +24,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: abs("/"), lastModified: now, changeFrequency: "hourly", priority: 1 },
     { url: abs("/embed"), lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: abs("/tools"), lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // The per-agent pages answer "how do I track token usage in <agent>",
+    // which is the query shape with the intent behind it.
+    ...TOOLS.map((t) => ({
+      url: abs(`/tools/${t.slug}`),
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.9,
+    })),
     { url: abs("/privacy"), lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: abs("/security"), lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: abs("/terms"), lastModified: now, changeFrequency: "yearly", priority: 0.3 },

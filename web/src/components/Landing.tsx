@@ -148,18 +148,20 @@ function RankLadder({ stats }: { stats: LandingStats }) {
 
 /* ------------------------------------------------------- compatibility --- */
 
-/** Named explicitly, because "does it work with my thing" is the first question. */
-const TOOLS = [
-  "Claude Code",
-  "Codex",
-  "Cursor",
-  "Gemini CLI",
-  "aider",
-  "Copilot",
-  "Cline",
-  "opencode",
-  "your own agents",
-];
+/**
+ * Named explicitly, because "does it work with my thing" is the first question.
+ *
+ * Split by mechanism, and the split is load-bearing: only these three write a
+ * usage log burnlog can read. The previous list put Cursor, Copilot and Cline
+ * under "read from local logs", which was simply not true — there is no adapter
+ * for any of them, and there can't be until they write usage somewhere. They
+ * are counted, but through `wrap`, and saying so is the difference between a
+ * compatibility list and a wish list.
+ */
+const LOG_TOOLS = ["Claude Code", "Codex", "Hermes"];
+
+/** Anything that reads the standard base-URL variables, which is nearly everything. */
+const WRAP_TOOLS = ["Cursor", "Gemini CLI", "aider", "opencode", "Cline", "your own agents"];
 
 const PROVIDERS = [
   "Anthropic",
@@ -185,30 +187,35 @@ function Compatibility() {
         <div style={{ ...card, padding: 24 }}>
           <div style={{ ...eyebrow, marginBottom: 14 }}>agents — read from local logs</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {TOOLS.map((t) => (
+            {LOG_TOOLS.map((t) => (
               <span key={t} style={chip}>
                 {t}
               </span>
             ))}
           </div>
           <p style={bodyText}>
-            Tools that keep a usage log are read straight off disk.
+            These write their own usage to disk, so burnlog reads it straight off — no
+            key, no proxy, and your first run counts the history you already have.
           </p>
         </div>
 
         <div style={{ ...card, padding: 24 }}>
-          <div style={{ ...eyebrow, marginBottom: 14 }}>providers — counted at the wire</div>
+          <div style={{ ...eyebrow, marginBottom: 14 }}>everything else — counted at the wire</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {PROVIDERS.map((p) => (
-              <span key={p} style={chip}>
-                {p}
+            {WRAP_TOOLS.map((t) => (
+              <span key={t} style={chip}>
+                {t}
               </span>
             ))}
           </div>
           <p style={bodyText}>
-            Everything else runs under{" "}
+            No usage log to read, so these run under{" "}
             <code style={inlineCode}>burnlog wrap</code>, which counts calls no log file
-            ever sees. No certificates, no HTTPS interception.
+            ever sees across {PROVIDERS.length} providers. No certificates, no HTTPS
+            interception.{" "}
+            <a href="/tools" style={linkText}>
+              What each agent supports →
+            </a>
           </p>
         </div>
       </div>
