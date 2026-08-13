@@ -7,8 +7,9 @@ import { EmbedClient } from "./EmbedClient";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "embed",
-  description: "Put your burn on your README, your site, or anywhere else people look at your work.",
+  title: "README badge and embeddable widget",
+  description:
+    "An SVG badge that updates itself and a dependency-free widget under 4KB. Put your AI token rank on a GitHub README, a portfolio, or a docs site.",
   alternates: { canonical: "/embed" },
 };
 

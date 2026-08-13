@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "privacy",
+  title: "What burnlog stores, and what it never touches",
   description:
-    "burnlog's privacy model — what we store, what we don't, and why.",
+    "The full field list. burnlog stores token counts, model, agent, an opaque id and a timestamp — never prompts, completions, file names, repo names, or paths.",
   alternates: { canonical: "/privacy" },
 };
 

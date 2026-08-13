@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "security",
-  description: "burnlog security posture and operational controls.",
+  title: "Security posture and access controls",
+  description:
+    "How burnlog is built to track spend without collecting secrets: the data boundary, access controls, spend guards, audit events, and operational posture.",
   alternates: { canonical: "/security" },
 };
 

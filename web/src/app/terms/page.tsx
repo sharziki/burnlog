@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "terms",
-  description: "burnlog terms of service.",
+  title: "Terms of service",
+  description:
+    "The terms covering use of burnlog.net, the CLI, and the API — acceptable use, accounts, the data you send, availability, and how the terms can change.",
   alternates: { canonical: "/terms" },
 };
 
