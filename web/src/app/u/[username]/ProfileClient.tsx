@@ -628,30 +628,17 @@ export function ProfileClient({
           </div>
         )}
 
-        {/* ─── Badge Embed ─── */}
-        <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
-          <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
-            EMBED BADGE
+        {/* Embed controls belong to the account owner, not profile visitors. */}
+        {viewer === user.username && (
+          <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
+            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
+              YOUR BADGE
+            </div>
+            <a href="/embed" style={{ color: "#D97706", fontFamily: MONO, fontSize: 11, textDecoration: "none" }}>
+              Copy your embed →
+            </a>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/badge/${user.username}`} alt="burnlog badge" height={20} />
-            <code
-              style={{
-                fontSize: 11,
-                color: "#71717A",
-                background: "#09090B",
-                padding: "6px 10px",
-                borderRadius: 4,
-                fontFamily: MONO,
-                border: "1px solid #18181B",
-                wordBreak: "break-all",
-              }}
-            >
-              {`![burnlog](https://burnlog.net/badge/${user.username})`}
-            </code>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

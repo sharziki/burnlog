@@ -84,6 +84,16 @@ check(
   "the world board is showing signups who never synced",
 );
 
+const { body: leaderboardBody } = await get("/api/leaderboard");
+const publicUsername = JSON.parse(leaderboardBody).users?.[0]?.username;
+if (publicUsername) {
+  const { body: publicProfile } = await get(`/u/${encodeURIComponent(publicUsername)}`);
+  check(
+    "profile: visitor cannot see another account's embed controls",
+    !publicProfile.includes("EMBED BADGE") && !publicProfile.includes("![burnlog]("),
+  );
+}
+
 const { body: agent } = await get("/agent-setup.md");
 for (const token of ["burnlog login", "burnlog sync", "burnlog wrap", "requestId"]) {
   check(`agent-setup: ${token}`, agent.includes(token));
