@@ -132,6 +132,40 @@ Staging is the same commit with the variable simply left unset — see the
 staging project in Vercel. It shares this database on purpose: a leaderboard
 with no real numbers in it is not a useful place to judge a leaderboard's UX.
 
+## SEO
+
+The crawlable surface is generated, not static: `src/app/robots.ts` and
+`src/app/sitemap.ts` both read `BURNLOG_SURFACE`, so a core deployment neither
+advertises nor sitemaps a route that 404s there. The sitemap lists every burner
+who has actually burned — profiles are the long tail — and skips accounts that
+signed in without syncing.
+
+Canonicals live on each page and deliberately **not** in the layout: metadata is
+inherited, so one there would point every page at `/`. burnlog.net answers on
+three Vercel aliases, which is exactly the duplicate-content case canonicals
+exist for.
+
+After a deploy that adds or changes public URLs:
+
+```bash
+cd web && npm run seo:indexnow      # Bing, Yandex, Seznam, Naver — one endpoint
+```
+
+Ownership is proved by `web/public/5168a75675ca21750fa627880b3084fc.txt`, whose
+contents are its own filename. Change one and you change both, or submissions
+are silently rejected as unverified — the endpoint still answers `202`.
+
+**Google does not take IndexNow.** Its only equivalent is Search Console, and
+it is a one-time manual job:
+
+1. https://search.google.com/search-console → add property `burnlog.net`.
+2. Verify by DNS TXT in Cloudflare (the domain is DNS-only there, A →
+   `76.76.21.21`, so nothing is proxied and nothing needs unproxying).
+3. Sitemaps → submit `sitemap.xml`.
+4. URL Inspection → request indexing for `/`, once.
+
+Re-submitting the sitemap after that is unnecessary; Google re-fetches it.
+
 ## Billing
 
 Three more variables, and they are the only ones in this file that are
