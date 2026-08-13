@@ -794,7 +794,7 @@ export function Burnlog({
     },
     leaderboardRow: (isSelected: boolean, index: number) => ({
       display: "grid",
-      gridTemplateColumns: "40px 1fr 140px 100px 80px",
+      gridTemplateColumns: "40px 1fr 140px 100px 118px",
       alignItems: "center",
       padding: "14px 16px",
       borderRadius: 10,
@@ -972,7 +972,7 @@ export function Burnlog({
               className="leaderboard-grid"
               style={{
                 display: "grid",
-                gridTemplateColumns: "40px 1fr 140px 100px 80px",
+                gridTemplateColumns: "40px 1fr 140px 100px 118px",
                 padding: "0 16px 8px",
                 fontSize: 10,
                 color: "#3F3F46",
@@ -1042,6 +1042,9 @@ export function Burnlog({
                       alignItems: "center",
                       gap: 4,
                       fontFamily: MONO,
+                      // "Heat Death" and "Event Horizon" wrapped to two lines in
+                      // the old 80px track, which knocked the row heights out.
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {r.icon} {r.name}

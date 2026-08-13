@@ -355,5 +355,15 @@ export async function getLeaderboard(scope: LeaderboardScope = {}): Promise<User
     };
   });
 
-  return stats.sort((a, b) => b.totalTokens - a.totalTokens);
+  // The world board shows burners, not signups. Six of the first eight accounts
+  // had never synced, so three quarters of the leaderboard read "awaiting first
+  // burn" and the header called all eight "active burners" — a board that looks
+  // abandoned, and an average dragged toward zero by people who burned nothing.
+  //
+  // A scoped board (friends) keeps everyone: there, an empty row is a person you
+  // chose to follow, and their zero is information rather than noise.
+  const worldBoard = scope.userIds === undefined || scope.userIds === null;
+  const visible = worldBoard ? stats.filter((u) => u.totalTokens > 0) : stats;
+
+  return visible.sort((a, b) => b.totalTokens - a.totalTokens);
 }

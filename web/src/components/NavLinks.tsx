@@ -13,6 +13,9 @@ const NAV_LINKS: [string, string, boolean?][] = [
   // /teams is the pricing page. Labelling it "teams" collided with the Clubs
   // tab on the board (a different thing) and with a Company's clubs (a third).
   // The nav word matches the destination; the page title matches the nav.
+  // The per-agent pages are the first thing a visitor wants ("does it work with
+  // my thing"), and they were reachable only from the footer.
+  ["/tools", "agents"],
   ["/embed", "embed"],
   ["/teams", "pricing", true],
 ];
