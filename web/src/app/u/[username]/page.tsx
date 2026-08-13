@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { getUserStats } from "@/lib/stats";
+import { getLeaderboard, getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { getAchievements } from "@/lib/achievements";
@@ -70,12 +70,23 @@ export default async function ProfilePage({ params }: Props) {
   // Challenges are staged, so a core deployment doesn't even load them —
   // hiding the section after paying for the query would be the wrong order.
   const full = isFullSurface();
-  const [stats, achievements, entered] = await Promise.all([
+  const [stats, achievements, entered, board] = await Promise.all([
     getUserStats(user.id),
     getAchievements(user.id),
     full ? getUserChallenges(user.id) : Promise.resolve([]),
+    // Standing and neighbours. Also the only links between one profile and the
+    // next: without them each profile is an island a crawler reaches only from
+    // the sitemap, and internal links are how a page inherits any authority
+    // from the pages around it.
+    getLeaderboard(),
   ]);
   if (!stats) notFound();
+
+  const place = board.findIndex((u) => u.username === username) + 1;
+  const neighbours = board
+    .map((u, i) => ({ place: i + 1, username: u.username, name: u.name, image: u.image, totalTokens: u.totalTokens }))
+    .filter((u) => u.username !== username && Math.abs(u.place - place) <= 2)
+    .slice(0, 4);
 
   const challenges: ProfileChallenge[] = entered.map((c) => {
     const mine = c.standings.find((s) => s.userId === user.id);
@@ -111,6 +122,8 @@ export default async function ProfilePage({ params }: Props) {
         challenges={challenges}
         viewer={viewer}
         full={full}
+        place={place || null}
+        neighbours={neighbours}
       />
     </>
   );

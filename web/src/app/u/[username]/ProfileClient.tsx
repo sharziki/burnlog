@@ -1,6 +1,6 @@
 "use client";
 
-import { getRank } from "@/lib/ranks";
+import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { estimateCostUsd, formatUsd } from "@/lib/cost";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/lib/achievements";
@@ -149,6 +149,24 @@ export type ProfileChallenge = {
   ended: boolean;
 };
 
+/** "a", "a and b", "a, b and c" — a list that reads as prose. */
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/** 1st, 2nd, 3rd, 11th — the teens are the exception every naive version gets wrong. */
+function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
 export function ProfileClient({
   user,
   joinedAt,
@@ -156,6 +174,8 @@ export function ProfileClient({
   challenges,
   viewer,
   full = true,
+  place = null,
+  neighbours = [],
 }: {
   user: UserStats;
   joinedAt: string;
@@ -165,9 +185,15 @@ export function ProfileClient({
   viewer: string | null;
   /** False on a core deployment: head-to-head and challenges are staged. */
   full?: boolean;
+  /** Position on the global board, 1-indexed. Null if they aren't on it. */
+  place?: number | null;
+  /** The burners immediately above and below, for context and for crawl paths. */
+  neighbours?: { place: number; username: string; name: string; image: string | null; totalTokens: number }[];
 }) {
   const unlockedKeys = new Set(achievements);
   const rank = getRank(user.totalTokens);
+  const nextRank = RANKS.find((r) => r.min > user.totalTokens) ?? null;
+  const toNext = nextRank ? nextRank.min - user.totalTokens : 0;
   // Cache-aware: a flat per-token rate overstated a real account 10x.
   const spend = estimateCostUsd(user.buckets);
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
@@ -336,6 +362,30 @@ export function ProfileClient({
           ))}
         </div>
 
+        {/* ─── Summary line ───
+            Every number above this is a chart or a tile, which a search engine
+            reads as an empty page. This is the same data as a sentence: unique
+            per burner, and the only prose the page has. */}
+        <p style={{ fontFamily: SANS, fontSize: 14.5, lineHeight: 1.75, color: "#A1A1AA", margin: "0 0 24px", maxWidth: 760 }}>
+          <strong style={{ color: "#E4E4E7", fontWeight: 600 }}>@{user.username}</strong> has burned{" "}
+          <strong style={{ color: "#E4E4E7", fontWeight: 600 }}>{formatTokens(user.totalTokens)} tokens</strong>{" "}
+          across {user.commits.toLocaleString()} session{user.commits === 1 ? "" : "s"} of AI coding
+          {user.sources.length > 0 && (
+            // Top three by tokens, joined like a person would write it. The full
+            // breakdown is the SOURCES card below; this is a sentence, not a list.
+            <> with {joinNames(user.sources.slice(0, 3).map((x) => SOURCE_LABELS[x.source] ?? x.source))}</>
+          )}
+          , which is rank <strong style={{ color: rank.color, fontWeight: 600 }}>{rank.name}</strong> on burnlog
+          {place ? <> and {ordinal(place)} on the global board</> : null}.
+          {user.streak > 0 && <> They&apos;re on a {user.streak}-day streak</>}
+          {user.streak > 0 && user.longestStreak > user.streak && <>, {user.longestStreak} days at their best</>}
+          {user.streak > 0 && "."}
+          {nextRank && (
+            <> {formatTokens(toNext)} more tokens reaches {nextRank.name}.</>
+          )}{" "}
+          Tokens only — burnlog never sees prompts, code, or file names.
+        </p>
+
         {/* ─── Heatmap ─── */}
         <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20, marginBottom: 24 }}>
           <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
@@ -436,6 +486,44 @@ export function ProfileClient({
             )}
           </div>
         </div>
+
+        {/* ─── Nearby on the board ───
+            Links out to the burners either side. Cheap for a reader, and the
+            only path a crawler has from one profile to another. */}
+        {neighbours.length > 0 && (
+          <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20, marginBottom: 24 }}>
+            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
+              NEARBY ON THE BOARD
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {neighbours.map((n) => (
+                <a
+                  key={n.username}
+                  href={`/u/${n.username}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    border: "1px solid #18181B",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    textDecoration: "none",
+                    background: "#09090B",
+                    fontFamily: MONO,
+                    fontSize: 12,
+                  }}
+                >
+                  <span style={{ color: "#52525B" }}>#{n.place}</span>
+                  {n.image && (
+                    <img src={n.image} alt="" width={18} height={18} style={{ borderRadius: "50%" }} />
+                  )}
+                  <span style={{ color: "#E4E4E7" }}>@{n.username}</span>
+                  <span style={{ color: "#52525B" }}>{formatTokens(n.totalTokens)}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ─── Compare ───
             /h2h lost every entry point when the board's H2H tab was removed,
