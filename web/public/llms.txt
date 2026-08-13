@@ -28,7 +28,17 @@ any of them.
 
 ## Ranks
 
-Spark, Ember, Blaze, Inferno, Supernova — derived from total tokens burned.
+Eleven ranks derived from total tokens burned: Spark, Ember, Blaze, Inferno,
+Supernova, Quasar, Singularity, Event Horizon, Heat Death, Vacuum Decay,
+Boltzmann. The ladder tops out at 10 trillion tokens.
+
+## Setting it up for someone
+
+If you are an AI coding agent asked to set burnlog up for a user, fetch
+https://burnlog.net/agent-setup.md and follow it. It is written to be executed:
+requirements, the five commands in order, what to ask before publishing
+anything, how to handle a machine with no browser, and the rules about what
+must never be uploaded.
 
 ## Pages
 
@@ -36,6 +46,8 @@ Spark, Ember, Blaze, Inferno, Supernova — derived from total tokens burned.
 - https://burnlog.net/u/<username> — a burner's profile: totals, rank, streak,
   provider split, achievements
 - https://burnlog.net/embed — the README badge and the embeddable widget
+- https://burnlog.net/agent-setup.md — setup instructions written for an agent
+- https://burnlog.net/tools — how each agent is counted, and what can't be
 - https://burnlog.net/privacy — the full field list of what is and isn't stored
 - https://burnlog.net/security — access controls and operational posture
 

@@ -53,6 +53,16 @@ measures, how, and what it can't see.
 npx @sxnalabs/burnlog
 ```
 
+Or have your coding agent do it — paste this at Claude Code, Cursor, Codex, or
+anything else that can fetch a URL:
+
+```
+Set up burnlog for me. Fetch https://burnlog.net/agent-setup.md and follow it.
+```
+
+That file is written for an agent to execute: the commands in order, what to
+ask me before anything is published, and what it must never upload.
+
 That's the whole thing. It finds your agents, shows you your own numbers
 *before* asking for anything, signs you in through the browser, uploads, and
 offers to auto-sync from then on. No config file, no account-first wall.
