@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "seo:indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
