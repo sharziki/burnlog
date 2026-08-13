@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { abs } from "@/lib/seo";
 import { TOOLS } from "@/lib/tools";
+import { COMPARISONS } from "@/lib/comparisons";
 import { isFullSurface } from "@/lib/surface";
 
 // Users sign up and burn tokens continuously, so a sitemap baked at build time
@@ -32,6 +33,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.9,
+    })),
+    // Comparison pages target "<rival> alternative" and "burnlog vs <rival>",
+    // which are lower volume than the category head terms and far easier to win.
+    ...COMPARISONS.map((c) => ({
+      url: abs(`/vs/${c.slug}`),
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
     })),
     { url: abs("/privacy"), lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: abs("/security"), lastModified: now, changeFrequency: "yearly", priority: 0.4 },
