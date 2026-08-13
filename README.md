@@ -1,6 +1,7 @@
 # burnlog
 
-> Private leaderboard for AI token burn. A [SXNA Labs](https://github.com/sharziki) product.
+> The public leaderboard for AI coding token usage — **[burnlog.net](https://burnlog.net)**.
+> A [SXNA Labs](https://sxnalabs.com) product.
 
 ```
 ┌──────────────┐                                          ┌───────────┐
@@ -30,9 +31,21 @@
 burnlog tracks every token you push through AI coding agents (Claude Code,
 Codex, custom agents, …) across all your projects, and ranks you against
 anyone else plugged in. Tokens only — **never prompts, filenames, or working
-directories**. See [privacy model](web/src/app/privacy/page.tsx) for exactly
-what we do and don't store, and [security posture](web/src/app/security/page.tsx)
-for deployment and control details.
+directories**. See the [privacy model](https://burnlog.net/privacy) for exactly what we do and
+don't store, and the [security posture](https://burnlog.net/security) for
+deployment and control details.
+
+**Which agents:** [Claude Code](https://burnlog.net/tools/claude-code) ·
+[Codex](https://burnlog.net/tools/codex) ·
+[Cursor](https://burnlog.net/tools/cursor) ·
+[Gemini CLI](https://burnlog.net/tools/gemini-cli) ·
+[aider](https://burnlog.net/tools/aider) ·
+[opencode](https://burnlog.net/tools/opencode) — each page says what burnlog
+measures, how, and what it can't see.
+
+**Comparisons:** [vs ccusage](https://burnlog.net/vs/ccusage) ·
+[vs viberank](https://burnlog.net/vs/viberank) ·
+[vs CCgather](https://burnlog.net/vs/ccgather).
 
 ## Start here
 
