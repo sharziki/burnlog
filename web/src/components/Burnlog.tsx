@@ -1013,10 +1013,14 @@ export function Burnlog({
                       <span style={{ fontSize: 11, color: "#52525B", fontFamily: MONO }}>
                         @{user.username}
                       </span>
-                      <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginTop: 1, display: "flex", gap: 8 }}>
-                        <span>active {relativeTime(user.lastActive)}</span>
+                      {/* Each item stays on one line and the row wraps between
+                          them — otherwise a narrow phone breaks "active 12m ago"
+                          and "39d streak" mid-phrase and the row grows to four
+                          ragged lines. */}
+                      <div style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginTop: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ whiteSpace: "nowrap" }}>active {relativeTime(user.lastActive)}</span>
                         {user.streak > 0 && (
-                          <span style={{ color: user.streak >= 7 ? "#D97706" : "#52525B" }}>
+                          <span style={{ color: user.streak >= 7 ? "#D97706" : "#52525B", whiteSpace: "nowrap" }}>
                             {user.streak >= 7 ? "\u{1F525}" : "\u25CF"} {user.streak}d streak
                           </span>
                         )}
