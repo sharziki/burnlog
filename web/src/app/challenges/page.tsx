@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { CHALLENGE_TYPES, getOpenChallenges, getUserChallenges } from "@/lib/challenges";
 import { ChallengesClient } from "./ChallengesClient";
+import { requireFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ChallengesPage() {
+  requireFullSurface();
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 

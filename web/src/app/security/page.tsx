@@ -45,24 +45,24 @@ export default function SecurityPage() {
         <ul style={{ color: "#A1A1AA", paddingLeft: 20 }}>
           <li>GitHub OAuth for browser login.</li>
           <li>Hashed API keys; raw keys are shown only once.</li>
-          <li>Private teams with invite codes.</li>
-          <li>Owner-only team settings, key management, reports, webhooks, and audit logs.</li>
+          <li>Private clubs with invite codes.</li>
+          <li>Owner-only club settings, key management, reports, webhooks, and audit logs.</li>
           <li>Admin token for lead export and manual plan changes.</li>
         </ul>
       </Section>
 
       <Section title="Spend controls">
         <ul style={{ color: "#A1A1AA", paddingLeft: 20 }}>
-          <li>Monthly team budgets with warning/over notifications.</li>
-          <li>Optional hard budget guard for team API key ingest.</li>
-          <li>Per-team-key monthly caps for CI, services, and client-specific keys.</li>
+          <li>Monthly club budgets with warning/over notifications.</li>
+          <li>Optional hard budget guard for club API key ingest.</li>
+          <li>Per-club-key monthly caps for CI, services, and client-specific keys.</li>
           <li>CSV reports split service usage by key label.</li>
         </ul>
       </Section>
 
       <Section title="Audit and operations">
         <ul style={{ color: "#A1A1AA", paddingLeft: 20 }}>
-          <li>Audit events for plan, budget/privacy/webhook, and team-key changes.</li>
+          <li>Audit events for plan, budget/privacy/webhook, and club-key changes.</li>
           <li>Signed budget webhooks when <code style={{ color: "#D97706" }}>BURNLOG_WEBHOOK_SECRET</code> is set.</li>
           <li>Security headers block framing, MIME sniffing, broad referrers, and unused browser permissions.</li>
           <li><code style={{ color: "#D97706" }}>/api/health</code> checks database reachability for deploy monitors.</li>

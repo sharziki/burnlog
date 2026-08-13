@@ -41,10 +41,10 @@ export function CompaniesClient({
     >
       <div style={eyebrow}>Companies</div>
       <h1 style={{ margin: "10px 0 0", fontSize: 40, lineHeight: 1.05, color: "#FAFAFA" }}>
-        Every team under one roof.
+        Every club under one roof.
       </h1>
       <p style={{ margin: "14px 0 0", color: "#A1A1AA", fontSize: 15, lineHeight: 1.7, maxWidth: 620 }}>
-        ${plan.monthlyPriceUsdFlat} a month, flat, for up to {plan.teamLimit} teams. One rollup
+        ${plan.monthlyPriceUsdFlat} a month, flat, for up to {plan.teamLimit} clubs. One rollup
         across all of them, and any two can be put head-to-head.
       </p>
 
@@ -78,7 +78,7 @@ export function CompaniesClient({
               }}
             >
               {signedIn
-                ? "No companies yet. Create one, then attach the teams you already own."
+                ? "No companies yet. Create one, then attach the clubs you already own."
                 : "Companies are private to their members — sign in to see yours."}
             </div>
           ) : (
@@ -170,7 +170,7 @@ function CompanyCard({ company }: { company: CompanyListRow }) {
         }}
       >
         <span>
-          {company.teamCount}/{company.limits.teamLimit} teams
+          {company.teamCount}/{company.limits.teamLimit} clubs
         </span>
         <span>{company.memberCount} members</span>
         <span style={{ color: "#A1A1AA" }}>{formatTokens(company.windowTokens)} · 30d</span>
@@ -240,7 +240,7 @@ function CreateForm() {
         {busy ? "Creating…" : "Create company"}
       </button>
       <p style={{ margin: 0, color: "#52525B", fontFamily: MONO, fontSize: 11, lineHeight: 1.6 }}>
-        Free to create. Attaching teams needs an active subscription.
+        Free to create. Attaching clubs needs an active subscription.
       </p>
     </form>
   );

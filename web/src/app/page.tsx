@@ -1,6 +1,7 @@
 import { getLeaderboard } from "@/lib/stats";
 import { Burnlog } from "@/components/Burnlog";
 import { auth, signIn, signOut } from "@/auth";
+import { isFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function Home() {
       currentUsername={currentUsername}
       signOutAction={currentUsername ? signOutAction : undefined}
       signInAction={!currentUsername ? signInAction : undefined}
+      full={isFullSurface()}
     />
   );
 }

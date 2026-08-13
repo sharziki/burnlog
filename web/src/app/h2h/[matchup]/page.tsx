@@ -6,6 +6,7 @@ import { getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { H2HClient } from "./H2HClient";
+import { requireFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function H2HPage({ params }: Props) {
+  requireFullSurface();
   const { matchup } = await params;
   const parsed = parseMatchup(matchup);
   if (!parsed) notFound();

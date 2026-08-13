@@ -4,15 +4,17 @@ import { usePathname } from "next/navigation";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
-const NAV_LINKS: [string, string][] = [
+// [href, label, staged] — `staged` links only appear on a full-surface
+// deployment (see lib/surface.ts).
+const NAV_LINKS: [string, string, boolean?][] = [
   ["/", "leaderboard"],
-  ["/challenges", "challenges"],
-  ["/companies", "companies"],
-  // /teams is the pricing page. Labelling it "teams" collided with the Teams
-  // tab on the board (a different thing) and with a Company's teams (a third).
+  ["/challenges", "challenges", true],
+  ["/companies", "companies", true],
+  // /teams is the pricing page. Labelling it "teams" collided with the Clubs
+  // tab on the board (a different thing) and with a Company's clubs (a third).
   // The nav word matches the destination; the page title matches the nav.
   ["/embed", "embed"],
-  ["/teams", "pricing"],
+  ["/teams", "pricing", true],
 ];
 
 /**
@@ -20,14 +22,15 @@ const NAV_LINKS: [string, string][] = [
  *
  * Split into a client component purely because knowing the active route needs
  * `usePathname`; the surrounding header stays a server component so the
- * session lookup isn't pushed to the client.
+ * session lookup isn't pushed to the client. `full` is read on the server and
+ * passed down for the same reason.
  */
-export function NavLinks() {
+export function NavLinks({ full = true }: { full?: boolean }) {
   const pathname = usePathname() ?? "/";
 
   return (
     <nav style={{ display: "flex", gap: 4, justifySelf: "center" }} className="nav-links">
-      {NAV_LINKS.map(([href, label]) => {
+      {NAV_LINKS.filter(([, , staged]) => full || !staged).map(([href, label]) => {
         // "/" would prefix-match everything, so it has to match exactly;
         // everything else marks its whole subtree (/challenges/<code> included).
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href);

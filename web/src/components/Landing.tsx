@@ -27,16 +27,20 @@ export type LandingStats = {
 export function Landing({
   stats,
   signInAction,
+  full = true,
 }: {
   stats: LandingStats;
   signInAction?: () => Promise<void>;
+  /** False on a core deployment — see lib/surface.ts. The landing page must
+      not advertise a feature whose page is hidden. */
+  full?: boolean;
 }) {
   return (
     <div style={{ fontFamily: SANS }}>
       <Hero stats={stats} signInAction={signInAction} />
       <Compatibility />
-      <HowItWorks />
-      <Competition />
+      <HowItWorks full={full} />
+      <Competition full={full} />
       <Privacy />
       <Embeds />
       <FinalCta signInAction={signInAction} />
@@ -208,7 +212,7 @@ function Compatibility() {
 
 /* -------------------------------------------------------- how it works --- */
 
-function HowItWorks() {
+function HowItWorks({ full = true }: { full?: boolean }) {
   const steps = [
     {
       n: "01",
@@ -222,12 +226,21 @@ function HowItWorks() {
       code: "burnlog wrap -- <anything>",
       body: "Counts calls no log file ever sees.",
     },
-    {
-      n: "03",
-      title: "Settle it",
-      code: "burnlog challenge new",
-      body: "Share one link and let the numbers argue.",
-    },
+    // Step three is the payoff, so it has to be a payoff that exists on this
+    // deployment: challenges are staged, the board is not.
+    full
+      ? {
+          n: "03",
+          title: "Settle it",
+          code: "burnlog challenge new",
+          body: "Share one link and let the numbers argue.",
+        }
+      : {
+          n: "03",
+          title: "Climb",
+          code: "burnlog sync",
+          body: "Every sync moves you up the public board.",
+        },
   ];
   return (
     <Section eyebrowText="setup" title="Sixty seconds, then never think about it again.">
@@ -252,29 +265,42 @@ function HowItWorks() {
 
 /* --------------------------------------------------------- competition --- */
 
-function Competition() {
-  const features = [
-    {
-      title: "Challenges",
-      body: "Token sprints, efficiency gauntlets, provider locks, streak races, cost caps. One invite link, live standings, automatic settlement, and a rematch button.",
-      href: "/challenges",
-      cta: "Browse challenges",
-    },
-    {
-      title: "Achievements",
-      body: "Thirteen unlockables from First Burn to Billion Club, earned from real usage and displayed as a trophy case on your profile.",
-    },
-    {
-      title: "Teams",
-      body: "Private leaderboards with shared budgets, alerts, and CSV exports when finance asks.",
-      href: "/teams",
-      cta: "See team pricing",
-    },
-    {
-      title: "Head-to-head",
-      body: "Put any two burners side by side across total, weekly, streak, and efficiency. Winner decided by category count.",
-    },
-  ];
+function Competition({ full = true }: { full?: boolean }) {
+  const features = full
+    ? [
+        {
+          title: "Challenges",
+          body: "Token sprints, efficiency gauntlets, provider locks, streak races, cost caps. One invite link, live standings, automatic settlement, and a rematch button.",
+          href: "/challenges",
+          cta: "Browse challenges",
+        },
+        {
+          title: "Achievements",
+          body: "Thirteen unlockables from First Burn to Billion Club, earned from real usage and displayed as a trophy case on your profile.",
+        },
+        {
+          title: "Clubs",
+          body: "Private leaderboards with shared budgets, alerts, and CSV exports when finance asks.",
+          href: "/teams",
+          cta: "See club pricing",
+        },
+        {
+          title: "Head-to-head",
+          body: "Put any two burners side by side across total, weekly, streak, and efficiency. Winner decided by category count.",
+        },
+      ]
+    : // Core deployment: progression is the whole competition, so the section
+      // sells the ladder and the trophy case rather than four staged features.
+      [
+        {
+          title: "Ranks",
+          body: "Spark, Ember, Blaze, Inferno, Supernova. Every token you push moves you along the ladder, and your rank travels with you on your profile and your badge.",
+        },
+        {
+          title: "Achievements",
+          body: "Thirteen unlockables from First Burn to Billion Club, earned from real usage and displayed as a trophy case on your profile.",
+        },
+      ];
   return (
     <Section eyebrowText="the fun part" title="Tracking is the excuse. Competing is the point.">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">

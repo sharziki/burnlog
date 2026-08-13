@@ -10,12 +10,15 @@ export function SettingsClient({
   image,
   profile,
   signOutAction,
+  full = true,
 }: {
   username: string;
   name: string;
   image: string | null;
   profile: { bio: string; github: string; twitter: string; website: string };
   signOutAction: () => Promise<void>;
+  /** False on a core deployment: clubs and head-to-head are staged. */
+  full?: boolean;
 }) {
   const [key, setKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -119,7 +122,7 @@ export function SettingsClient({
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <FriendRequests me={username} />
+        <FriendRequests me={username} full={full} />
       </div>
 
       <div
@@ -184,7 +187,7 @@ export function SettingsClient({
       >
         <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>Delete account</div>
         <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
-          Permanently deletes your user profile, sessions, API keys, personal burn events, and teams you own. Type <code style={{ color: "#EF4444" }}>delete my account</code> to confirm.
+          Permanently deletes your user profile, sessions, API keys, personal burn events, and clubs you own. Type <code style={{ color: "#EF4444" }}>delete my account</code> to confirm.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input

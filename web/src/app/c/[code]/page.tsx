@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getChallenge, formatRemaining } from "@/lib/challenges";
 import { ChallengeClient } from "./ChallengeClient";
+import { requireFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ChallengePage({ params }: Props) {
+  requireFullSurface();
   const { code } = await params;
   const challenge = await getChallenge({ inviteCode: code });
   if (!challenge) notFound();

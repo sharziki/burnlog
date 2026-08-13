@@ -155,6 +155,7 @@ export function ProfileClient({
   achievements,
   challenges,
   viewer,
+  full = true,
 }: {
   user: UserStats;
   joinedAt: string;
@@ -162,6 +163,8 @@ export function ProfileClient({
   challenges: ProfileChallenge[];
   /** Signed-in viewer's username, for the compare link. Null when logged out. */
   viewer: string | null;
+  /** False on a core deployment: head-to-head and challenges are staged. */
+  full?: boolean;
 }) {
   const unlockedKeys = new Set(achievements);
   const rank = getRank(user.totalTokens);
@@ -437,7 +440,7 @@ export function ProfileClient({
         {/* ─── Compare ───
             /h2h lost every entry point when the board's H2H tab was removed,
             leaving a working page reachable only by typing the URL. */}
-        {viewer && viewer !== user.username && (
+        {full && viewer && viewer !== user.username && (
           <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <a
               href={`/h2h/${viewer}-vs-${user.username}`}
@@ -503,7 +506,7 @@ export function ProfileClient({
         </div>
 
         {/* ─── Challenge record ─── */}
-        {challenges.length > 0 && (
+        {full && challenges.length > 0 && (
           <div style={{ marginTop: 20, background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
             <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
               CHALLENGES

@@ -1,6 +1,7 @@
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { SettingsClient } from "./client";
+import { isFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function SettingsPage() {
         image={user.image ?? null}
         profile={profile}
         signOutAction={signOutAction}
+        full={isFullSurface()}
       />
     );
   }

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { loadCompanyForViewer } from "@/lib/companies";
 import { getTeamBurnProfilesBatch } from "@/lib/companyUsage";
 import { CompanyClient } from "./CompanyClient";
+import { requireFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function CompanyPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ checkout?: string }>;
 }) {
+  requireFullSurface();
   const { slug } = await params;
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;

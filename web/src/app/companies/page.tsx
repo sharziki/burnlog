@@ -4,6 +4,7 @@ import { billingConfigured } from "@/lib/billing";
 import { CLUB_PLANS } from "@/lib/clubPlan";
 import { listCompaniesForUser } from "@/lib/companies";
 import { CompaniesClient } from "./CompaniesClient";
+import { requireFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CompaniesPage() {
+  requireFullSurface();
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 

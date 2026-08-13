@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CLUB_PLANS } from "@/lib/clubPlan";
 import { TeamLeadForm } from "./TeamLeadForm";
+import { requireFullSurface } from "@/lib/surface";
 
 export const metadata: Metadata = {
   title: "pricing",
@@ -32,16 +33,16 @@ const plans: Plan[] = [
     price: `$${CLUB_PLANS.team.monthlyPriceUsdPerSeat}`,
     sub: "per active member / month",
     fit: "engineering groups tracking shared AI spend",
-    items: ["private teams", "team API keys", "budget alerts", "CSV exports"],
+    items: ["private clubs", "club API keys", "budget alerts", "CSV exports"],
   },
   {
     name: "Company",
     price: `$${CLUB_PLANS.company.monthlyPriceUsdFlat}`,
-    sub: "flat / month, all teams",
-    fit: "orgs running several teams under one roof",
+    sub: "flat / month, all clubs",
+    fit: "orgs running several clubs under one roof",
     items: [
-      `up to ${CLUB_PLANS.company.teamLimit} teams in one company`,
-      "team vs team head-to-head",
+      `up to ${CLUB_PLANS.company.teamLimit} clubs in one company`,
+      "club vs club head-to-head",
       "company-wide rollups",
       "everything in Team",
     ],
@@ -56,6 +57,7 @@ const plans: Plan[] = [
 ];
 
 export default function TeamsPage() {
+  requireFullSurface();
   return (
     <main
       style={{
@@ -76,7 +78,7 @@ export default function TeamsPage() {
               Control AI coding spend before it becomes a finance surprise.
             </h1>
             <p style={{ margin: "18px 0 0", color: "#A1A1AA", fontSize: 16, lineHeight: 1.7, maxWidth: 660 }}>
-              Team budgets, private workspaces, and alerts — from token counts alone. No prompts, no code.
+              Club budgets, private workspaces, and alerts — from token counts alone. No prompts, no code.
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
               <a href="/settings" style={primaryLink}>Create API key</a>
@@ -85,7 +87,7 @@ export default function TeamsPage() {
           </div>
           <div style={{ border: "1px solid #18181B", borderRadius: 10, background: "#0C0C0E", padding: 20 }}>
             {[
-              ["Team budget", "4.57M / 5.0M", "warning"],
+              ["Club budget", "4.57M / 5.0M", "warning"],
               ["Shared CI usage", "1.5K tokens", "tracked"],
               ["Private workspace", "invite-only", "active"],
               ["Alert state", "91% used", "owner notified"],
@@ -136,7 +138,7 @@ export default function TeamsPage() {
       </section>
 
       <section style={{ marginTop: 36 }}>
-        <h2 style={sectionTitle}>Team vs team</h2>
+        <h2 style={sectionTitle}>Club vs club</h2>
         <div style={{ display: "grid", gap: 20 }}>
           <div style={{ ...panel, padding: 20 }}>
             {/* The two sides need names, or the columns are just unlabelled
@@ -162,7 +164,7 @@ export default function TeamsPage() {
               </div>
             ))}
             <p style={{ margin: "12px 0 0", color: "#71717A", fontSize: 12, lineHeight: 1.55, textAlign: "center" }}>
-              Rolling 30 days, so the older team doesn&apos;t win on back catalogue.
+              Rolling 30 days, so the older club doesn&apos;t win on back catalogue.
             </p>
           </div>
         </div>

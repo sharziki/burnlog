@@ -7,6 +7,7 @@ import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { getAchievements } from "@/lib/achievements";
 import { getUserChallenges } from "@/lib/challenges";
+import { isFullSurface } from "@/lib/surface";
 import { ProfileClient, type ProfileChallenge } from "./ProfileClient";
 
 export const dynamic = "force-dynamic";
@@ -63,10 +64,13 @@ export default async function ProfilePage({ params }: Props) {
   const session = await auth();
   const viewer = (session?.user as { username?: string } | undefined)?.username ?? null;
 
+  // Challenges are staged, so a core deployment doesn't even load them —
+  // hiding the section after paying for the query would be the wrong order.
+  const full = isFullSurface();
   const [stats, achievements, entered] = await Promise.all([
     getUserStats(user.id),
     getAchievements(user.id),
-    getUserChallenges(user.id),
+    full ? getUserChallenges(user.id) : Promise.resolve([]),
   ]);
   if (!stats) notFound();
 
@@ -91,6 +95,7 @@ export default async function ProfilePage({ params }: Props) {
       achievements={achievements.map((a) => a.key)}
       challenges={challenges}
       viewer={viewer}
+      full={full}
     />
   );
 }

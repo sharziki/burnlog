@@ -93,6 +93,45 @@ the CLI; the canonical copy of `DATABASE_URL` is `BURNLOG_DATABASE_URL` in
 `AUTH_SECRET`, Auth.js throws `MissingSecret` on *every* request and sign-in
 500s. If auth breaks after any project change, check `env ls` first.
 
+## Surface: what burnlog.net shows
+
+One more variable decides how much of the app a deployment exposes:
+
+```
+BURNLOG_SURFACE        core   (production only — unset everywhere else)
+```
+
+| Value | Shows |
+| ----- | ----- |
+| `core` | Public leaderboard, progression (ranks, achievements, profiles), settings, and the share surfaces — badge, `widget.js`, `/embed`. |
+| unset / anything else | Everything, staged features included: clubs, challenges, companies, pricing, head-to-head. |
+
+The default is `full` on purpose. Local dev, preview deploys, and anyone
+self-hosting get the whole app without configuring anything; only burnlog.net
+opts down. That inversion matters — a flag that has to be set to *unhide*
+features is one forgotten env var away from a self-hoster thinking half the
+product is missing.
+
+Two layers enforce it, and both are needed:
+
+- `src/middleware.ts` rewrites a staged path to an unrouted URL, which is what
+  produces a real **404 status**. A page-level `notFound()` on its own arrives
+  after the dynamic response is committed, so the visitor gets the 404 page
+  under a `200`.
+- `requireFullSurface()` at the top of each staged page, as the backstop for a
+  route the middleware `matcher` doesn't list. The matcher must be a literal,
+  so adding a staged route means editing both — they are next to each other in
+  `middleware.ts` for that reason.
+
+**The APIs are deliberately not gated.** `burnlog challenge new` and the MCP
+server drive challenges and clubs without ever loading a page, so gating
+`/api/*` would break the CLI for anyone pointed at production. `core` hides
+surface, not data.
+
+Staging is the same commit with the variable simply left unset — see the
+staging project in Vercel. It shares this database on purpose: a leaderboard
+with no real numbers in it is not a useful place to judge a leaderboard's UX.
+
 ## Billing
 
 Three more variables, and they are the only ones in this file that are

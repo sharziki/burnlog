@@ -27,7 +27,7 @@ type Steps = {
  * It disappears for good once every step is done; there is no state to store
  * because every step is derived from real data.
  */
-export function GetStarted({ username }: { username: string }) {
+export function GetStarted({ username, full = true }: { username: string; full?: boolean }) {
   const [steps, setSteps] = useState<Steps | null>(null);
   const [tokens, setTokens] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -53,7 +53,10 @@ export function GetStarted({ username }: { username: string }) {
   // Poll only while there's something left to detect, and stop entirely once
   // the user is set up — a permanent background timer for a finished checklist
   // is pure waste.
-  const done = steps ? steps.synced && steps.inChallenge && steps.hasFriend : false;
+  // Only the steps this deployment actually shows may hold the checklist open:
+  // on a core deployment there is no challenge to join, so counting that step
+  // would leave the panel up forever with nothing to click.
+  const done = steps ? steps.synced && steps.hasFriend && (!full || steps.inChallenge) : false;
   useEffect(() => {
     if (!steps || done) return;
     const id = setInterval(check, 5000);
@@ -100,18 +103,22 @@ export function GetStarted({ username }: { username: string }) {
         </>
       ),
     },
-    {
-      done: steps.inChallenge,
-      title: "Start a challenge",
-      body: steps.inChallenge ? null : (
-        <>
-          <p style={body}>Pick a format, share one link, settle it with real numbers.</p>
-          <a href="/challenges" style={action}>
-            Browse challenges →
-          </a>
-        </>
-      ),
-    },
+    ...(full
+      ? [
+          {
+            done: steps.inChallenge,
+            title: "Start a challenge",
+            body: steps.inChallenge ? null : (
+              <>
+                <p style={body}>Pick a format, share one link, settle it with real numbers.</p>
+                <a href="/challenges" style={action}>
+                  Browse challenges →
+                </a>
+              </>
+            ),
+          },
+        ]
+      : []),
     {
       done: steps.hasFriend,
       title: "Add someone",

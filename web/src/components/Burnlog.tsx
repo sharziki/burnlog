@@ -256,11 +256,14 @@ export function Burnlog({
   currentUsername,
   signOutAction,
   signInAction,
+  full = true,
 }: {
   users: UserStats[];
   currentUsername: string | null;
   signOutAction?: () => Promise<void>;
   signInAction?: () => Promise<void>;
+  /** False on a core deployment: the board is leaderboard-only. */
+  full?: boolean;
 }) {
   const [tab, setTab] = useState<"leaderboard" | "clubs">("leaderboard");
   // Board scope: the world, or just people you've actually added.
@@ -372,7 +375,7 @@ export function Burnlog({
       });
       const data = await res.json();
       if (!res.ok) {
-        setClubError(data.message ?? "Failed to create team");
+        setClubError(data.message ?? "Failed to create club");
         return;
       }
       setShowCreateClub(false);
@@ -884,31 +887,35 @@ export function Burnlog({
               activeUsers: globalStats.activeUsers,
             }}
             signInAction={signInAction}
+            full={full}
           />
         )}
 
 
-        {/* Tab nav */}
+        {/* Tab nav. A core deployment shows the board alone — one tab is no
+            tab, so the strip is dropped rather than left as a lone button. */}
         <div style={{ paddingTop: 20 }} id="leaderboard">
-          <nav style={styles.nav}>
-            {(
-              [
-                ["leaderboard", "Leaderboard"],
-                ["clubs", "Teams"],
-              ] as const
-            ).map(([key, label]) => (
-              <button key={key} style={styles.navBtn(tab === key)} onClick={() => setTab(key)}>
-                {label}
-              </button>
-            ))}
-          </nav>
+          {full && (
+            <nav style={styles.nav}>
+              {(
+                [
+                  ["leaderboard", "Leaderboard"],
+                  ["clubs", "Clubs"],
+                ] as const
+              ).map(([key, label]) => (
+                <button key={key} style={styles.navBtn(tab === key)} onClick={() => setTab(key)}>
+                  {label}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
 
         {/* LEADERBOARD TAB */}
         {tab === "leaderboard" && (
           <div style={styles.section}>
             {/* These totals describe the board, so they live inside it — the
-                Teams tab prints its own four-up row. */}
+                Clubs tab prints its own four-up row. */}
             <div className="hero-stats" style={styles.heroStats}>
               {[
                 { label: "Total Burned", value: globalStats.totalBurned },
@@ -927,7 +934,7 @@ export function Burnlog({
             {/* The checklist is the first thing a new account should see and it
                 hides itself once all four steps are done, so it sits above the
                 scope switch rather than below the table header. */}
-            {currentUsername && <GetStarted username={currentUsername} />}
+            {currentUsername && <GetStarted username={currentUsername} full={full} />}
             <BoardScope
               scope={scope}
               onScope={setScope}
@@ -1046,14 +1053,14 @@ export function Burnlog({
         )}
 
         {/* CLUBS TAB */}
-        {tab === "clubs" && (
+        {full && tab === "clubs" && (
           <div style={styles.section}>
             {!activeClub && (
               <div style={styles.sectionHeader}>
-                <div style={styles.sectionTitle}>Teams</div>
+                <div style={styles.sectionTitle}>Clubs</div>
                 {currentUsername && (
                   <button style={primaryBtn} onClick={() => { setShowCreateClub(true); setClubError(null); }}>
-                    Create Team
+                    Create Club
                   </button>
                 )}
               </div>
@@ -1091,7 +1098,7 @@ export function Burnlog({
                 >
                   {/* Modal header */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "#FAFAFA" }}>Create Team</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#FAFAFA" }}>Create Club</div>
                     <button
                       onClick={() => { setShowCreateClub(false); setClubError(null); }}
                       style={{ background: "transparent", border: "none", color: "#52525B", cursor: "pointer", fontSize: 20, padding: 4, lineHeight: 1 }}
@@ -1165,7 +1172,7 @@ export function Burnlog({
 
                   {/* Name */}
                   <label style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: MONO, display: "block", marginBottom: 6 }}>
-                    Team Name
+                    Club Name
                   </label>
                   <input
                     value={newClubName}
@@ -1198,7 +1205,7 @@ export function Burnlog({
                   <textarea
                     value={newClubDesc}
                     onChange={(e) => setNewClubDesc(e.target.value)}
-                    placeholder="What's this team about? (optional)"
+                    placeholder="What's this club about? (optional)"
                     rows={3}
                     style={{
                       width: "100%",
@@ -1247,7 +1254,7 @@ export function Burnlog({
                       checked={newClubPrivate}
                       onChange={(e) => setNewClubPrivate(e.target.checked)}
                     />
-                    Private team, invite required
+                    Private club, invite required
                   </label>
 
                   {/* Error */}
@@ -1287,7 +1294,7 @@ export function Burnlog({
                         cursor: clubCreating ? "wait" : "pointer",
                       }}
                     >
-                      {clubCreating ? "Creating..." : "Create Team"}
+                      {clubCreating ? "Creating..." : "Create Club"}
                     </button>
                   </div>
                 </div>
@@ -1297,14 +1304,14 @@ export function Burnlog({
             {/* Loading */}
             {!activeClub && clubsLoading && clubs.length === 0 && (
               <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
-                Loading teams...
+                Loading clubs...
               </div>
             )}
 
             {/* Empty */}
             {!activeClub && !clubsLoading && clubs.length === 0 && (
               <div style={{ ...styles.card, textAlign: "center", padding: 48, color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
-                No teams yet. Create the first one.
+                No clubs yet. Create the first one.
               </div>
             )}
 
@@ -1358,7 +1365,7 @@ export function Burnlog({
                   onClick={() => setActiveClub(null)}
                   style={{ background: "none", border: "none", color: "#52525B", cursor: "pointer", fontFamily: MONO, fontSize: 11, padding: 0, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}
                 >
-                  ← All Teams
+                  ← All Clubs
                 </button>
 
                 <div style={{ ...styles.card, marginBottom: 16 }}>
@@ -1490,8 +1497,8 @@ export function Burnlog({
                         </button>
                         <span style={{ fontSize: 10, color: upgradeStatus === "error" ? "#EF4444" : "#52525B", fontFamily: MONO }}>
                           {upgradeStatus === "error"
-                            ? "Add email on account or use teams page"
-                            : `${activeClub.memberCount}/${activeClub.limits.memberLimit} members · ${teamKeys.length}/${teamKeyLimit} team keys`}
+                            ? "Add email on account or use the pricing page"
+                            : `${activeClub.memberCount}/${activeClub.limits.memberLimit} members · ${teamKeys.length}/${teamKeyLimit} club keys`}
                         </span>
                       </div>
                     )}
@@ -1509,7 +1516,7 @@ export function Burnlog({
                             onChange={(e) => setClubPrivateDraft(e.target.checked)}
                             style={CHECKBOX}
                           />
-                          Private team
+                          Private club
                         </label>
                         {clubPrivateDraft && activeClub.inviteCode && (
                           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1555,7 +1562,7 @@ export function Burnlog({
                           onChange={(e) => setClubBlockIngestDraft(e.target.checked)}
                           style={CHECKBOX}
                         />
-                        Reject team-key ingest when MTD budget is spent
+                        Reject club-key ingest when MTD budget is spent
                       </label>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <input
@@ -1592,7 +1599,7 @@ export function Burnlog({
                             value={teamKeyLabel}
                             onChange={(e) => setTeamKeyLabel(e.target.value)}
                             placeholder="github-actions"
-                            aria-label="Team API key label"
+                            aria-label="Club API key label"
                             maxLength={60}
                             style={{ flex: 1, minWidth: 0, background: "#0F0F11", border: "1px solid #18181B", borderRadius: 6, color: "#E4E4E7", fontFamily: MONO, fontSize: 12, padding: "9px 12px", outline: "none" }}
                           />
@@ -1600,7 +1607,7 @@ export function Burnlog({
                             value={teamKeyBudget}
                             onChange={(e) => setTeamKeyBudget(e.target.value.replace(/\D/g, ""))}
                             placeholder="key monthly cap"
-                            aria-label="Team API key monthly budget"
+                            aria-label="Club API key monthly budget"
                             inputMode="numeric"
                             style={{ flex: "1 1 120px", minWidth: 0, maxWidth: 150, background: "#0F0F11", border: "1px solid #18181B", borderRadius: 6, color: "#E4E4E7", fontFamily: MONO, fontSize: 12, padding: "9px 12px", outline: "none" }}
                           />
@@ -1609,7 +1616,7 @@ export function Burnlog({
                             disabled={keyLoading || teamKeys.length >= teamKeyLimit}
                             style={{ background: "transparent", color: teamKeys.length >= teamKeyLimit ? "#52525B" : "#D97706", border: "1px solid #27272A", borderRadius: 6, fontSize: 10, fontFamily: MONO, padding: "9px 10px", cursor: keyLoading ? "wait" : teamKeys.length >= teamKeyLimit ? "not-allowed" : "pointer" }}
                           >
-                            {keyLoading ? "Generating" : teamKeys.length >= teamKeyLimit ? "Key Limit Reached" : "Generate Team API Key"}
+                            {keyLoading ? "Generating" : teamKeys.length >= teamKeyLimit ? "Key Limit Reached" : "Generate Club API Key"}
                           </button>
                           {teamApiKey && (
                             <button
@@ -1628,13 +1635,13 @@ export function Burnlog({
                         {teamKeys.length > 0 && (
                           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 6 }}>
                             <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO }}>
-                              {teamKeys.length}/{teamKeyLimit} active team keys
+                              {teamKeys.length}/{teamKeyLimit} active club keys
                             </div>
                             {teamKeys.map((k) => (
                               <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#0F0F11", border: "1px solid #18181B", borderRadius: 6, padding: "8px 10px" }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 11, color: "#E4E4E7", fontFamily: MONO, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                    {k.label ?? "team key"}
+                                    {k.label ?? "club key"}
                                   </div>
                                   <div style={{ fontSize: 10, color: "#52525B", fontFamily: MONO }}>
                                     MTD {formatTokens(k.monthlyTokens)}{k.monthlyBudgetTokens > 0 ? ` / ${formatTokens(k.monthlyBudgetTokens)}` : ""} · last used {relativeTime(k.lastUsed)} · created {relativeTime(k.createdAt)}

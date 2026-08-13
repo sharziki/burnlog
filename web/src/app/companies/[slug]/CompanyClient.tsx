@@ -132,7 +132,7 @@ export function CompanyClient({
         }}
       >
         <span>
-          {teams.length}/{company.teamLimit} teams
+          {teams.length}/{company.teamLimit} clubs
         </span>
         <span>{rollup.members} members</span>
         <span style={{ color: "#A1A1AA" }}>{formatTokens(rollup.window)} · 30d</span>
@@ -225,8 +225,8 @@ function BillingPanel({ company }: { company: Company }) {
         <div style={eyebrow}>{billing.writable ? "Subscription" : "Read-only"}</div>
         <p style={{ margin: "10px 0 0", color: "#A1A1AA", fontSize: 13, lineHeight: 1.6 }}>
           {billing.writable
-            ? `The Company tier is $${billing.monthlyPriceUsd} a month for up to ${company.teamLimit} teams.`
-            : "Without an active subscription this company is read-only: its teams and numbers stay exactly where they are, but no new team can be attached."}
+            ? `The Company tier is $${billing.monthlyPriceUsd} a month for up to ${company.teamLimit} clubs.`
+            : "Without an active subscription this company is read-only: its clubs and numbers stay exactly where they are, but no new club can be attached."}
           {billing.currentPeriodEnd && billing.paid && (
             <>
               {" "}
@@ -286,7 +286,7 @@ function Teams({ company, teams }: { company: Company; teams: Team[] }) {
       });
       const data = (await res.json()) as { ok: boolean; message?: string };
       if (data.ok) window.location.reload();
-      else setError(data.message ?? "Couldn't attach that team.");
+      else setError(data.message ?? "Couldn't attach that club.");
     } catch {
       setError("Network error — try again.");
     } finally {
@@ -298,11 +298,11 @@ function Teams({ company, teams }: { company: Company; teams: Team[] }) {
 
   return (
     <section style={{ marginTop: 36 }}>
-      <h2 style={sectionTitle}>Teams</h2>
+      <h2 style={sectionTitle}>Clubs</h2>
       <div style={{ display: "grid", gap: 10 }}>
         {teams.length === 0 ? (
           <div style={{ ...card, textAlign: "center", color: "#52525B", fontFamily: MONO, fontSize: 12 }}>
-            No teams yet. Attach a club you already own.
+            No clubs yet. Attach a club you already own.
           </div>
         ) : (
           // Not links: a club has no page of its own — it's a scope on the
@@ -339,7 +339,7 @@ function Teams({ company, teams }: { company: Company; teams: Team[] }) {
       {company.canManage && (
         <form onSubmit={attach} style={{ ...card, marginTop: 12, display: "grid", gap: 14 }}>
           <div>
-            <label style={fieldLabel}>Attach a team</label>
+            <label style={fieldLabel}>Attach a club</label>
             <input
               value={ref}
               onChange={(e) => setRef(e.target.value)}
@@ -359,13 +359,13 @@ function Teams({ company, teams }: { company: Company; teams: Team[] }) {
               cursor: company.billing.writable && !full ? "pointer" : "not-allowed",
             }}
           >
-            {busy ? "Attaching…" : "Attach team"}
+            {busy ? "Attaching…" : "Attach club"}
           </button>
           <p style={{ margin: 0, color: "#52525B", fontFamily: MONO, fontSize: 11, lineHeight: 1.6 }}>
             {!company.billing.writable
               ? "Needs an active subscription."
               : full
-                ? `This plan holds ${company.teamLimit} teams.`
+                ? `This plan holds ${company.teamLimit} clubs.`
                 : "You have to own the club. Its roster, keys, and budget don't move."}
           </p>
         </form>
@@ -397,7 +397,7 @@ function Compare({ company, teams }: { company: Company; teams: Team[] }) {
       if (data.ok) setResult(data);
       else {
         setResult(null);
-        setError(data.message ?? "Couldn't compare those teams.");
+        setError(data.message ?? "Couldn't compare those clubs.");
       }
     } catch {
       setError("Network error — try again.");
@@ -408,11 +408,11 @@ function Compare({ company, teams }: { company: Company; teams: Team[] }) {
 
   return (
     <section style={{ marginTop: 36 }}>
-      <h2 style={sectionTitle}>Team vs team</h2>
+      <h2 style={sectionTitle}>Club vs club</h2>
       <form onSubmit={compare} style={{ ...card, display: "grid", gap: 14 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 200px" }}>
-            <label style={fieldLabel}>Team A</label>
+            <label style={fieldLabel}>Club A</label>
             <select value={a} onChange={(e) => setA(e.target.value)} style={input}>
               {teams.map((t) => (
                 <option key={t.id} value={t.slug}>
@@ -422,7 +422,7 @@ function Compare({ company, teams }: { company: Company; teams: Team[] }) {
             </select>
           </div>
           <div style={{ flex: "1 1 200px" }}>
-            <label style={fieldLabel}>Team B</label>
+            <label style={fieldLabel}>Club B</label>
             <select value={b} onChange={(e) => setB(e.target.value)} style={input}>
               {teams.map((t) => (
                 <option key={t.id} value={t.slug}>
