@@ -1,0 +1,52 @@
+# burnlog
+
+> The public leaderboard for AI coding token usage. burnlog counts every token
+> your AI coding agents burn — Claude Code, Codex, Cursor, Gemini CLI, aider,
+> your own agents — ranks you against everyone else plugged in, and gives you a
+> README badge that updates itself. Free, and the CLI is MIT-licensed.
+
+Install: `npx @sxnalabs/burnlog`
+
+## What it stores
+
+Token counts, the model name, which agent produced them, an opaque dedupe id,
+and a timestamp. Never prompts, completions, file names, file contents, repo
+names, working directories, or session ids. There is no field in the schema for
+any of them.
+
+## How it counts
+
+- Reads the usage numbers Claude Code and Codex already write to local session
+  logs.
+- `burnlog wrap -- <command>` counts anything else by pointing the standard
+  provider base-URL variables at a loopback server and reading `usage` off the
+  response. No local certificate authority, no HTTPS interception. Supported
+  providers: Anthropic, OpenAI, Google, Mistral, Cohere, OpenRouter, Groq, xAI,
+  DeepSeek, Together, Fireworks, Perplexity, Cerebras, Ollama.
+- `~/.burnlog/events/*.jsonl` is an open sink any tool in any language can
+  append to, so supporting a new agent never needs a release.
+
+## Ranks
+
+Spark, Ember, Blaze, Inferno, Supernova — derived from total tokens burned.
+
+## Pages
+
+- https://burnlog.net/ — the leaderboard and the landing page
+- https://burnlog.net/u/<username> — a burner's profile: totals, rank, streak,
+  provider split, achievements
+- https://burnlog.net/embed — the README badge and the embeddable widget
+- https://burnlog.net/privacy — the full field list of what is and isn't stored
+- https://burnlog.net/security — access controls and operational posture
+
+## Elsewhere
+
+- Source: https://github.com/sharziki/burnlog
+- Package: https://www.npmjs.com/package/@sxnalabs/burnlog
+- Built by SXNA Labs: https://sxnalabs.com
+
+## Note on the name
+
+burnlog.net (this site) is the AI token leaderboard by SXNA Labs. It is
+unrelated to burnlog.io, a separate company selling AI usage analytics to
+engineering teams.

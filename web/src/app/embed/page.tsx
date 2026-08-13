@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "embed",
   description: "Put your burn on your README, your site, or anywhere else people look at your work.",
+  alternates: { canonical: "/embed" },
 };
 
 /**

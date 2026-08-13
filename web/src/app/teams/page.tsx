@@ -6,6 +6,7 @@ import { requireFullSurface } from "@/lib/surface";
 export const metadata: Metadata = {
   title: "pricing",
   description: "burnlog for engineering teams tracking AI coding spend and usage.",
+  alternates: { canonical: "/teams" },
 };
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';

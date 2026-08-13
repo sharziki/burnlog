@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BurnMark } from "./Logo";
 import { RANKS } from "@/lib/ranks";
+import { FAQ } from "@/lib/faq";
 import { formatTokens } from "@/lib/format";
 
 /**
@@ -43,6 +44,7 @@ export function Landing({
       <Competition full={full} />
       <Privacy />
       <Embeds />
+      <Faq />
       <FinalCta signInAction={signInAction} />
     </div>
   );
@@ -70,10 +72,14 @@ function Hero({
             ship with AI.
           </h1>
 
-          <p style={{ fontSize: 17, color: "#A1A1AA", lineHeight: 1.65, margin: "22px 0 0", maxWidth: 500 }}>
-            Every token your agents burn — Claude Code, Codex, Cursor, your own — counted,
-            ranked, and put on a board against everyone else plugged in.
-          </p>
+          {/* The H1 is the line people remember; this H2 is the line people
+              search for. Both are real copy — neither is here for the crawler
+              alone. */}
+          <h2 style={{ fontSize: 17, fontWeight: 400, color: "#A1A1AA", lineHeight: 1.65, margin: "22px 0 0", maxWidth: 500 }}>
+            The public leaderboard for AI coding token usage. Every token your agents
+            burn — Claude Code, Codex, Cursor, your own — counted, ranked, and put on a
+            board against everyone else plugged in.
+          </h2>
 
           <div style={{ marginTop: 30 }}>
             <InstallLine />
@@ -314,6 +320,38 @@ function Competition({ full = true }: { full?: boolean }) {
               </a>
             )}
           </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ----------------------------------------------------------------- faq --- */
+
+function Faq() {
+  return (
+    <Section eyebrowText="questions" title="What people ask before they install it.">
+      <div style={{ display: "grid", gap: 10 }}>
+        {FAQ.map(({ q, a }) => (
+          // <details> rather than a state hook: it opens without JavaScript, so
+          // the answer is in the HTML for a crawler and for anyone whose bundle
+          // hasn't loaded yet.
+          <details key={q} style={{ ...card, padding: "18px 22px" }}>
+            <summary
+              // The native disclosure marker is kept: it's the only thing that
+              // tells you the row opens, and it flips when it does. Hiding it
+              // costs more than the tidier line is worth.
+              style={{
+                cursor: "pointer",
+                color: "#FAFAFA",
+                fontSize: 15,
+                fontWeight: 600,
+              }}
+            >
+              {q}
+            </summary>
+            <p style={{ ...bodyText, marginBottom: 0 }}>{a}</p>
+          </details>
         ))}
       </div>
     </Section>

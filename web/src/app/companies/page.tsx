@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "companies",
   description:
-    "Hold several teams under one roof: company-wide rollups and team-vs-team head-to-head.",
+    "Hold several clubs under one roof: company-wide rollups and club-vs-club head-to-head.",
+  alternates: { canonical: "/companies" },
 };
 
 export default async function CompaniesPage() {

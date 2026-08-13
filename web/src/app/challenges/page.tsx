@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: "challenges",
   description:
     "Start a token sprint, efficiency gauntlet, or streak race. Share one link and see who actually burns hardest.",
+  alternates: { canonical: "/challenges" },
 };
 
 export default async function ChallengesPage() {

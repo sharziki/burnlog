@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "privacy",
   description:
     "burnlog's privacy model — what we store, what we don't, and why.",
+  alternates: { canonical: "/privacy" },
 };
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';

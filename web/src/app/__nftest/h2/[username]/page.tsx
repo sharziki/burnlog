@@ -7,10 +7,7 @@ import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { getAchievements } from "@/lib/achievements";
 import { getUserChallenges } from "@/lib/challenges";
-import { isFullSurface } from "@/lib/surface";
-import { SITE_URL } from "@/lib/seo";
-import { ProfileJsonLd } from "@/components/JsonLd";
-import { ProfileClient, type ProfileChallenge } from "./ProfileClient";
+type ProfileChallenge = { id: string; inviteCode: string; name: string; typeLabel: string; icon: string; place: number; won: boolean; ended: boolean };
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +30,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? `${stats.bio} — ${formatTokens(stats.totalTokens)} tokens burned, ${stats.streak}d streak`
     : `${formatTokens(stats.totalTokens)} tokens burned across ${stats.commits} sessions. Rank: ${rank.name}. ${stats.streak}d streak.`;
 
-  const siteUrl = SITE_URL;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://burnlog.net";
 
   return {
     title,
     description,
-    alternates: { canonical: `/u/${username}` },
     openGraph: {
       title,
       description,
@@ -67,13 +63,10 @@ export default async function ProfilePage({ params }: Props) {
   const session = await auth();
   const viewer = (session?.user as { username?: string } | undefined)?.username ?? null;
 
-  // Challenges are staged, so a core deployment doesn't even load them —
-  // hiding the section after paying for the query would be the wrong order.
-  const full = isFullSurface();
   const [stats, achievements, entered] = await Promise.all([
     getUserStats(user.id),
     getAchievements(user.id),
-    full ? getUserChallenges(user.id) : Promise.resolve([]),
+    getUserChallenges(user.id),
   ]);
   if (!stats) notFound();
 
@@ -91,27 +84,5 @@ export default async function ProfilePage({ params }: Props) {
     };
   });
 
-  return (
-    <>
-      <ProfileJsonLd
-        username={username}
-        name={stats.name}
-        image={stats.image}
-        bio={stats.bio}
-        github={stats.github}
-        twitter={stats.twitter}
-        website={stats.website}
-        totalTokens={stats.totalTokens}
-        rank={getRank(stats.totalTokens).name}
-      />
-      <ProfileClient
-        user={stats}
-        joinedAt={user.createdAt.toISOString()}
-        achievements={achievements.map((a) => a.key)}
-        challenges={challenges}
-        viewer={viewer}
-        full={full}
-      />
-    </>
-  );
+  return <div>{challenges.length}{viewer}{achievements.length}{stats.totalTokens}</div>;
 }

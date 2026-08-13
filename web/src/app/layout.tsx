@@ -3,33 +3,61 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { sans, mono } from "./fonts";
+import { SiteJsonLd } from "@/components/JsonLd";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const siteUrl = SITE_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "burnlog — private leaderboard for AI token burn",
+    default: SITE_TITLE,
     template: "%s · burnlog",
   },
-  description:
-    "Track every token you push through Claude Code, Codex, and other AI coding agents. Rank against friends. Private by default — we store tokens, not your prompts.",
+  description: SITE_DESCRIPTION,
+  // Not a ranking factor since 2009, but Bing still reads them and they cost
+  // nothing. The list is what the site is actually about, not a keyword dump.
+  keywords: [
+    "AI token leaderboard",
+    "Claude Code usage tracker",
+    "Claude Code token usage",
+    "Codex token tracker",
+    "AI coding usage analytics",
+    "token burn leaderboard",
+    "AI agent token tracking",
+  ],
+  // Deliberately no `alternates.canonical` here: metadata is inherited, so a
+  // canonical in the layout would point every page at "/". Each page sets its
+  // own; a missing canonical is a much smaller problem than a wrong one.
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      // Let Google use the full snippet, the big image, and the whole video —
+      // the defaults are conservative and cost you SERP real estate.
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
-    title: "burnlog — private leaderboard for AI token burn",
-    description:
-      "Track every token you push through Claude Code, Codex, and other AI coding agents.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     url: siteUrl,
-    siteName: "burnlog",
+    siteName: SITE_NAME,
     type: "website",
+    locale: "en_US",
     images: [{ url: `${siteUrl}/og`, width: 1200, height: 630, alt: "burnlog" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "burnlog — private leaderboard for AI token burn",
-    description:
-      "Track every token you push through Claude Code, Codex, and other AI coding agents.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     creator: "@sharziki",
+    site: "@sharziki",
     images: [`${siteUrl}/og`],
   },
   // SVG first for crisp tabs; PNG/ICO for the surfaces that won't take SVG
@@ -56,6 +84,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <meta name="theme-color" content="#09090B" />
       </head>
       <body>
+        <SiteJsonLd />
         <Nav />
         {children}
         <Footer />
