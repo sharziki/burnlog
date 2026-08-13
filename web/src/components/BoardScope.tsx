@@ -34,18 +34,26 @@ export function BoardScope({
   scope,
   onScope,
   signedIn,
+  username,
   onFriendChange,
 }: {
   scope: Scope;
   onScope: (s: Scope) => void;
   signedIn: boolean;
+  username?: string | null;
   onFriendChange?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Person[]>([]);
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [shared, setShared] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const inviter = new URLSearchParams(window.location.search).get("ref")?.trim();
+    if (inviter) setQuery(inviter);
+  }, []);
 
   // Debounced so typing a name isn't one request per keystroke.
   useEffect(() => {
@@ -75,7 +83,7 @@ export function BoardScope({
 
   async function act(person: Person) {
     if (!signedIn) {
-      window.location.href = "/api/auth/signin";
+      window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(window.location.href)}`;
       return;
     }
     const action =
@@ -100,6 +108,23 @@ export function BoardScope({
       // Leave the row as-is; the user can retry.
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function invite() {
+    if (!signedIn || !username) {
+      window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(window.location.href)}`;
+      return;
+    }
+    const url = `${window.location.origin}/?ref=${encodeURIComponent(username)}#leaderboard`;
+    const text = "I’m on burnlog. Track your AI coding tokens and race me.";
+    try {
+      if (navigator.share) await navigator.share({ title: "Race me on burnlog", text, url });
+      else await navigator.clipboard.writeText(`${text} ${url}`);
+      setShared(true);
+      setTimeout(() => setShared(false), 1800);
+    } catch {
+      // Cancelling native share is not an error state.
     }
   }
 
@@ -153,6 +178,25 @@ export function BoardScope({
             outline: "none",
           }}
         />
+
+        <button
+          onClick={invite}
+          style={{
+            minHeight: 40,
+            padding: "8px 13px",
+            border: "1px solid #D9770644",
+            borderRadius: 6,
+            background: "#D9770612",
+            color: "#D97706",
+            fontFamily: MONO,
+            fontSize: 10.5,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {shared ? "Invite copied" : "Invite friends"}
+        </button>
       </div>
 
       {query.trim().length >= 2 && (

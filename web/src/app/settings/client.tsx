@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { FriendRequests } from "@/components/FriendRequests";
 import { ProfileEditor } from "@/components/ProfileEditor";
 
 export function SettingsClient({
@@ -10,15 +9,12 @@ export function SettingsClient({
   image,
   profile,
   signOutAction,
-  full = true,
 }: {
   username: string;
   name: string;
   image: string | null;
-  profile: { bio: string; github: string; twitter: string; website: string };
+  profile: { bio: string; twitter: string; website: string };
   signOutAction: () => Promise<void>;
-  /** False on a core deployment: clubs and head-to-head are staged. */
-  full?: boolean;
 }) {
   const [key, setKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -119,10 +115,6 @@ export function SettingsClient({
 
       <div style={{ marginBottom: 16 }}>
         <ProfileEditor initial={profile} />
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <FriendRequests me={username} full={full} />
       </div>
 
       <div

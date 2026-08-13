@@ -1,5 +1,3 @@
-"use client";
-
 import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { estimateCostUsd, formatUsd } from "@/lib/cost";

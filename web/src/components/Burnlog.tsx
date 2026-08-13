@@ -5,6 +5,7 @@ import { Landing } from "./Landing";
 import { BoardScope, type Scope } from "./BoardScope";
 import { ClubFeed } from "./ClubFeed";
 import { GetStarted } from "./GetStarted";
+import { FriendRequests } from "./FriendRequests";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
@@ -270,6 +271,7 @@ export function Burnlog({
   const [scope, setScope] = useState<Scope>("world");
   const [scopedUsers, setScopedUsers] = useState<UserStats[] | null>(null);
   const [scopeLoading, setScopeLoading] = useState(false);
+  const [friendVersion, setFriendVersion] = useState(0);
   const [selectedUser, setSelectedUser] = useState<UserStats | null>(
     (currentUsername && users.find((u) => u.username === currentUsername)) || users[0] || null,
   );
@@ -684,7 +686,7 @@ export function Burnlog({
     return () => {
       cancelled = true;
     };
-  }, [scope]);
+  }, [scope, friendVersion]);
 
   const sortedUsers = [...activeUsers].sort((a, b) => {
     if (timeframe === "weekly") return b.weeklyTokens - a.weeklyTokens;
@@ -939,8 +941,14 @@ export function Burnlog({
               scope={scope}
               onScope={setScope}
               signedIn={Boolean(currentUsername)}
-              onFriendChange={() => setScope((s) => s)}
+              username={currentUsername}
+              onFriendChange={() => setFriendVersion((v) => v + 1)}
             />
+            {scope === "friends" && currentUsername && (
+              <div style={{ marginBottom: 16 }}>
+                <FriendRequests me={currentUsername} full={full} onChange={() => setFriendVersion((v) => v + 1)} />
+              </div>
+            )}
             <div style={styles.sectionHeader}>
               <div style={styles.sectionTitle}>
                 {scope === "friends" ? "Friends" : "Leaderboard"}

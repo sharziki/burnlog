@@ -77,18 +77,12 @@ export function GetStarted({ username, full = true }: { username: string; full?:
 
   const items = [
     {
-      done: steps.signedIn,
-      title: "Sign in with GitHub",
-      body: null,
-    },
-    {
       done: steps.synced,
-      title: steps.synced ? `Synced ${formatTokens(tokens)} tokens` : "Connect your agents",
+      title: steps.synced ? `Connected · ${formatTokens(tokens)} tokens` : "Connect this machine once",
       body: steps.synced ? null : (
         <>
           <p style={body}>
-            One command. It finds Claude Code, Codex, Hermes and the rest, then uploads
-            token counts only.
+            You&apos;re signed in. Run this on the machine you code on. If it is already connected, skip it.
           </p>
           <button onClick={copy} style={cmd} aria-label={`Copy ${INSTALL}`}>
             <span style={{ color: "#3F3F46" }}>$</span> {INSTALL}
@@ -121,12 +115,11 @@ export function GetStarted({ username, full = true }: { username: string; full?:
       : []),
     {
       done: steps.hasFriend,
-      title: "Add someone",
+      title: "Bring a friend",
       body: steps.hasFriend ? null : (
         <>
           <p style={body}>
-            Search for people on the board below, then switch it to Friends to see just
-            your circle.
+            Use Invite friends below, or search someone already on burnlog.
           </p>
         </>
       ),

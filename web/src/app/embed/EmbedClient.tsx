@@ -11,11 +11,9 @@ export function EmbedClient({
   username,
   ranks,
 }: {
-  username: string | null;
+  username: string;
   ranks: RankRow[];
 }) {
-  // Signed-out visitors still get a working preview to copy from.
-  const [name, setName] = useState(username ?? "sharziki");
   const [copied, setCopied] = useState<string | null>(null);
   // Snippets have to carry an absolute origin, but the server doesn't know
   // which host the page is being served from. Reading window during render
@@ -26,14 +24,14 @@ export function EmbedClient({
   useEffect(() => setOrigin(window.location.origin), []);
 
   const path = (style?: string) =>
-    `/badge/${name}${style && style !== "default" ? `?style=${style}` : ""}`;
+    `/badge/${username}${style && style !== "default" ? `?style=${style}` : ""}`;
   const badge = (style?: string) => `${origin}${path(style)}`;
 
   const snippets: [string, string, string][] = origin
     ? [
-        ["Markdown", "for a GitHub README", `[![burnlog](${badge()})](${origin}/u/${name})`],
-        ["HTML", "for a site or portfolio", `<a href="${origin}/u/${name}"><img src="${badge()}" alt="burnlog"></a>`],
-        ["Widget", "a live card, ~4KB, no dependencies", `<script src="${origin}/widget.js" data-user="${name}"></script>`],
+        ["Markdown", "GitHub README", `[![burnlog](${badge()})](${origin}/u/${username})`],
+        ["HTML", "site or portfolio", `<a href="${origin}/u/${username}"><img src="${badge()}" alt="burnlog"></a>`],
+        ["Widget", "live card", `<script src="${origin}/widget.js" data-user="${username}"></script>`],
       ]
     : [
         ["Markdown", "for a GitHub README", "…"],
@@ -52,12 +50,12 @@ export function EmbedClient({
     slot.textContent = "";
     const script = document.createElement("script");
     script.src = "/widget.js";
-    script.setAttribute("data-user", name);
+    script.setAttribute("data-user", username);
     slot.appendChild(script);
     return () => {
       slot.textContent = "";
     };
-  }, [name]);
+  }, [username]);
 
   async function copy(key: string, text: string) {
     try {
@@ -70,50 +68,37 @@ export function EmbedClient({
   }
 
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: "44px 24px 80px", fontFamily: SANS, color: "#E4E4E7" }}>
-      <div style={eyebrow}>Embed</div>
-      <h1 style={{ margin: "10px 0 0", fontSize: 38, letterSpacing: -1.4, lineHeight: 1.05, color: "#FAFAFA" }}>
-        Put it where people look.
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "44px 24px 80px", fontFamily: SANS, color: "#E4E4E7" }}>
+      <div style={eyebrow}>Your badge</div>
+      <h1 style={{ margin: "10px 0 0", fontSize: 34, letterSpacing: -1.2, lineHeight: 1.05, color: "#FAFAFA" }}>
+        Share @{username}&apos;s burn.
       </h1>
-      <p style={{ margin: "12px 0 0", color: "#A1A1AA", fontSize: 15, maxWidth: 540, lineHeight: 1.6 }}>
-        The badge updates itself every 15 minutes.
+      <p style={{ margin: "10px 0 0", color: "#71717A", fontSize: 13.5, lineHeight: 1.6 }}>
+        Locked to your account. Updates every 15 minutes.
       </p>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 24, flexWrap: "wrap" }}>
-        <span style={{ ...eyebrow, color: "#52525B" }}>username</span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z0-9-]/g, ""))}
-          style={{
-            background: "#09090B",
-            border: "1px solid #18181B",
-            borderRadius: 6,
-            padding: "8px 12px",
-            color: "#FAFAFA",
-            fontFamily: MONO,
-            fontSize: 12.5,
-            outline: "none",
-            minWidth: 180,
-          }}
-        />
-      </div>
-
       {/* Live previews — the real endpoint, not a mock. */}
-      <div style={{ ...card, marginTop: 20, display: "flex", gap: 22, alignItems: "center", flexWrap: "wrap" }}>
-        {["default", "flat", "compact"].map((style) => (
-          <div key={style} style={{ display: "grid", gap: 8, justifyItems: "center" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={path(style)} alt={`burnlog badge, ${style}`} height={20} />
-            <span style={{ fontFamily: MONO, fontSize: 9, color: "#3F3F46", textTransform: "uppercase", letterSpacing: 1 }}>
-              {style}
-            </span>
-          </div>
-        ))}
+      <div style={{ ...card, marginTop: 20, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={path()} alt="Your burnlog badge" height={20} />
+        <button onClick={() => copy("Markdown", snippets[0][2])} style={{ ...copyBtn, marginLeft: "auto", background: "#D97706", borderColor: "#D97706", color: "#09090B", fontWeight: 700 }}>
+          {copied === "Markdown" ? "copied" : "copy for README"}
+        </button>
       </div>
 
-      <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-        {snippets.map(([label, hint, code]) => (
-          <div key={label} style={card}>
+      <details style={{ ...card, marginTop: 12 }}>
+        <summary style={{ cursor: "pointer", color: "#A1A1AA", fontFamily: MONO, fontSize: 11 }}>
+          HTML, widget, and badge styles
+        </summary>
+        <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+          <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+            {["default", "flat", "compact"].map((style) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={style} src={path(style)} alt={`burnlog badge, ${style}`} height={20} />
+            ))}
+          </div>
+          {snippets.map(([label, hint, code]) => (
+          <div key={label} style={{ borderTop: "1px solid #18181B", paddingTop: 14 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
               <span style={{ fontSize: 13, color: "#FAFAFA", fontWeight: 600 }}>{label}</span>
               <span style={{ fontFamily: MONO, fontSize: 10, color: "#52525B" }}>{hint}</span>
@@ -126,11 +111,12 @@ export function EmbedClient({
               <div ref={widgetSlot} style={{ marginTop: 12, minHeight: 158 }} />
             )}
           </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </details>
 
       {/* The ladder — what's next, not just where you are. */}
-      <h2 style={{ ...eyebrow, marginTop: 40 }}>The ranks</h2>
+      <h2 style={{ ...eyebrow, marginTop: 32 }}>The ranks</h2>
       <div style={{ ...card, marginTop: 12, padding: 0, overflow: "hidden" }}>
         {ranks
           .slice()

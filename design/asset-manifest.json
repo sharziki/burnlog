@@ -1,0 +1,6 @@
+{
+  "assets": [
+    { "path": "web/public/logo.svg", "role": "brand mark", "source": "project", "status": "approved" },
+    { "path": "web/src/components/ToolLogo.tsx", "role": "agent brand marks", "source": "official/Simple Icons paths", "status": "provisional" }
+  ]
+}

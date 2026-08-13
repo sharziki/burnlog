@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0.0",
+  "contract_version": "0.1.0",
+  "status": "provisional",
+  "authority": {
+    "basis": "verified-production-and-repository-evidence",
+    "approved_by": null,
+    "reviewed_on": "2026-08-13",
+    "sources": ["production UI", "repository", "Nova projects/burnlog", "current user feedback"]
+  },
+  "product": {
+    "thesis": "developer identity and friendly competition for AI token burn",
+    "audience": "developers using local AI coding agents",
+    "primary_action": "connect one machine and compare real token burn",
+    "trust_basis": "token counts only from readable logs or provider responses"
+  },
+  "brand": {
+    "posture": ["competitive", "quiet", "technical", "honest"],
+    "recognition_device": "flame with terminal-caret cutout",
+    "visual_protagonist": "real rank, token number, or person",
+    "invariant": "near-black ground, amber action, mono data, thin borders",
+    "interaction_verb": "connect",
+    "motion_verb": "rise",
+    "voice": ["short", "direct", "honest", "lightly competitive"],
+    "prohibitions": ["glass", "generic gradients", "ornamental bento", "fake proof", "editable OAuth identity"]
+  },
+  "color": {
+    "roles": {"canvas":"#09090B","surface":"#0C0C0E","border":"#18181B","text":"#FAFAFA","secondary":"#A1A1AA","muted":"#52525B","signal":"#D97706","success":"#10B981","error":"#EF4444"},
+    "accessible_pairs": ["#FAFAFA/#09090B", "#A1A1AA/#09090B", "#D97706/#09090B", "#09090B/#D97706"]
+  },
+  "typography": {
+    "display": {"family":"Instrument Sans","source":"web/public/fonts via next/font/local","license_status":"verified-repository-asset"},
+    "text": {"family":"Instrument Sans","source":"web/public/fonts via next/font/local","license_status":"verified-repository-asset"},
+    "mono": {"family":"IBM Plex Mono","source":"web/public/fonts via next/font/local","license_status":"verified-repository-asset"}
+  },
+  "composition": {
+    "grid": {"app_max_px":1100,"focused_max_px":900,"gutter_px":24},
+    "spacing_scale": [4,8,12,16,20,24,32,48],
+    "density": "compact",
+    "radius": {"control_px":6,"card_px":10},
+    "borders": {"width_px":1,"default":"#18181B"},
+    "elevation": {"cards":"none","menus":"single soft shadow"},
+    "materials": ["flat near-black surfaces"],
+    "responsive_recomposition": ["collapse grids by 720px", "navigation moves to own row", "40px touch controls"]
+  },
+  "imagery": {
+    "composition_rules": ["use real avatars and identifying product marks only"],
+    "lens_and_crop": ["centered square avatar crops", "full logo clear space"],
+    "lighting": ["none"],
+    "texture": ["flat vectors", "real avatars"],
+    "edge_language": ["crisp"],
+    "depth_language": ["flat"],
+    "negative_space_rule": "keep marks isolated inside small bounded squares",
+    "forbidden_motifs": ["stock imagery", "generated people", "fake UI", "decorative 3D flames"],
+    "reference_assets": ["web/public/logo.svg"],
+    "generation_ids": []
+  },
+  "components": {
+    "state_model": ["rest","hover","focus-visible","active","selected","disabled","loading","empty","error","success"],
+    "rules": ["native controls first", "hover never owns information", "empty states give one action", "errors expose retry"]
+  },
+  "motion": {
+    "property_owners": {"css":"hover active entrance","react":"state changes"},
+    "durations_ms": {"feedback":150,"entrance":500},
+    "easing": {"entrance":"cubic-bezier(.16,1,.3,1)"},
+    "reduced_motion": ["collapse animation duration", "hide embers"],
+    "static_fallback": ["complete normal document flow", "no WebGL"]
+  },
+  "content": {
+    "voice_rules": ["lead with action", "short sentences", "state limitations plainly"],
+    "proof_rules": ["tracking claim beside method", "rank beside real token number", "never fabricate users or usage"],
+    "placeholder_policy": "honest empty state with one real next action"
+  },
+  "decisions": [{"date":"2026-08-13","status":"provisional","decision":"social and share actions live beside leaderboard; embed is account locked; profile autosaves"}]
+}

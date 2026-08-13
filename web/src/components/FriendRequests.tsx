@@ -8,11 +8,9 @@ type Person = { id: string; username: string | null; name: string | null; image:
 type Request = { id: string; user: Person; createdAt: string };
 
 /**
- * Friend requests and current friends, for the settings page.
- * This is account management, which is why it lives here rather than on the
- * public board.
+ * Friend requests and current friends live beside the Friends leaderboard.
  */
-export function FriendRequests({ me, full = true }: { me: string; full?: boolean }) {
+export function FriendRequests({ me, full = true, onChange }: { me: string; full?: boolean; onChange?: () => void }) {
   const [friends, setFriends] = useState<Person[]>([]);
   const [incoming, setIncoming] = useState<Request[]>([]);
   const [outgoing, setOutgoing] = useState<Request[]>([]);
@@ -54,6 +52,7 @@ export function FriendRequests({ me, full = true }: { me: string; full?: boolean
         body: JSON.stringify({ username, action }),
       });
       await load();
+      onChange?.();
     } finally {
       setBusy(null);
     }
@@ -63,17 +62,13 @@ export function FriendRequests({ me, full = true }: { me: string; full?: boolean
 
   return (
     <div style={card}>
-      <div style={label}>FRIENDS</div>
+      <div style={label}>YOUR CREW</div>
 
       {loading && <div style={muted}>loading…</div>}
 
       {empty && (
         <div style={muted}>
-          No friends yet. Search for people on the{" "}
-          <a href="/" style={{ color: "#D97706" }}>
-            board
-          </a>{" "}
-          to add them, then switch the board to Friends.
+          No friends yet. Search above or copy the invite. Their burn lands here after you add each other.
         </div>
       )}
 

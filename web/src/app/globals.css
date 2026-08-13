@@ -125,6 +125,10 @@ html { scroll-behavior: smooth; }
   .landing-three {
     grid-template-columns: 1fr !important;
   }
+
+  .tool-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (max-width: 720px) {

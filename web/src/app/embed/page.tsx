@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { auth } from "@/auth";
+import { auth, signIn } from "@/auth";
 import { RANKS } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { EmbedClient } from "./EmbedClient";
@@ -24,6 +24,30 @@ export const metadata: Metadata = {
 export default async function EmbedPage() {
   const session = await auth();
   const username = (session?.user as { username?: string } | undefined)?.username ?? null;
+
+  if (!username) {
+    return (
+      <main style={{ maxWidth: 560, margin: "0 auto", padding: "72px 24px 96px", textAlign: "center" }}>
+        <div style={{ fontFamily: 'var(--font-mono), "IBM Plex Mono", monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#D97706" }}>
+          Your badge
+        </div>
+        <h1 style={{ margin: "12px 0 10px", fontSize: 34, letterSpacing: -1.2, color: "#FAFAFA" }}>
+          Share your burn.
+        </h1>
+        <p style={{ margin: "0 auto 24px", color: "#71717A", fontSize: 14, lineHeight: 1.6 }}>
+          Sign in so burnlog can use your account. No username field. No pretending to be someone else.
+        </p>
+        <form action={async () => {
+          "use server";
+          await signIn("github", { redirectTo: "/embed" });
+        }}>
+          <button type="submit" style={{ minHeight: 42, padding: "10px 18px", border: 0, borderRadius: 7, background: "#D97706", color: "#09090B", fontFamily: 'var(--font-mono), "IBM Plex Mono", monospace', fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            Sign in with GitHub
+          </button>
+        </form>
+      </main>
+    );
+  }
 
   return (
     <EmbedClient

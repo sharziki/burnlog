@@ -1,7 +1,6 @@
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { SettingsClient } from "./client";
-import { isFullSurface } from "@/lib/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +17,10 @@ export default async function SettingsPage() {
     // The public profile fields live on User; settings is where they're edited.
     const row = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { bio: true, github: true, twitter: true, website: true },
+      select: { bio: true, twitter: true, website: true },
     });
     const profile = {
       bio: row?.bio ?? "",
-      github: row?.github ?? "",
       twitter: row?.twitter ?? "",
       website: row?.website ?? "",
     };
@@ -39,7 +37,6 @@ export default async function SettingsPage() {
         image={user.image ?? null}
         profile={profile}
         signOutAction={signOutAction}
-        full={isFullSurface()}
       />
     );
   }

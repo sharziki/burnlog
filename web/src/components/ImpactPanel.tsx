@@ -1,5 +1,3 @@
-"use client";
-
 import {
   IMPACT_DISCLAIMER,
   equivalents,
