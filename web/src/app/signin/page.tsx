@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 
@@ -27,15 +28,31 @@ export const metadata: Metadata = {
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
 /**
- * Only same-site paths are honoured. `callbackUrl` arrives in a query string
- * anyone can write, so an absolute URL — or a protocol-relative `//evil.com`,
- * which `startsWith("/")` alone would wave through — is discarded rather than
- * turned into an open redirect wearing burnlog's sign-in page.
+ * Only same-site destinations are honoured, and they come back as a path.
+ *
+ * `callbackUrl` arrives in a query string anyone can write, so a cross-origin
+ * URL — or a protocol-relative `//evil.com`, which `startsWith("/")` alone
+ * would wave through — is discarded rather than turned into an open redirect
+ * wearing burnlog's sign-in page.
+ *
+ * Absolute same-origin URLs have to be accepted, not just relative paths:
+ * Auth.js rewrites `?callbackUrl=/settings` to the fully-qualified
+ * `https://burnlog.net/settings` before it forwards anyone here, so a
+ * path-only rule would silently drop every destination it was meant to keep
+ * and land people on the home page after signing in.
  */
-function safeCallback(value: string | undefined): string {
+function safeCallback(value: string | undefined, host: string | null): string {
   if (!value) return "/";
-  if (!value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
+  if (value.startsWith("//")) return "/";
+  if (value.startsWith("/")) return value;
+
+  try {
+    const url = new URL(value);
+    if (!host || url.host !== host) return "/";
+    return `${url.pathname}${url.search}${url.hash}` || "/";
+  } catch {
+    return "/";
+  }
 }
 
 export default async function SignInPage({
@@ -44,7 +61,10 @@ export default async function SignInPage({
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const { callbackUrl } = await searchParams;
-  const redirectTo = safeCallback(callbackUrl);
+  // The request's own host is the origin to compare against — it keeps preview
+  // deployments and localhost working without a second env var to keep in sync.
+  const host = (await headers()).get("host");
+  const redirectTo = safeCallback(callbackUrl, host);
 
   const session = await auth();
   if ((session?.user as { id?: string } | undefined)?.id) redirect(redirectTo);
