@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Landing } from "./Landing";
+import { LandingHero, LandingRest } from "./Landing";
 import { BoardScope, type Scope } from "./BoardScope";
 import { ClubFeed } from "./ClubFeed";
 import { GetStarted } from "./GetStarted";
@@ -880,16 +880,17 @@ export function Burnlog({
 
       <div style={styles.container}>
         {/* Landing page for unauthenticated visitors. Marketing lives in
-            Landing.tsx; this file stays the product surface. */}
+            Landing.tsx; this file stays the product surface. It is split around
+            the board below: one screen of pitch, then the thing being pitched,
+            then the rest. See the note on LandingHero. */}
         {!currentUsername && (
-          <Landing
+          <LandingHero
             stats={{
               totalBurned: globalStats.totalBurned,
               weeklyTotal: globalStats.weeklyTotal,
               activeUsers: globalStats.activeUsers,
             }}
             signInAction={signInAction}
-            full={full}
           />
         )}
 
@@ -1770,6 +1771,11 @@ export function Burnlog({
             )}
           </div>
         )}
+
+        {/* The rest of the pitch — setup, what it counts, what it stores,
+            FAQ — deliberately below the board, so the first answer a
+            visitor gets is the board itself rather than a claim about it. */}
+        {!currentUsername && <LandingRest full={full} />}
 
       </div>
 

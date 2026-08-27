@@ -21,6 +21,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  // Both replace stock Auth.js screens, which are unstyled white pages served
+  // in the middle of a dark site. The error page is the one that matters:
+  // every ordinary sign-in failure — declining GitHub's consent screen, an
+  // expired code — rendered as "Configuration" under an HTTP 500.
+  pages: { signIn: "/signin", error: "/auth/error" },
   session: { strategy: "database" },
   callbacks: {
     async session({ session, user }) {

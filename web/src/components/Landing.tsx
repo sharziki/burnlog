@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { BurnMark } from "./Logo";
 import { RANKS } from "@/lib/ranks";
 import { FAQ } from "@/lib/faq";
 import { formatTokens } from "@/lib/format";
@@ -25,27 +24,48 @@ export type LandingStats = {
   activeUsers: number;
 };
 
-export function Landing({
+/**
+ * The logged-out page, split in two around the leaderboard.
+ *
+ * The board *is* the product, and it used to sit below eight marketing
+ * sections — nearly five thousand pixels down, reachable only by an anchor
+ * link that asked people to take the pitch on faith first. So the pitch is now
+ * one screen (`LandingHero`), the board comes next, and the material that
+ * answers "should I install this" (`LandingRest`) sits under the thing it is
+ * describing, where someone who has already seen the board will read it.
+ *
+ * What was cut rather than moved: a "Competition" section whose two cards
+ * restated the rank ladder already in the hero and one line of achievements; a
+ * standalone badge section; and a closing CTA that repeated the hero's two
+ * buttons verbatim. None of them told a visitor anything the remaining page
+ * doesn't.
+ */
+export function LandingHero({
   stats,
   signInAction,
-  full = true,
 }: {
   stats: LandingStats;
   signInAction?: () => Promise<void>;
+}) {
+  return (
+    <div style={{ fontFamily: SANS }}>
+      <Hero stats={stats} signInAction={signInAction} />
+    </div>
+  );
+}
+
+export function LandingRest({
+  full = true,
+}: {
   /** False on a core deployment — see lib/surface.ts. The landing page must
       not advertise a feature whose page is hidden. */
   full?: boolean;
 }) {
   return (
     <div style={{ fontFamily: SANS }}>
-      <Hero stats={stats} signInAction={signInAction} />
-      <Compatibility />
       <HowItWorks full={full} />
-      <Competition full={full} />
-      <Privacy />
-      <Embeds />
+      <WhatItCounts />
       <Faq />
-      <FinalCta signInAction={signInAction} />
     </div>
   );
 }
@@ -60,7 +80,7 @@ function Hero({
   signInAction?: () => Promise<void>;
 }) {
   return (
-    <section style={{ position: "relative", padding: "72px 0 64px", overflow: "hidden" }}>
+    <section style={{ position: "relative", padding: "72px 0 24px", overflow: "hidden" }}>
       <Embers />
       <div style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(300px,0.85fr)", gap: 56, alignItems: "center" }} className="landing-hero">
         <div>
@@ -139,8 +159,8 @@ function RankLadder({ stats }: { stats: LandingStats }) {
         </div>
       ))}
       <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #18181B", fontFamily: MONO, fontSize: 11, color: "#52525B", textAlign: "center" }}>
-        most devs land in{" "}
-        <span style={{ color: "#D97706", fontWeight: 700 }}>Blaze</span> their first week
+        {RANKS.length} ranks · nobody has reached{" "}
+        <span style={{ color: "#FDE68A", fontWeight: 700 }}>{RANKS[RANKS.length - 1].name}</span> yet
       </div>
     </div>
   );
@@ -180,9 +200,16 @@ const PROVIDERS = [
   "Ollama",
 ];
 
-function Compatibility() {
+/**
+ * Compatibility and privacy in one section.
+ *
+ * They were two, and they answer the same question from opposite ends — "will
+ * it see my thing" and "what does it keep once it has" — so a visitor read the
+ * same subject twice, four cards apart. Together they are one honest answer.
+ */
+function WhatItCounts() {
   return (
-    <Section eyebrowText="compatibility" title="If it burns tokens, burnlog counts it.">
+    <Section eyebrowText="what it counts" title="If it burns tokens, burnlog counts it.">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">
         <div style={{ ...card, padding: 24 }}>
           <div style={{ ...eyebrow, marginBottom: 14 }}>agents — read from local logs</div>
@@ -218,8 +245,41 @@ function Compatibility() {
             </a>
           </p>
         </div>
+
+        <div style={{ ...card, padding: 24, borderColor: "#14301F" }}>
+          <div style={{ ...eyebrow, color: "#10B981", marginBottom: 14 }}>what we store</div>
+          {["token counts", "model name", "which agent", "a random dedupe id", "a timestamp"].map((x) => (
+            <Row key={x} mark="+" color="#10B981" text={x} />
+          ))}
+        </div>
+        <div style={{ ...card, padding: 24, borderColor: "#3A1616" }}>
+          <div style={{ ...eyebrow, color: "#EF4444", marginBottom: 14 }}>what we never touch</div>
+          {["prompts or completions", "file names or contents", "project or repo names", "working directories", "session ids"].map((x) => (
+            <Row key={x} mark="\u2212" color="#EF4444" text={x} />
+          ))}
+        </div>
       </div>
+      <p style={{ ...bodyText, marginTop: 16 }}>
+        The CLI is MIT-licensed and{" "}
+        <a href="https://github.com/sharziki/burnlog" target="_blank" rel="noopener noreferrer" style={linkText}>
+          open source
+        </a>{" "}
+        — read exactly what it sends before you run it. Or{" "}
+        <a href="/privacy" style={linkText}>
+          read the privacy model
+        </a>
+        .
+      </p>
     </Section>
+  );
+}
+
+function Row({ mark, color, text }: { mark: string; color: string; text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
+      <span style={{ fontFamily: MONO, fontSize: 13, color, width: 12 }}>{mark}</span>
+      <span style={{ fontFamily: MONO, fontSize: 12.5, color: "#A1A1AA" }}>{text}</span>
+    </div>
   );
 }
 
@@ -276,63 +336,6 @@ function HowItWorks({ full = true }: { full?: boolean }) {
   );
 }
 
-/* --------------------------------------------------------- competition --- */
-
-function Competition({ full = true }: { full?: boolean }) {
-  const features = full
-    ? [
-        {
-          title: "Challenges",
-          body: "Token sprints, efficiency gauntlets, provider locks, streak races, cost caps. One invite link, live standings, automatic settlement, and a rematch button.",
-          href: "/challenges",
-          cta: "Browse challenges",
-        },
-        {
-          title: "Achievements",
-          body: "Thirteen unlockables from First Burn to Billion Club, earned from real usage and displayed as a trophy case on your profile.",
-        },
-        {
-          title: "Clubs",
-          body: "Private leaderboards with shared budgets, alerts, and CSV exports when finance asks.",
-          href: "/teams",
-          cta: "See club pricing",
-        },
-        {
-          title: "Head-to-head",
-          body: "Put any two burners side by side across total, weekly, streak, and efficiency. Winner decided by category count.",
-        },
-      ]
-    : // Core deployment: progression is the whole competition, so the section
-      // sells the ladder and the trophy case rather than four staged features.
-      [
-        {
-          title: "Ranks",
-          body: "Spark, Ember, Blaze, Inferno, Supernova. Every token you push moves you along the ladder, and your rank travels with you on your profile and your badge.",
-        },
-        {
-          title: "Achievements",
-          body: "Thirteen unlockables from First Burn to Billion Club, earned from real usage and displayed as a trophy case on your profile.",
-        },
-      ];
-  return (
-    <Section eyebrowText="the fun part" title="Tracking is the excuse. Competing is the point.">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">
-        {features.map((f) => (
-          <div key={f.title} style={{ ...card, padding: 24 }} className="hover-lift">
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#FAFAFA" }}>{f.title}</div>
-            <p style={bodyText}>{f.body}</p>
-            {f.href && (
-              <a href={f.href} style={{ ...linkText, display: "inline-block", marginTop: 12 }}>
-                {f.cta} →
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
 /* ----------------------------------------------------------------- faq --- */
 
 function Faq() {
@@ -362,119 +365,6 @@ function Faq() {
         ))}
       </div>
     </Section>
-  );
-}
-
-/* ------------------------------------------------------------- privacy --- */
-
-function Privacy() {
-  return (
-    <Section eyebrowText="privacy" title="We store token counts. That's the whole list.">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }} className="landing-two">
-        <div style={{ ...card, padding: 24, borderColor: "#14301F" }}>
-          <div style={{ ...eyebrow, color: "#10B981", marginBottom: 14 }}>what we store</div>
-          {["token counts", "model name", "which agent", "a random dedupe id", "a timestamp"].map((x) => (
-            <Row key={x} mark="+" color="#10B981" text={x} />
-          ))}
-        </div>
-        <div style={{ ...card, padding: 24, borderColor: "#3A1616" }}>
-          <div style={{ ...eyebrow, color: "#EF4444", marginBottom: 14 }}>what we never touch</div>
-          {["prompts or completions", "file names or contents", "project or repo names", "working directories", "session ids"].map((x) => (
-            <Row key={x} mark="−" color="#EF4444" text={x} />
-          ))}
-        </div>
-      </div>
-      <p style={{ ...bodyText, marginTop: 16 }}>
-        The CLI is MIT-licensed and{" "}
-        <a href="https://github.com/sharziki/burnlog" target="_blank" rel="noopener noreferrer" style={linkText}>
-          open source
-        </a>{" "}
-        — read exactly what it sends before you run it. Or{" "}
-        <a href="/privacy" style={linkText}>
-          read the privacy model
-        </a>
-        .
-      </p>
-    </Section>
-  );
-}
-
-function Row({ mark, color, text }: { mark: string; color: string; text: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
-      <span style={{ fontFamily: MONO, fontSize: 13, color, width: 12 }}>{mark}</span>
-      <span style={{ fontFamily: MONO, fontSize: 12.5, color: "#A1A1AA" }}>{text}</span>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------- embeds --- */
-
-function Embeds() {
-  return (
-    <Section eyebrowText="show it off" title="A badge that updates itself.">
-      <div style={{ ...card, padding: 28, display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 300px", minWidth: 0 }}>
-          <p style={{ ...bodyText, marginTop: 0 }}>
-            Drop your rank into a GitHub README, a portfolio, or anywhere else people
-            look at your work. Profile and challenge links unfurl into generated cards
-            on X, Slack, Discord, and iMessage.
-          </p>
-          <div style={{ ...codeBlock, marginTop: 14 }}>![burnlog](burnlog.net/badge/you)</div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
-          <FakeBadge rank="Supernova" color="#A855F7" icon="✦" tokens="1.2B" />
-          <FakeBadge rank="Inferno" color="#DC2626" icon="◉" tokens="8.4M" />
-          <FakeBadge rank="Blaze" color="#D97706" icon="●" tokens="1.1M" />
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-function FakeBadge({ rank, color, icon, tokens }: { rank: string; color: string; icon: string; tokens: string }) {
-  return (
-    <span style={{ display: "flex", fontFamily: MONO, fontSize: 11, borderRadius: 4, overflow: "hidden" }}>
-      <span style={{ background: "#1A1A2E", color: "#fff", padding: "4px 9px" }}>burnlog</span>
-      <span style={{ background: color, color: "#09090B", padding: "4px 9px", fontWeight: 700 }}>
-        {icon} {rank} · {tokens}
-      </span>
-    </span>
-  );
-}
-
-/* ----------------------------------------------------------- final cta --- */
-
-function FinalCta({ signInAction }: { signInAction?: () => Promise<void> }) {
-  return (
-    <section style={{ padding: "16px 0 72px" }}>
-      <div style={{ ...card, padding: 44, textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <span className="flame-idle" style={{ display: "flex" }}>
-            <BurnMark size={44} ground="#0C0C0E" gradientId="cta-mark" />
-          </span>
-        </div>
-        <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: -1.2, color: "#FAFAFA", margin: 0 }}>
-          Your burn is already happening.
-        </h2>
-        <p style={{ fontSize: 15, color: "#71717A", margin: "12px auto 0", maxWidth: 440, lineHeight: 1.6 }}>
-          One command and you&apos;re on the board.
-        </p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 26, flexWrap: "wrap" }}>
-          <div style={{ display: "flex" }}>
-            <InstallLine />
-          </div>
-          {signInAction && (
-            <form action={signInAction}>
-              <button type="submit" className="btn-primary" style={primaryBtn}>
-                <GitHubGlyph />
-                Sign in with GitHub
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    </section>
   );
 }
 

@@ -112,7 +112,7 @@ Service usage in the CSV is split by team API key label for new events.
 ## Environment
 
 ```
-BURNLOG_API_URL        override the leaderboard url (default https://burnlog.sxna.dev)
+BURNLOG_API_URL        override the leaderboard url (default https://burnlog.net)
 BURNLOG_API_KEY        api key for CI/non-interactive use
 BURNLOG_CLAUDE_DIR     override ~/.claude/projects
 BURNLOG_CODEX_DIR      override ~/.codex/sessions
@@ -135,7 +135,7 @@ Source: [github.com/sharziki/burnlog](https://github.com/sharziki/burnlog).
 
 What we store: token counts, model name, provider, timestamp, a random
 dedup id. What we don't: prompts, responses, filenames, cwd, session ids,
-tool output, anything content-like. Full details: [burnlog.sxna.dev/privacy](https://burnlog.sxna.dev/privacy).
+tool output, anything content-like. Full details: [burnlog.net/privacy](https://burnlog.net/privacy).
 
 ## License
 

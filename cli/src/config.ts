@@ -12,7 +12,18 @@ export type Config = {
 const CONFIG_DIR = join(homedir(), ".burnlog");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 
-const DEFAULT_API_URL = "https://burnlog.sxna.dev";
+const DEFAULT_API_URL = "https://burnlog.net";
+
+/**
+ * Hosts this CLI used to point at that no longer resolve.
+ *
+ * The default moving is not enough on its own: `loadConfig()` overlays the
+ * stored file over the defaults, so anyone who ran an older build has the dead
+ * host written into `~/.burnlog/config.json` and keeps using it forever. The
+ * only way those installs recover without the user editing JSON by hand is to
+ * treat a stored dead host as absent.
+ */
+const RETIRED_API_URLS = new Set(["https://burnlog.sxna.dev"]);
 
 const DEFAULTS: Config = {
   apiUrl: process.env.BURNLOG_API_URL ?? DEFAULT_API_URL,
@@ -47,7 +58,11 @@ export function loadConfig(): Config {
   if (!existsSync(CONFIG_PATH)) return applyEnv({ ...DEFAULTS });
   try {
     const raw = readFileSync(CONFIG_PATH, "utf8");
-    return applyEnv({ ...DEFAULTS, ...(JSON.parse(raw) as Partial<Config>) });
+    const stored = JSON.parse(raw) as Partial<Config>;
+    if (stored.apiUrl && RETIRED_API_URLS.has(stored.apiUrl.replace(/\/+$/, ""))) {
+      delete stored.apiUrl;
+    }
+    return applyEnv({ ...DEFAULTS, ...stored });
   } catch {
     return applyEnv({ ...DEFAULTS });
   }

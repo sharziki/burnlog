@@ -20,7 +20,7 @@ export type BurnlogOptions = {
   apiKey: string;
   /** A stable tag for where these events come from. e.g. "my-agent". 1-32 chars [a-z0-9-]. */
   source?: string;
-  /** Base URL of the burnlog web app. Defaults to https://burnlog.sxna.dev. */
+  /** Base URL of the burnlog web app. Defaults to https://burnlog.net. */
   baseUrl?: string;
   /** Max events to batch before flushing. Default 100. */
   maxBatchSize?: number;
@@ -60,7 +60,7 @@ export function providerFromModel(model: string): Provider {
   return "other";
 }
 
-const DEFAULT_BASE = "https://burnlog.sxna.dev";
+const DEFAULT_BASE = "https://burnlog.net";
 const DEFAULT_BATCH = 100;
 const DEFAULT_FLUSH_MS = 5000;
 

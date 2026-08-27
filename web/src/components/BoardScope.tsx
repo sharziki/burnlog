@@ -29,6 +29,12 @@ const STATUS_LABEL: Record<Person["status"], string> = {
  *
  * Search lives here rather than on a separate page because finding someone
  * and then seeing where they sit on the board is one thought, not two.
+ *
+ * Signed out, the friend controls are hidden rather than shown-and-bounced.
+ * A visitor with no account has no friends list to switch to and nobody to
+ * invite, so every one of those controls used to spend a click sending them
+ * to a sign-in screen and back to the same button. Search still works, because
+ * looking someone up is a real thing to want before you sign up.
  */
 export function BoardScope({
   scope,
@@ -82,10 +88,8 @@ export function BoardScope({
   }, [query]);
 
   async function act(person: Person) {
-    if (!signedIn) {
-      window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(window.location.href)}`;
-      return;
-    }
+    // The button is not rendered signed out; this is the belt to that braces.
+    if (!signedIn) return;
     const action =
       person.status === "none" ? "request" : person.status === "pending_in" ? "accept" : null;
     if (!action) return;
@@ -112,10 +116,7 @@ export function BoardScope({
   }
 
   async function invite() {
-    if (!signedIn || !username) {
-      window.location.href = `/api/auth/signin?callbackUrl=${encodeURIComponent(window.location.href)}`;
-      return;
-    }
+    if (!signedIn || !username) return;
     const url = `${window.location.origin}/?ref=${encodeURIComponent(username)}#leaderboard`;
     const text = "I’m on burnlog. Track your AI coding tokens and race me.";
     try {
@@ -131,6 +132,7 @@ export function BoardScope({
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        {signedIn && (
         <div
           style={{
             display: "flex",
@@ -160,6 +162,7 @@ export function BoardScope({
             </button>
           ))}
         </div>
+        )}
 
         <input
           value={query}
@@ -179,6 +182,7 @@ export function BoardScope({
           }}
         />
 
+        {signedIn && (
         <button
           onClick={invite}
           style={{
@@ -197,6 +201,7 @@ export function BoardScope({
         >
           {shared ? "Invite copied" : "Invite friends"}
         </button>
+        )}
       </div>
 
       {query.trim().length >= 2 && (
@@ -260,6 +265,7 @@ export function BoardScope({
                   </span>
                 </span>
               </a>
+              {signedIn && (
               <button
                 onClick={() => act(p)}
                 disabled={busy === p.id || p.status === "self" || p.status === "friends" || p.status === "pending_out"}
@@ -279,6 +285,7 @@ export function BoardScope({
               >
                 {busy === p.id ? "…" : STATUS_LABEL[p.status]}
               </button>
+              )}
             </div>
           ))}
         </div>

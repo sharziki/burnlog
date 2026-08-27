@@ -67,16 +67,19 @@ That's the whole thing. It finds your agents, shows you your own numbers
 *before* asking for anything, signs you in through the browser, uploads, and
 offers to auto-sync from then on. No config file, no account-first wall.
 
-## Four ways to plug in
+## Two ways to plug in
 
-Pick whichever matches how your tokens are produced — most people need one.
+Pick whichever matches how your tokens are produced — most people need one,
+and both ship in the same package.
 
 | You have…                                               | Use            | Package             |
 | ------------------------------------------------------- | -------------- | ------------------- |
 | Claude Code, Codex, or similar CLI                       | **CLI**        | `@sxnalabs/burnlog` |
 | Any other tool, or one that keeps no usage log           | **wrap**       | `@sxnalabs/burnlog` |
-| Your own agent calling an LLM SDK                        | **SDK**        | `@sxna/burnlog-sdk` |
-| Claude Code / Cursor and want to ask it about your rank  | **MCP server** | `@sxna/burnlog-mcp` |
+
+An in-agent SDK (`sdk/`) and an MCP server for asking your agent about your own
+rank (`mcp/`) are written and building in this repo, but are **not published to
+npm yet** — install them from source if you want them now.
 
 ### CLI — for agents that write logs to disk
 
@@ -126,9 +129,8 @@ burnlog log 42000 --model claude-opus-4-6 --source my-batch-job
 
 ### SDK — for your own agents
 
-```bash
-npm install @sxna/burnlog-sdk
-```
+> **Not on npm yet.** Build it from `sdk/` in this repo (`npm install &&
+> npm run build`) and link it locally. The API below is what it will ship as.
 
 ```ts
 import { Burnlog } from "@sxna/burnlog-sdk";
@@ -145,6 +147,9 @@ burnlog.trackAnthropic(res);   // batches + flushes in the background
 Zero runtime dependencies. `track()` never throws. See [sdk/README](sdk/README.md).
 
 ### MCP — query your rank from inside an agent
+
+> **Not on npm yet.** Build it from `mcp/` in this repo and point `command` at
+> the built entry point; the `npx` form below is what it will ship as.
 
 Drop this into `~/.claude.json` (Claude Code) or `.cursor/mcp.json`:
 
@@ -218,7 +223,7 @@ dashboards, CI, or finance checks:
 
 ```bash
 curl -H "Authorization: Bearer $BURNLOG_API_KEY" \
-  https://burnlog.sxna.dev/api/me/clubs
+  https://burnlog.net/api/me/clubs
 ```
 
 Returns joined teams, member totals, 7-day and month-to-date burn, monthly
@@ -259,7 +264,7 @@ After a paid pilot or invoice, admins can upgrade a team:
 curl -X PATCH -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
   -H "content-type: application/json" \
   -d '{"plan":"team"}' \
-  https://burnlog.sxna.dev/api/clubs/<club-id>/plan
+  https://burnlog.net/api/clubs/<club-id>/plan
 ```
 
 If the club owner has a matching team lead email, paid plan upgrades mark that
@@ -274,7 +279,7 @@ Owners and admins can inspect the last 100 sensitive team changes:
 
 ```bash
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  https://burnlog.sxna.dev/api/clubs/<club-id>/audit
+  https://burnlog.net/api/clubs/<club-id>/audit
 ```
 
 Audit events cover plan changes, budget/privacy/webhook changes, and team API
@@ -313,10 +318,10 @@ Team members can export club usage as CSV from the club page. Add `from` and
 
 ```bash
 curl -b "$AUTH_COOKIE" \
-  "https://burnlog.sxna.dev/api/clubs/<club-id>/report?from=2026-06-01&to=2026-06-30"
+  "https://burnlog.net/api/clubs/<club-id>/report?from=2026-06-01&to=2026-06-30"
 
 curl -H "Authorization: Bearer $BURNLOG_API_KEY" \
-  "https://burnlog.sxna.dev/api/clubs/<club-id>/report?from=2026-06-01&to=2026-06-30"
+  "https://burnlog.net/api/clubs/<club-id>/report?from=2026-06-01&to=2026-06-30"
 ```
 
 CSV includes `weekly_tokens` and `mtd_tokens`; `mtd_tokens` is calendar
@@ -337,36 +342,36 @@ be exported as CSV with an admin token:
 
 ```bash
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  https://burnlog.sxna.dev/api/team-leads > team-leads.csv
+  https://burnlog.net/api/team-leads > team-leads.csv
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  "https://burnlog.sxna.dev/api/team-leads?format=json&status=qualified"
+  "https://burnlog.net/api/team-leads?format=json&status=qualified"
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  "https://burnlog.sxna.dev/api/team-leads?format=json&source=linkedin"
+  "https://burnlog.net/api/team-leads?format=json&source=linkedin"
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  https://burnlog.sxna.dev/api/admin/summary
+  https://burnlog.net/api/admin/summary
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  "https://burnlog.sxna.dev/api/admin/clubs?plan=team"
+  "https://burnlog.net/api/admin/clubs?plan=team"
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  "https://burnlog.sxna.dev/api/admin/clubs?plan=team&format=csv" > team-accounts.csv
+  "https://burnlog.net/api/admin/clubs?plan=team&format=csv" > team-accounts.csv
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  "https://burnlog.sxna.dev/api/admin/clubs?plan=team&format=csv&from=2026-06-01&to=2026-06-30" > june-team-accounts.csv
+  "https://burnlog.net/api/admin/clubs?plan=team&format=csv&from=2026-06-01&to=2026-06-30" > june-team-accounts.csv
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  "https://burnlog.sxna.dev/api/admin/clubs?overLimit=true&format=csv" > over-limit-accounts.csv
+  "https://burnlog.net/api/admin/clubs?overLimit=true&format=csv" > over-limit-accounts.csv
 
 curl -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
-  "https://burnlog.sxna.dev/api/admin/clubs?budgetRisk=true&format=csv" > budget-risk-accounts.csv
+  "https://burnlog.net/api/admin/clubs?budgetRisk=true&format=csv" > budget-risk-accounts.csv
 
 curl -X PATCH -H "Authorization: Bearer $BURNLOG_ADMIN_TOKEN" \
   -H "content-type: application/json" \
   -d '{"email":"buyer@example.com","status":"qualified","adminNotes":"Security review next"}' \
-  https://burnlog.sxna.dev/api/team-leads
+  https://burnlog.net/api/team-leads
 ```
 
 Set `BURNLOG_ADMIN_TOKEN` in production. Leave it blank to disable export.
@@ -415,8 +420,8 @@ down. Docker images and compose files use this endpoint for web health.
 burnlog/
 ├── web/      Next.js 15 + Prisma + NextAuth GitHub + Postgres
 ├── cli/      @sxnalabs/burnlog  — multi-adapter log reader
-├── sdk/      @sxna/burnlog-sdk  — in-agent tracker, zero deps
-├── mcp/      @sxna/burnlog-mcp  — MCP server for readback
+├── sdk/      @sxna/burnlog-sdk  — in-agent tracker, zero deps (unpublished)
+├── mcp/      @sxna/burnlog-mcp  — MCP server for readback (unpublished)
 └── .github/  CI + per-package release workflows
 ```
 

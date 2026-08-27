@@ -54,7 +54,7 @@ export function ChallengesClient({
             {creating ? "Cancel" : "New challenge"}
           </button>
         ) : (
-          <a href="/api/auth/signin?callbackUrl=/challenges" style={primaryBtn}>
+          <a href="/signin?callbackUrl=/challenges" style={primaryBtn}>
             Sign in to start one
           </a>
         )}

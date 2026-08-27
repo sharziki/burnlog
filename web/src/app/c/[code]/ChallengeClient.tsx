@@ -87,7 +87,7 @@ export function ChallengeClient({
 
   async function toggleJoin() {
     if (!signedIn) {
-      window.location.href = `/api/auth/signin?callbackUrl=/c/${challenge.inviteCode}`;
+      window.location.href = `/signin?callbackUrl=/c/${challenge.inviteCode}`;
       return;
     }
     setBusy(true);

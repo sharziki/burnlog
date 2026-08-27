@@ -38,7 +38,7 @@ Or via the CLI: `claude mcp add burnlog -s user -- npx -y @sxna/burnlog-mcp` the
 }
 ```
 
-Grab a key at <https://burnlog.sxna.dev/settings>.
+Grab a key at <https://burnlog.net/settings>.
 
 ## Tools
 
@@ -61,7 +61,7 @@ Usage in-agent:
 ## Environment
 
 ```
-BURNLOG_API_KEY    required. grab at https://burnlog.sxna.dev/settings
+BURNLOG_API_KEY    required. grab at https://burnlog.net/settings
 BURNLOG_API_URL    optional. override for self-hosted instances.
 ```
 

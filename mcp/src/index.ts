@@ -6,7 +6,7 @@ import { readFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 
-const DEFAULT_BASE = "https://burnlog.sxna.dev";
+const DEFAULT_BASE = "https://burnlog.net";
 
 // Zero-config auth: prefer env vars (CI / explicit host config), then fall back
 // to the credentials the `burnlog` CLI writes after `burnlog login` (GitHub

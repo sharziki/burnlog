@@ -31,7 +31,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What are the ranks?",
-    a: "Spark, Ember, Blaze, Inferno, and Supernova, in that order. Your rank is derived from total tokens burned, so it updates itself on every sync and travels with you onto your profile page and your README badge.",
+    a: "Eleven, on a logarithmic ladder: Spark, Ember, Blaze, Inferno, Supernova, Quasar, Singularity, Event Horizon, Heat Death, Vacuum Decay, and Boltzmann. Spark starts at zero and Boltzmann starts at ten trillion tokens, which nobody has reached. Your rank is derived from total tokens burned, so it updates itself on every sync and travels with you onto your profile page and your README badge.",
   },
   {
     q: "Can I put my rank on my GitHub README?",

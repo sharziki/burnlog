@@ -58,7 +58,7 @@ ${pc.bold("teams")}
   ${pc.cyan("report")}             export team CSV usage (--club <slug> --out report.csv)
 
 ${pc.bold("env")}
-  BURNLOG_API_URL        override api url (default https://burnlog.sxna.dev)
+  BURNLOG_API_URL        override api url (default https://burnlog.net)
   BURNLOG_API_KEY        api key for CI/non-interactive use
   BURNLOG_CLAUDE_DIR     override ~/.claude/projects
   BURNLOG_CODEX_DIR      override ~/.codex/sessions

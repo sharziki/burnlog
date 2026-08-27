@@ -27,7 +27,7 @@ burnlog.trackAnthropic(res);   // that's it. batches + flushes in the background
 const burnlog = new Burnlog({
   apiKey: string;                 // required
   source?: string;                 // default "custom"
-  baseUrl?: string;                // default "https://burnlog.sxna.dev"
+  baseUrl?: string;                // default "https://burnlog.net"
   maxBatchSize?: number;           // default 100
   flushIntervalMs?: number;        // default 5000 (0 = disabled)
   debug?: boolean;                 // default false — logs errors to stderr

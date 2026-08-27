@@ -30,7 +30,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://fake:fake@localhost:5432/fake
           AUTH_SECRET: ci-dummy-secret-value-for-build-only-1234567890
-          NEXT_PUBLIC_SITE_URL: https://burnlog.sxna.dev
+          NEXT_PUBLIC_SITE_URL: https://burnlog.net
 
   cli:
     name: cli · typecheck + build
