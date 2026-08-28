@@ -186,15 +186,44 @@ export async function POST(req: Request) {
     const output = Math.max(0, Math.floor(e.outputTokens));
     const cacheCreate = Math.max(0, Math.floor(e.cacheCreationTokens ?? 0));
     const cacheRead = Math.max(0, Math.floor(e.cacheReadTokens ?? 0));
-    const total = input + output + cacheCreate + cacheRead;
-    if (total <= 0) {
+
+    /**
+     * `totalTokens` is the ranked number, and it deliberately leaves cache
+     * reads out.
+     *
+     * Counting all four buckets equally made the leaderboard a measure of
+     * cached context re-reads rather than work: across every real account on
+     * the board, cache reads were 95-99% of the total (one user: 148.3B of
+     * 152.4B; another was ranked Quasar on 606M that was really 1.04M of
+     * input and output). Every agent turn re-reads the whole cached prompt, so
+     * the number grew with session length and told you nothing else. Cache
+     * reads are also the cheap path — a tenth the price of fresh input, a
+     * fiftieth of output, which is why cost.ts has always priced them apart.
+     *
+     * Nothing is discarded: cacheReadTokens is still stored per event, still
+     * shown in the profile breakdown, and still priced in the cost estimate.
+     * It just doesn't decide rank.
+     *
+     * This is computed server-side rather than trusted from the payload, so
+     * every CLI version — including ones already installed — lands on the same
+     * definition without needing to upgrade.
+     */
+    const counted = input + output + cacheCreate;
+
+    // The "is there anything here" and overflow checks stay on the gross sum.
+    // An event that is *only* a cache read still has to be stored: dropping it
+    // would lose the bucket the profile breakdown and the cost estimate read
+    // from, and would let the same requestId be re-ingested forever.
+    const gross = input + output + cacheCreate + cacheRead;
+    if (gross <= 0) {
       skipped++;
       continue;
     }
+    const total = counted;
 
     // Skip the single unstorable event, never the batch.
     if (
-      total > MAX_EVENT_TOKENS ||
+      gross > MAX_EVENT_TOKENS ||
       input > MAX_EVENT_TOKENS ||
       output > MAX_EVENT_TOKENS ||
       cacheCreate > MAX_EVENT_TOKENS ||

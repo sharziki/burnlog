@@ -178,10 +178,10 @@ function RankLadder({ stats }: { stats: LandingStats }) {
  * are counted, but through `wrap`, and saying so is the difference between a
  * compatibility list and a wish list.
  */
-const LOG_TOOLS = ["Claude Code", "Codex", "Hermes"];
+const LOG_TOOLS = ["Claude Code", "Codex", "opencode", "Hermes"];
 
 /** Anything that reads the standard base-URL variables, which is nearly everything. */
-const WRAP_TOOLS = ["Cursor", "Gemini CLI", "aider", "opencode", "Cline", "your own agents"];
+const WRAP_TOOLS = ["Cursor", "Gemini CLI", "aider", "Cline", "your own agents"];
 
 const PROVIDERS = [
   "Anthropic",

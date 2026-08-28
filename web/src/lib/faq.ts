@@ -15,11 +15,11 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Which AI coding agents does it track?",
-    a: "Claude Code and Codex are read straight from their local session logs. Everything else is covered by burnlog wrap, which counts any command that talks to Anthropic, OpenAI, Google, Mistral, Cohere, OpenRouter, Groq, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras, or Ollama over their standard base URLs — including agents that keep no readable log at all.",
+    a: "Claude Code, Codex, and opencode are read straight from their local session logs. Everything else is covered by burnlog wrap, which counts any command that talks to Anthropic, OpenAI, Google, Mistral, Cohere, OpenRouter, Groq, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras, or Ollama over their standard base URLs — including agents that keep no readable log at all.",
   },
   {
     q: "How does burnlog count tokens?",
-    a: "Two ways. It reads the usage numbers your agent already wrote to disk, and it reads the usage field off API responses for anything you run under burnlog wrap. Cached tokens are handled honestly: OpenAI reports cached reads inside prompt_tokens, so they are subtracted before bucketing, and Anthropic splits usage across two streaming events, so both are collected before an event is counted.",
+    a: "Two ways. It reads the usage numbers your agent already wrote to disk, and it reads the usage field off API responses for anything you run under burnlog wrap. The ranked number is input + output + cache writes; cache reads are stored and priced but not ranked, because every agent turn re-reads the whole cached prompt and counting that made the board a measure of session length rather than work. Cached tokens are handled honestly: OpenAI reports cached reads inside prompt_tokens, so they are subtracted before bucketing, and Anthropic splits usage across two streaming events, so both are collected before an event is counted.",
   },
   {
     q: "Is burnlog free?",

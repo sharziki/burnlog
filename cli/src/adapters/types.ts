@@ -33,6 +33,7 @@ export type KnownAdapter =
   | "codex"
   | "hermes"
   | "openclaw"
+  | "opencode"
   | "proxy"
   | "jsonl";
 
@@ -92,7 +93,25 @@ export function providerFromModel(model: string): BurnEvent["provider"] {
   return "other";
 }
 
+/**
+ * The ranked total, which leaves cache reads out.
+ *
+ * Cache reads are 95-99% of a real agent account's raw sum — every turn
+ * re-reads the whole cached prompt — so counting them made the leaderboard a
+ * measure of session length rather than work. They are still parsed, still
+ * uploaded in `cacheReadTokens`, and still priced (at a tenth of fresh input)
+ * in the cost estimate; they just don't decide rank.
+ *
+ * The server recomputes this the same way and does not trust the payload, so
+ * an older CLI reports the same number the site does. This keeps `scan` and
+ * `sync` output agreeing with the board locally.
+ */
 export function totalTokens(e: BurnEvent): number {
+  return e.inputTokens + e.outputTokens + e.cacheCreationTokens;
+}
+
+/** Every token the model actually moved, cache reads included. */
+export function grossTokens(e: BurnEvent): number {
   return e.inputTokens + e.outputTokens + e.cacheCreationTokens + e.cacheReadTokens;
 }
 

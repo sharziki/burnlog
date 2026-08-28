@@ -74,7 +74,7 @@ and both ship in the same package.
 
 | You have…                                               | Use            | Package             |
 | ------------------------------------------------------- | -------------- | ------------------- |
-| Claude Code, Codex, or similar CLI                       | **CLI**        | `@sxnalabs/burnlog` |
+| Claude Code, Codex, opencode, or similar CLI              | **CLI**        | `@sxnalabs/burnlog` |
 | Any other tool, or one that keeps no usage log           | **wrap**       | `@sxnalabs/burnlog` |
 
 An in-agent SDK (`sdk/`) and an MCP server for asking your agent about your own
@@ -89,7 +89,8 @@ burnlog                      # scan, sign in, sync, install the hook
 burnlog install              # auto-sync on every Claude Code session end
 ```
 
-Reads `~/.claude/projects/*/*.jsonl`, `~/.codex/sessions/**/*.jsonl`, etc.
+Reads `~/.claude/projects/*/*.jsonl`, `~/.codex/sessions/**/*.jsonl`,
+`~/.local/share/opencode/storage/message/**/*.json`, etc.
 Nothing besides token counts leaves your machine. Run `burnlog sync` any
 time, or `burnlog daemon` for a background watcher. See [cli/README](cli/README.md).
 
