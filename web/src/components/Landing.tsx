@@ -255,7 +255,7 @@ function WhatItCounts() {
         <div style={{ ...card, padding: 24, borderColor: "#3A1616" }}>
           <div style={{ ...eyebrow, color: "#EF4444", marginBottom: 14 }}>what we never touch</div>
           {["prompts or completions", "file names or contents", "project or repo names", "working directories", "session ids"].map((x) => (
-            <Row key={x} mark="\u2212" color="#EF4444" text={x} />
+            <Row key={x} mark={"\u2212"} color="#EF4444" text={x} />
           ))}
         </div>
       </div>
