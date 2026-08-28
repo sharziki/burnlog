@@ -21,11 +21,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  // Both replace stock Auth.js screens, which are unstyled white pages served
-  // in the middle of a dark site. The error page is the one that matters:
-  // every ordinary sign-in failure — declining GitHub's consent screen, an
-  // expired code — rendered as "Configuration" under an HTTP 500.
-  pages: { signIn: "/signin", error: "/auth/error" },
+  // GitHub is the only way in, so there is nothing to pick and no reason for a
+  // sign-in screen: every button in the app calls signIn("github") and lands on
+  // GitHub itself. `signIn` points at the home page purely to replace Auth.js's
+  // stock provider-picker — the one place someone could otherwise arrive at an
+  // unstyled white page with a single button on it.
+  //
+  // The error page is the one that has to exist: an ordinary failure — someone
+  // declining GitHub's consent screen, an expired code — rendered as
+  // "Configuration" under an HTTP 500 before this.
+  pages: { signIn: "/", error: "/auth/error" },
   session: { strategy: "database" },
   callbacks: {
     async session({ session, user }) {

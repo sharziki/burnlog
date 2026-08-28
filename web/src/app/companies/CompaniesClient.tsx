@@ -56,7 +56,7 @@ export function CompaniesClient({
             {creating ? "Cancel" : "New company"}
           </button>
         ) : (
-          <a href="/signin?callbackUrl=/companies" style={primaryBtn}>
+          <a href="/" style={primaryBtn}>
             Sign in to start one
           </a>
         )}
