@@ -44,117 +44,133 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+/**
+ * One user's stats, assembled from grouped aggregates.
+ *
+ * This used to open with `prisma.burnEvent.findMany({ where: { userId } })` —
+ * every event the user had ever produced, every column, no limit — and then
+ * reduce the array eleven times in JavaScript. The board was fixed for exactly
+ * this reason (see getLeaderboard below); the profile page was not, so it kept
+ * pulling the heaviest user's entire history across the public internet from
+ * Postgres on runtime-01 on every single load. Measured at 8-10s for a
+ * 13,000-event account, against 0.6s for the whole leaderboard.
+ *
+ * Everything below is derivable from aggregates, so none of those rows ever
+ * needed to travel. The daily rollup covers both the 84-day heatmap and the
+ * 7-day sparkline, since the last seven days are a subset of the last
+ * twelve weeks, and it doubles as the day-set the streak walks.
+ */
 export async function getUserStats(userId: string): Promise<UserStats | null> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return null;
 
-  // Token columns are BIGINT, so Prisma hands back JS BigInt. Narrow once
-  // here and every arithmetic and JSON path below stays plain numbers.
-  const events = (
-    await prisma.burnEvent.findMany({
-      where: { userId },
-      orderBy: { timestamp: "desc" },
-    })
-  ).map((e) => ({
-    ...e,
-    inputTokens: Number(e.inputTokens),
-    outputTokens: Number(e.outputTokens),
-    cacheCreationTokens: Number(e.cacheCreationTokens),
-    cacheReadTokens: Number(e.cacheReadTokens),
-    totalTokens: Number(e.totalTokens),
-  }));
-
-  const total = events.reduce((s, e) => s + e.totalTokens, 0);
   const now = Date.now();
+  const weekStart = new Date(now - WEEK);
+  const heatmapStart = new Date(now - 84 * DAY);
+  const where = { userId };
 
-  const weekStart = now - WEEK;
-  const weekly = events
-    .filter((e) => e.timestamp.getTime() >= weekStart)
-    .reduce((s, e) => s + e.totalTokens, 0);
+  const [agg, weeklyAgg, providerRows, sourceRows, modelRows, daily] = await Promise.all([
+    prisma.burnEvent.aggregate({
+      where,
+      _sum: {
+        totalTokens: true,
+        inputTokens: true,
+        outputTokens: true,
+        cacheReadTokens: true,
+        cacheCreationTokens: true,
+      },
+      _count: { _all: true },
+      _max: { timestamp: true },
+    }),
+    prisma.burnEvent.aggregate({
+      where: { ...where, timestamp: { gte: weekStart } },
+      _sum: { totalTokens: true },
+    }),
+    prisma.burnEvent.groupBy({ by: ["provider"], where, _sum: { totalTokens: true } }),
+    prisma.burnEvent.groupBy({ by: ["source"], where, _sum: { totalTokens: true } }),
+    prisma.burnEvent.groupBy({ by: ["model"], where, _sum: { totalTokens: true } }),
+    prisma.$queryRaw<{ day: Date; total: bigint }[]>`
+      SELECT date_trunc('day', "timestamp") AS day,
+             SUM("totalTokens")::bigint     AS total
+      FROM "BurnEvent"
+      WHERE "userId" = ${userId}
+        AND "timestamp" >= ${heatmapStart}
+      GROUP BY 1
+    `,
+  ]);
 
-  const providerTotals = { anthropic: 0, openai: 0, google: 0, other: 0 };
-  for (const e of events) {
-    const p = e.provider as keyof typeof providerTotals;
-    if (p in providerTotals) providerTotals[p] += e.totalTokens;
-    else providerTotals.other += e.totalTokens;
+  const num = (v: bigint | number | null | undefined) => Number(v ?? 0);
+
+  const total = num(agg._sum.totalTokens);
+  const weekly = num(weeklyAgg._sum.totalTokens);
+  const commits = agg._count._all;
+  const lastActive = agg._max.timestamp ?? null;
+
+  const buckets = {
+    inputTokens: num(agg._sum.inputTokens),
+    outputTokens: num(agg._sum.outputTokens),
+    cacheReadTokens: num(agg._sum.cacheReadTokens),
+    cacheCreationTokens: num(agg._sum.cacheCreationTokens),
+  };
+
+  const providerTotals: Record<string, number> = {};
+  for (const r of providerRows) {
+    providerTotals[r.provider] = (providerTotals[r.provider] ?? 0) + num(r._sum.totalTokens);
   }
-  const providerSum =
-    providerTotals.anthropic +
-    providerTotals.openai +
-    providerTotals.google +
-    providerTotals.other;
+  const providerSum = Object.values(providerTotals).reduce((a, b) => a + b, 0);
+  const share = (k: string) => (providerSum ? (providerTotals[k] ?? 0) / providerSum : 0);
   const providers = providerSum
     ? {
-        anthropic: providerTotals.anthropic / providerSum,
-        openai: providerTotals.openai / providerSum,
-        google: providerTotals.google / providerSum,
-        other: providerTotals.other / providerSum,
+        anthropic: share("anthropic"),
+        openai: share("openai"),
+        google: share("google"),
+        // "other" is every provider that isn't one of the three named above,
+        // so it is the remainder rather than a bucket of its own.
+        other: Math.max(0, 1 - share("anthropic") - share("openai") - share("google")),
       }
     : { anthropic: 1, openai: 0, google: 0, other: 0 };
 
-  // Weekly history (7 buckets ending today).
-  const weeklyHistory: number[] = Array(7).fill(0);
-  for (const e of events) {
-    const diff = now - e.timestamp.getTime();
-    if (diff >= WEEK) continue;
-    const bucket = 6 - Math.floor(diff / DAY);
-    if (bucket >= 0 && bucket < 7) weeklyHistory[bucket] += e.totalTokens;
-  }
+  const sources = sourceRows
+    .map((r) => ({ source: r.source, tokens: num(r._sum.totalTokens) }))
+    .sort((a, b) => b.tokens - a.tokens);
 
-  // 12-week heatmap: 84 daily buckets chronological oldest→newest.
+  const topModels = modelRows
+    .map((r) => ({ model: r.model, tokens: num(r._sum.totalTokens) }))
+    .sort((a, b) => b.tokens - a.tokens)
+    .slice(0, 5);
+
+  // Daily rollup → heatmap, sparkline, and the day set the streak walks.
+  const heatmapStartMs = heatmapStart.getTime();
   const heatmap: number[] = Array(84).fill(0);
-  const heatmapStart = now - 84 * DAY;
-  for (const e of events) {
-    const t = e.timestamp.getTime();
-    if (t < heatmapStart) continue;
-    const idx = Math.floor((t - heatmapStart) / DAY);
-    if (idx >= 0 && idx < 84) heatmap[idx] += e.totalTokens;
+  const weeklyHistory: number[] = Array(7).fill(0);
+  const days = new Set<string>();
+  for (const row of daily) {
+    const t = row.day.getTime();
+    const value = num(row.total);
+
+    const idx = Math.floor((t - heatmapStartMs) / DAY);
+    if (idx >= 0 && idx < 84) heatmap[idx] += value;
+
+    const diff = now - t;
+    if (diff < WEEK) {
+      const bucket = 6 - Math.floor(diff / DAY);
+      if (bucket >= 0 && bucket < 7) weeklyHistory[bucket] += value;
+    }
+
+    days.add(row.day.toISOString().slice(0, 10));
   }
 
-  // Streak.
-  const days = new Set(
-    events.map((e) => {
-      const d = new Date(e.timestamp);
-      return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
-    }),
-  );
+  // Consecutive days ending today (or yesterday). Bounded by the rollup window,
+  // same as the board — a streak longer than twelve weeks reads as 84 there too,
+  // and the stored longestStreak below is what carries the real record.
   let streak = 0;
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(now - i * DAY);
-    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+  for (let i = 0; i < 84; i++) {
+    const key = new Date(now - i * DAY).toISOString().slice(0, 10);
     if (days.has(key)) streak++;
     else if (i > 0) break;
   }
 
-  // Sources breakdown.
-  const sourceMap = new Map<string, number>();
-  for (const e of events) sourceMap.set(e.source, (sourceMap.get(e.source) ?? 0) + e.totalTokens);
-  const sources = [...sourceMap.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([source, tokens]) => ({ source, tokens }));
-
-  // Top models.
-  const modelMap = new Map<string, number>();
-  for (const e of events) modelMap.set(e.model, (modelMap.get(e.model) ?? 0) + e.totalTokens);
-  const topModels = [...modelMap.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([model, tokens]) => ({ model, tokens }));
-
-  const commits = events.length;
   const tokensPerCommit = commits ? Math.round(total / commits) : 0;
-
-  const buckets = events.reduce(
-    (acc, e) => ({
-      inputTokens: acc.inputTokens + e.inputTokens,
-      outputTokens: acc.outputTokens + e.outputTokens,
-      cacheReadTokens: acc.cacheReadTokens + e.cacheReadTokens,
-      cacheCreationTokens: acc.cacheCreationTokens + e.cacheCreationTokens,
-    }),
-    { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
-  );
-
-  // Use DB-stored longestStreak if available, otherwise fall back to computed streak
   const longestStreak = Math.max(user.longestStreak ?? 0, streak);
 
   return {
@@ -179,7 +195,7 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     tokensPerCommit,
     commits,
     buckets,
-    lastActive: events.length > 0 ? events[0].timestamp.toISOString() : null,
+    lastActive: lastActive ? lastActive.toISOString() : null,
   };
 }
 
