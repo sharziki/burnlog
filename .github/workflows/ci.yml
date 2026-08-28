@@ -82,3 +82,17 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
+
+  consistency:
+    name: cross-package · cli and web agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Catches the failures that live between the packages, where each side
+      # typechecks and builds fine on its own: the CLI defaulting to a host that
+      # no longer resolves, and the site advertising a tool no adapter exists
+      # for. Both shipped, both were invisible to every other job here.
+      - run: node scripts/consistency.mjs

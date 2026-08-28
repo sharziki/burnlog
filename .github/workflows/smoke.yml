@@ -1,0 +1,40 @@
+name: production smoke
+
+# The whole point of this file is that nobody has to remember.
+#
+# A smoke script already existed and was good; it just never ran unless someone
+# typed it, so production sat broken for days at a time while CI stayed green —
+# GitHub sign-in failed for every visitor, the profile page took ten seconds,
+# and the CLI pointed at a host that had stopped resolving. None of those are
+# things a build can catch, and all of them are things a request can.
+on:
+  schedule:
+    # Every 30 minutes. Cheap, and the failures this catches are the kind that
+    # get worse the longer nobody knows.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+jobs:
+  smoke:
+    name: burnlog.net answers, and answers fast
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Deploys are triggered separately, so on a push give production a moment
+      # to finish rolling out before asking it questions.
+      - name: Wait for the deploy to land
+        if: github.event_name == 'push'
+        run: sleep 180
+
+      - name: Smoke test production
+        working-directory: web
+        run: node scripts/smoke.mjs https://burnlog.net
+
+      - name: Cross-package drift
+        run: node scripts/consistency.mjs

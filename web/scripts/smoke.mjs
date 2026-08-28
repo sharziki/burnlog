@@ -94,6 +94,74 @@ if (publicUsername) {
   );
 }
 
+// --- the sign-in door actually opens ---
+// A 200 on /api/auth/csrf only proves Auth.js is mounted. Sign-in was broken
+// for every visitor for days while that check stayed green, so this drives the
+// real handshake: mint a CSRF token, POST it, and confirm the redirect lands on
+// GitHub with this deployment's own callback URL. It cannot see a failure on
+// the way *back* from GitHub — only runtime logs can, which is why the
+// [auth][error] watcher exists alongside this.
+{
+  const csrfRes = await fetch(`${BASE}/api/auth/csrf`, { headers: { "user-agent": "burnlog-smoke/1" } });
+  const cookie = (csrfRes.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+  const { csrfToken } = await csrfRes.json();
+  check("auth: csrf token issued", Boolean(csrfToken));
+
+  const signin = await fetch(`${BASE}/api/auth/signin/github`, {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      cookie,
+      "user-agent": "burnlog-smoke/1",
+    },
+    body: new URLSearchParams({ csrfToken }),
+  });
+  const location = signin.headers.get("location") ?? "";
+  check("auth: sign-in redirects to GitHub", location.startsWith("https://github.com/login/oauth/authorize"), location.slice(0, 80));
+  check(
+    "auth: callback URL points back at this deployment",
+    location.includes(encodeURIComponent(`${BASE}/api/auth/callback/github`)),
+    "redirect_uri does not match the site — GitHub will reject the sign-in",
+  );
+  check("auth: PKCE requested", location.includes("code_challenge="));
+}
+
+// --- nothing is slow enough to be broken ---
+// A one-connection Prisma pool plus a query that loaded every row put the
+// profile page at 8-10s and made server components time out mid-navigation,
+// which surfaced to visitors as "a client-side exception has occurred". Best of
+// three, so a cold start alone can't fail the run.
+{
+  const BUDGET_MS = 4000;
+  const board = JSON.parse((await get("/api/leaderboard")).body);
+  const someone = board.users?.[0]?.username;
+  const paths = ["/", "/api/leaderboard", ...(someone ? [`/u/${encodeURIComponent(someone)}`] : [])];
+  for (const path of paths) {
+    let best = Infinity;
+    for (let i = 0; i < 3; i++) {
+      const t0 = Date.now();
+      await get(path);
+      best = Math.min(best, Date.now() - t0);
+    }
+    check(`speed ${path} < ${BUDGET_MS}ms`, best < BUDGET_MS, `best of 3 was ${best}ms`);
+  }
+}
+
+// --- escapes that only fail once rendered ---
+// A JSX attribute string does not process escapes, so mark="\u2212" shipped to
+// production as six literal characters. Nothing in typecheck or build objects.
+for (const path of ["/", "/privacy", "/security"]) {
+  const { body } = await get(path);
+  // Script blocks are excluded on purpose: Next serialises its RSC payload with
+  // \u0026 for every ampersand, so scanning the whole document only ever finds
+  // the framework's own escaping. The bug this guards against showed up in
+  // rendered markup, which is what's left after the scripts come out.
+  const markup = body.replace(/<script[\s\S]*?<\/script>/g, "");
+  const literal = markup.match(/\\u[0-9a-fA-F]{4}/g);
+  check(`render ${path}: no literal \\uXXXX escapes`, !literal, literal ? `found ${[...new Set(literal)].join(", ")}` : "");
+}
+
 const { body: agent } = await get("/agent-setup.md");
 for (const token of ["burnlog login", "burnlog sync", "burnlog wrap", "requestId"]) {
   check(`agent-setup: ${token}`, agent.includes(token));
