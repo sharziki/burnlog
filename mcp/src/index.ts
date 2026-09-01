@@ -10,7 +10,7 @@ const DEFAULT_BASE = "https://burnlog.net";
 
 // Zero-config auth: prefer env vars (CI / explicit host config), then fall back
 // to the credentials the `burnlog` CLI writes after `burnlog login` (GitHub
-// sign-in). This is why `npx @sxna/burnlog-mcp` "just works" once you've logged
+// sign-in). This is why `npx @sxnalabs/burnlog-mcp` "just works" once you've logged
 // in once — no key to copy-paste.
 function loadCliConfig(): { apiKey?: string; apiUrl?: string } {
   try {

@@ -10,13 +10,13 @@
 └──────────────┘  │                                       │           │
                   │                                       │           │
 ┌──────────────┐  │    POST /api/ingest (bearer key)      │  web API  │
-│ @sxna/       │  ├──────────────────────────────────────▶│  (Next.js)│
+│ @sxnalabs/   │  ├──────────────────────────────────────▶│  (Next.js)│
 │ burnlog-sdk  │  │                                       │           │
 │ (in-agent)   │  │                                       │           │
 └──────────────┘  │                                       │           │
                   │                                       │           │
 ┌──────────────┐  │                                       │           │
-│ @sxna/       │  │    GET /api/me/*  (bearer key)        │           │
+│ @sxnalabs/   │  │    GET /api/me/*  (bearer key)        │           │
 │ burnlog-mcp  │──┘◀──────────────────────────────────────│           │
 │ (readback)   │                                          └─────┬─────┘
 └──────────────┘                                                │
@@ -86,8 +86,8 @@ and both ship in the same package.
 | Any other tool, or one that keeps no usage log           | **wrap**       | `@sxnalabs/burnlog` |
 
 An in-agent SDK (`sdk/`) and an MCP server for asking your agent about your own
-rank (`mcp/`) are written and building in this repo, but are **not published to
-npm yet** — install them from source if you want them now.
+rank (`mcp/`) ship alongside it as `@sxnalabs/burnlog-sdk` and
+`@sxnalabs/burnlog-mcp`. Most people need neither.
 
 ### CLI — for agents that write logs to disk
 
@@ -138,11 +138,12 @@ burnlog log 42000 --model claude-opus-4-6 --source my-batch-job
 
 ### SDK — for your own agents
 
-> **Not on npm yet.** Build it from `sdk/` in this repo (`npm install &&
-> npm run build`) and link it locally. The API below is what it will ship as.
+```bash
+npm install @sxnalabs/burnlog-sdk
+```
 
 ```ts
-import { Burnlog } from "@sxna/burnlog-sdk";
+import { Burnlog } from "@sxnalabs/burnlog-sdk";
 
 const burnlog = new Burnlog({
   apiKey: process.env.BURNLOG_API_KEY!,
@@ -157,9 +158,6 @@ Zero runtime dependencies. `track()` never throws. See [sdk/README](sdk/README.m
 
 ### MCP — query your rank from inside an agent
 
-> **Not on npm yet.** Build it from `mcp/` in this repo and point `command` at
-> the built entry point; the `npx` form below is what it will ship as.
-
 Drop this into `~/.claude.json` (Claude Code) or `.cursor/mcp.json`:
 
 ```json
@@ -167,7 +165,7 @@ Drop this into `~/.claude.json` (Claude Code) or `.cursor/mcp.json`:
   "mcpServers": {
     "burnlog": {
       "command": "npx",
-      "args": ["-y", "@sxna/burnlog-mcp"],
+      "args": ["-y", "@sxnalabs/burnlog-mcp"],
       "env": { "BURNLOG_API_KEY": "blg_your_key_here" }
     }
   }
@@ -429,8 +427,8 @@ down. Docker images and compose files use this endpoint for web health.
 burnlog/
 ├── web/      Next.js 15 + Prisma + NextAuth GitHub + Postgres
 ├── cli/      @sxnalabs/burnlog  — multi-adapter log reader
-├── sdk/      @sxna/burnlog-sdk  — in-agent tracker, zero deps (unpublished)
-├── mcp/      @sxna/burnlog-mcp  — MCP server for readback (unpublished)
+├── sdk/      @sxnalabs/burnlog-sdk  — in-agent tracker, zero deps
+├── mcp/      @sxnalabs/burnlog-mcp  — MCP server for readback
 └── .github/  CI + per-package release workflows
 ```
 

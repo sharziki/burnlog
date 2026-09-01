@@ -1,13 +1,13 @@
-# @sxna/burnlog-sdk
+# @sxnalabs/burnlog-sdk
 
 > Track AI token burn from your own agent, in ~3 lines. Part of [burnlog](https://github.com/sharziki/burnlog).
 
 ```
-npm install @sxna/burnlog-sdk
+npm install @sxnalabs/burnlog-sdk
 ```
 
 ```ts
-import { Burnlog } from "@sxna/burnlog-sdk";
+import { Burnlog } from "@sxnalabs/burnlog-sdk";
 import Anthropic from "@anthropic-ai/sdk";
 
 const burnlog = new Burnlog({

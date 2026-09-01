@@ -35,7 +35,7 @@ Set up burnlog to track my AI token usage. Run these commands:
 4. burnlog sync           # backfill my history
 
 Then add the burnlog MCP to my config (no key needed after login):
-  { "mcpServers": { "burnlog": { "command": "npx", "args": ["-y", "@sxna/burnlog-mcp"] } } }
+  { "mcpServers": { "burnlog": { "command": "npx", "args": ["-y", "@sxnalabs/burnlog-mcp"] } } }
 
 Don't change anything else.
 ```
@@ -77,11 +77,11 @@ Or pass it per-command: `BURNLOG_API_KEY=blg_... burnlog sync`.
 If you're building your own agent, install the SDK instead:
 
 ```
-npm install @sxna/burnlog-sdk
+npm install @sxnalabs/burnlog-sdk
 ```
 
 ```ts
-import { Burnlog } from "@sxna/burnlog-sdk";
+import { Burnlog } from "@sxnalabs/burnlog-sdk";
 
 const burnlog = new Burnlog({
   apiKey: process.env.BURNLOG_API_KEY!,
@@ -110,7 +110,7 @@ After `burnlog login`, the MCP reads your credentials automatically. Add to
   "mcpServers": {
     "burnlog": {
       "command": "npx",
-      "args": ["-y", "@sxna/burnlog-mcp"]
+      "args": ["-y", "@sxnalabs/burnlog-mcp"]
     }
   }
 }

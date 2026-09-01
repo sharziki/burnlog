@@ -1,5 +1,5 @@
 {
-  "name": "@sxna/burnlog-mcp",
+  "name": "@sxnalabs/burnlog-mcp",
   "version": "0.1.0",
   "description": "MCP server for burnlog — query your AI token burn, rank, and leaderboard from inside Claude Code / Cursor / any MCP host.",
   "keywords": [

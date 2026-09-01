@@ -1,4 +1,4 @@
-# @sxna/burnlog-mcp
+# @sxnalabs/burnlog-mcp
 
 > MCP server for [burnlog](https://github.com/sharziki/burnlog). Query your rank, stats, and the leaderboard from inside Claude Code / Cursor / any MCP host.
 
@@ -13,7 +13,7 @@ Add to your MCP host config — no install needed, `npx` handles it.
   "mcpServers": {
     "burnlog": {
       "command": "npx",
-      "args": ["-y", "@sxna/burnlog-mcp"],
+      "args": ["-y", "@sxnalabs/burnlog-mcp"],
       "env": {
         "BURNLOG_API_KEY": "blg_your_key_here"
       }
@@ -22,7 +22,7 @@ Add to your MCP host config — no install needed, `npx` handles it.
 }
 ```
 
-Or via the CLI: `claude mcp add burnlog -s user -- npx -y @sxna/burnlog-mcp` then set the env var.
+Or via the CLI: `claude mcp add burnlog -s user -- npx -y @sxnalabs/burnlog-mcp` then set the env var.
 
 ### Cursor (`.cursor/mcp.json`)
 
@@ -31,7 +31,7 @@ Or via the CLI: `claude mcp add burnlog -s user -- npx -y @sxna/burnlog-mcp` the
   "mcpServers": {
     "burnlog": {
       "command": "npx",
-      "args": ["-y", "@sxna/burnlog-mcp"],
+      "args": ["-y", "@sxnalabs/burnlog-mcp"],
       "env": { "BURNLOG_API_KEY": "blg_your_key_here" }
     }
   }

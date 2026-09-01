@@ -1,5 +1,5 @@
 {
-  "name": "@sxna/burnlog-sdk",
+  "name": "@sxnalabs/burnlog-sdk",
   "version": "0.1.0",
   "description": "Lightweight SDK for tracking AI token burn from custom agents into burnlog.",
   "keywords": [

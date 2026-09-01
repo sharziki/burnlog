@@ -49,7 +49,7 @@ Claude Code (`~/.claude.json`) or Cursor (`.cursor/mcp.json`):
   "mcpServers": {
     "burnlog": {
       "command": "npx",
-      "args": ["-y", "@sxna/burnlog-mcp"]
+      "args": ["-y", "@sxnalabs/burnlog-mcp"]
     }
   }
 }
@@ -63,11 +63,11 @@ MCP tools: `get_my_rank`, `get_my_stats`, `get_my_clubs`, `get_leaderboard`,
 If this project *is* an agent calling an LLM SDK directly, track in-process instead:
 
 ```bash
-npm install @sxna/burnlog-sdk
+npm install @sxnalabs/burnlog-sdk
 ```
 
 ```ts
-import { Burnlog } from "@sxna/burnlog-sdk";
+import { Burnlog } from "@sxnalabs/burnlog-sdk";
 const burnlog = new Burnlog({ apiKey: process.env.BURNLOG_API_KEY!, source: "my-agent" });
 burnlog.trackAnthropic(res); // or .trackOpenAI(res) / .track({...})
 ```
