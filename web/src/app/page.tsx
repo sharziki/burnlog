@@ -1,4 +1,4 @@
-import { getLeaderboard } from "@/lib/stats";
+import { getBoard } from "@/lib/stats";
 import { Burnlog } from "@/components/Burnlog";
 import { auth, signIn, signOut } from "@/auth";
 import { isFullSurface } from "@/lib/surface";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function Home() {
-  const users = await getLeaderboard();
+  const users = await getBoard();
   const session = await auth();
   const currentUsername =
     (session?.user as { username?: string } | undefined)?.username ?? null;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authFromBearer } from "@/lib/bearerAuth";
 import { prisma } from "@/lib/db";
-import { getLeaderboard } from "@/lib/stats";
+import { getBoard } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +47,6 @@ export async function GET(req: Request) {
     userIds = memberIds;
   }
 
-  const users = await getLeaderboard({ userIds });
+  const users = await getBoard({ userIds });
   return NextResponse.json({ ok: true, scope, users });
 }

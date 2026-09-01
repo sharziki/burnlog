@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { getLeaderboard, getUserStats } from "@/lib/stats";
+import { getBoard, getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { getAchievements } from "@/lib/achievements";
@@ -78,7 +78,7 @@ export default async function ProfilePage({ params }: Props) {
     // next: without them each profile is an island a crawler reaches only from
     // the sitemap, and internal links are how a page inherits any authority
     // from the pages around it.
-    getLeaderboard(),
+    getBoard(),
   ]);
   if (!stats) notFound();
 

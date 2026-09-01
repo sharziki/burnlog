@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { unstable_cache } from "next/cache";
 
 export type UserStats = {
   id: string;
@@ -382,4 +383,33 @@ export async function getLeaderboard(scope: LeaderboardScope = {}): Promise<User
   const visible = worldBoard ? stats.filter((u) => u.totalTokens > 0) : stats;
 
   return visible.sort((a, b) => b.totalTokens - a.totalTokens);
+}
+
+/**
+ * The world board, cached for half a minute.
+ *
+ * Every visitor to `/` and to every profile page was triggering the seven
+ * queries above — one findMany plus six grouped aggregates — against a
+ * Postgres that lives across the public internet, serialised through a
+ * five-connection pool. Measured before this existed: a single request took
+ * ~0.5s warm, and thirty concurrent requests took 2.6s at the median. That
+ * curve does not survive a front page.
+ *
+ * The board is the same for everyone, so there is nothing per-user to protect:
+ * caching it is not a compromise, it is the correct shape. Thirty seconds of
+ * staleness on a leaderboard is invisible — the number moves when somebody
+ * syncs, not when somebody looks — and it converts a spike from "one fan-out
+ * per visitor" into "one per thirty seconds".
+ *
+ * Scoped boards (a club) are deliberately not cached: they are rare, they are
+ * per-club, and caching them would need a key per club for no measured win.
+ */
+const cachedWorldBoard = unstable_cache(async () => getLeaderboard(), ["leaderboard-world"], {
+  revalidate: 30,
+  tags: ["leaderboard"],
+});
+
+export async function getBoard(scope: LeaderboardScope = {}): Promise<UserStats[]> {
+  const world = scope.userIds === undefined || scope.userIds === null;
+  return world ? cachedWorldBoard() : getLeaderboard(scope);
 }
