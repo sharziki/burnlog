@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LandingHero, LandingRest } from "./Landing";
-import { BoardScope, type Scope } from "./BoardScope";
+import { PeopleSearch } from "./PeopleSearch";
 import { ClubFeed } from "./ClubFeed";
 import { GetStarted } from "./GetStarted";
-import { FriendRequests } from "./FriendRequests";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { dollarsPerToken } from "@/lib/cost";
@@ -267,11 +266,6 @@ export function Burnlog({
   full?: boolean;
 }) {
   const [tab, setTab] = useState<"leaderboard" | "clubs">("leaderboard");
-  // Board scope: the world, or just people you've actually added.
-  const [scope, setScope] = useState<Scope>("world");
-  const [scopedUsers, setScopedUsers] = useState<UserStats[] | null>(null);
-  const [scopeLoading, setScopeLoading] = useState(false);
-  const [friendVersion, setFriendVersion] = useState(0);
   const [selectedUser, setSelectedUser] = useState<UserStats | null>(
     (currentUsername && users.find((u) => u.username === currentUsername)) || users[0] || null,
   );
@@ -616,8 +610,7 @@ export function Burnlog({
     return () => clearInterval(interval);
   }, []);
   // Use liveUsers for rendering but keep original users as fallback.
-  // A non-world scope is fetched client-side and takes precedence.
-  const activeUsers = scopedUsers ?? liveUsers;
+  const activeUsers = liveUsers;
 
   // Copy-to-clip feedback
   const [copied, setCopied] = useState<string | null>(null);
@@ -664,29 +657,6 @@ export function Burnlog({
     return () => { if (chatPollRef.current) clearInterval(chatPollRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeClub?.id, clubSubTab, clubAnnouncements.length]);
-
-  useEffect(() => {
-    if (scope === "world") {
-      setScopedUsers(null);
-      return;
-    }
-    let cancelled = false;
-    setScopeLoading(true);
-    fetch(`/api/leaderboard?scope=${scope}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d: { ok: boolean; users?: UserStats[] }) => {
-        if (!cancelled) setScopedUsers(d.ok ? (d.users ?? []) : []);
-      })
-      .catch(() => {
-        if (!cancelled) setScopedUsers([]);
-      })
-      .finally(() => {
-        if (!cancelled) setScopeLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [scope, friendVersion]);
 
   const sortedUsers = [...activeUsers].sort((a, b) => {
     if (timeframe === "weekly") return b.weeklyTokens - a.weeklyTokens;
@@ -935,26 +905,15 @@ export function Burnlog({
               ))}
             </div>
             {/* The checklist is the first thing a new account should see and it
-                hides itself once all four steps are done, so it sits above the
-                scope switch rather than below the table header. */}
+                hides itself once every step is done, so it sits above the
+                search row rather than below the table header. */}
             {currentUsername && <GetStarted username={currentUsername} full={full} />}
-            <BoardScope
-              scope={scope}
-              onScope={setScope}
+            <PeopleSearch
               signedIn={Boolean(currentUsername)}
               username={currentUsername}
-              onFriendChange={() => setFriendVersion((v) => v + 1)}
             />
-            {scope === "friends" && currentUsername && (
-              <div style={{ marginBottom: 16 }}>
-                <FriendRequests me={currentUsername} full={full} onChange={() => setFriendVersion((v) => v + 1)} />
-              </div>
-            )}
             <div style={styles.sectionHeader}>
-              <div style={styles.sectionTitle}>
-                {scope === "friends" ? "Friends" : "Leaderboard"}
-                {scopeLoading && <span style={{ color: "#3F3F46", fontSize: 10 }}> · loading</span>}
-              </div>
+              <div style={styles.sectionTitle}>Leaderboard</div>
               <div
                 style={{
                   display: "flex",

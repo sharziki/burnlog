@@ -153,7 +153,7 @@ const server = new McpServer(
       "burnlog — query your AI token burn and rank, join orgs, and run challenges. Tools:\n" +
       "  get_my_rank, get_my_stats, get_my_clubs, get_leaderboard, find_user, list_orgs, join_org,\n" +
       "  get_my_challenges, create_challenge, join_challenge,\n" +
-      "  get_my_history, list_friends, manage_friend, find_people, get_club_feed, post_to_club.\n" +
+      "  get_my_history, find_people, get_club_feed, post_to_club.\n" +
       "Use the read tools when the user asks about token usage, rank, team budgets, streak, or leaderboard comparisons.\n" +
       "Use list_orgs to discover joinable orgs (teams/clubs) and join_org to join one (by slug; private orgs need an inviteCode).\n" +
       "Use create_challenge when the user wants to compete with someone — it returns a shareable invite link.\n" +
@@ -615,65 +615,13 @@ server.registerTool(
   },
 );
 
-// ---------- Friends ----------
-
-type FriendsResponse = {
-  ok: boolean;
-  friends: { username: string | null; name: string | null }[];
-  incoming: { user: { username: string | null } }[];
-  outgoing: { user: { username: string | null } }[];
-};
-
-server.registerTool(
-  "list_friends",
-  {
-    description:
-      "List the current user's burnlog friends plus any pending friend requests in either direction.",
-    inputSchema: {},
-  },
-  async () => {
-    const d = await apiGet<FriendsResponse>("/api/friends");
-    const lines: string[] = [];
-    lines.push(
-      d.friends.length
-        ? `friends (${d.friends.length}): ${d.friends.map((f) => "@" + f.username).join(", ")}`
-        : "no friends yet",
-    );
-    if (d.incoming.length)
-      lines.push(`pending requests to you: ${d.incoming.map((r) => "@" + r.user.username).join(", ")}`);
-    if (d.outgoing.length)
-      lines.push(`requests you sent: ${d.outgoing.map((r) => "@" + r.user.username).join(", ")}`);
-    return textResult(lines.join("\n"));
-  },
-);
-
-server.registerTool(
-  "manage_friend",
-  {
-    description:
-      "Send, accept, decline, or remove a burnlog friend by username. Requesting someone who already requested you accepts automatically.",
-    inputSchema: {
-      username: z.string().min(1).max(64).describe("GitHub username of the other person."),
-      action: z
-        .enum(["request", "accept", "decline", "remove"])
-        .default("request")
-        .describe("What to do with that relationship."),
-    },
-  },
-  async (args) => {
-    const d = await apiPost<{ ok: boolean; status?: string }>("/api/friends", {
-      username: args.username,
-      action: args.action,
-    });
-    return textResult(`@${args.username} → ${d.status ?? "done"}`);
-  },
-);
+// ---------- People ----------
 
 server.registerTool(
   "find_people",
   {
     description:
-      "Search burnlog users by username or display name. Returns their total burn and your relationship to them.",
+      "Search burnlog users by username or display name. Returns each match's total burn.",
     inputSchema: {
       query: z.string().min(2).max(64).describe("Name or username fragment."),
     },
@@ -681,12 +629,12 @@ server.registerTool(
   async (args) => {
     const d = await apiGet<{
       ok: boolean;
-      people: { username: string; name: string; totalTokens: number; status: string }[];
+      people: { username: string; name: string; totalTokens: number }[];
     }>(`/api/people?q=${encodeURIComponent(args.query)}`, false);
     if (!d.people.length) return textResult(`nobody matching "${args.query}"`);
     return textResult(
       d.people
-        .map((p) => `@${p.username.padEnd(18)} ${formatTokens(p.totalTokens).padStart(8)}  ${p.status}`)
+        .map((p) => `@${p.username.padEnd(18)} ${formatTokens(p.totalTokens).padStart(8)}`)
         .join("\n"),
     );
   },

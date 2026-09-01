@@ -200,7 +200,7 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
 }
 
 export type LeaderboardScope = {
-  /** Restrict to these user ids (friends view, club view). Null = everyone. */
+  /** Restrict to these user ids (club view). Null = everyone. */
   userIds?: string[] | null;
 };
 
@@ -376,8 +376,8 @@ export async function getLeaderboard(scope: LeaderboardScope = {}): Promise<User
   // burn" and the header called all eight "active burners" — a board that looks
   // abandoned, and an average dragged toward zero by people who burned nothing.
   //
-  // A scoped board (friends) keeps everyone: there, an empty row is a person you
-  // chose to follow, and their zero is information rather than noise.
+  // A scoped board (a club) keeps everyone: there, an empty row is a member of
+  // a group you joined, and their zero is information rather than noise.
   const worldBoard = scope.userIds === undefined || scope.userIds === null;
   const visible = worldBoard ? stats.filter((u) => u.totalTokens > 0) : stats;
 

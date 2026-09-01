@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { authFromBearer } from "@/lib/bearerAuth";
-import { searchPeople } from "@/lib/friends";
+import { searchPeople } from "@/lib/people";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -25,13 +23,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, people: [] });
   }
 
-  const session = await auth();
-  let meId = (session?.user as { id?: string } | undefined)?.id ?? null;
-  if (!meId && req.headers.get("authorization")?.startsWith("Bearer ")) {
-    const result = await authFromBearer(req);
-    if ("key" in result) meId = result.key.userId;
-  }
-
-  const people = await searchPeople(q, meId);
+  const people = await searchPeople(q);
   return NextResponse.json({ ok: true, people });
 }

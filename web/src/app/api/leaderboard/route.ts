@@ -3,7 +3,6 @@ import { auth } from "@/auth";
 import { authFromBearer } from "@/lib/bearerAuth";
 import { prisma } from "@/lib/db";
 import { getLeaderboard } from "@/lib/stats";
-import { friendIdsOf } from "@/lib/friends";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +10,6 @@ export const dynamic = "force-dynamic";
  * The board, scoped.
  *
  *   ?scope=world           everyone (default)
- *   ?scope=friends         you + your accepted friends
  *   ?scope=club&club=slug  one club's members
  */
 export async function GET(req: Request) {
@@ -28,16 +26,7 @@ export async function GET(req: Request) {
 
   let userIds: string[] | null = null;
 
-  if (scope === "friends") {
-    if (!meId) {
-      return NextResponse.json(
-        { ok: false, error: "unauthorized", message: "sign in to see the friends board" },
-        { status: 401 },
-      );
-    }
-    // Include yourself — a board you're absent from is a strange scoreboard.
-    userIds = [meId, ...(await friendIdsOf(meId))];
-  } else if (scope === "club") {
+  if (scope === "club") {
     if (!clubSlug) {
       return NextResponse.json(
         { ok: false, error: "missing_club", message: "club slug required" },

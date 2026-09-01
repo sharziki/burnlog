@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { friendIdsOf } from "@/lib/friends";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +19,13 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const [burn, entries, friends] = await Promise.all([
+  const [burn, entries] = await Promise.all([
     prisma.burnEvent.aggregate({
       where: { userId },
       _sum: { totalTokens: true },
       _count: { _all: true },
     }),
     prisma.challengeEntry.count({ where: { userId } }),
-    friendIdsOf(userId),
   ]);
 
   const tokens = Number(burn._sum.totalTokens ?? 0);
@@ -38,7 +36,6 @@ export async function GET() {
       signedIn: true,
       synced: tokens > 0,
       inChallenge: entries > 0,
-      hasFriend: friends.length > 0,
     },
     tokens,
     events: burn._count._all,

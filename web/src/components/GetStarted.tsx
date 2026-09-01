@@ -11,7 +11,6 @@ type Steps = {
   signedIn: boolean;
   synced: boolean;
   inChallenge: boolean;
-  hasFriend: boolean;
 };
 
 /**
@@ -56,7 +55,7 @@ export function GetStarted({ username, full = true }: { username: string; full?:
   // Only the steps this deployment actually shows may hold the checklist open:
   // on a core deployment there is no challenge to join, so counting that step
   // would leave the panel up forever with nothing to click.
-  const done = steps ? steps.synced && steps.hasFriend && (!full || steps.inChallenge) : false;
+  const done = steps ? steps.synced && (!full || steps.inChallenge) : false;
   useEffect(() => {
     if (!steps || done) return;
     const id = setInterval(check, 5000);
@@ -94,6 +93,15 @@ export function GetStarted({ username, full = true }: { username: string; full?:
             <span style={{ color: "#D97706" }}>◌</span> waiting for your first tokens — this
             ticks itself
           </p>
+          {/* Not everyone reading this has a terminal open; everyone reading it
+              has an agent. */}
+          <p style={{ ...body, marginTop: 6, fontSize: 11.5 }}>
+            or{" "}
+            <a href="/agent" style={{ color: "#D97706", textDecoration: "none" }}>
+              paste a prompt into your agent
+            </a>{" "}
+            and let it run the setup.
+          </p>
         </>
       ),
     },
@@ -113,17 +121,6 @@ export function GetStarted({ username, full = true }: { username: string; full?:
           },
         ]
       : []),
-    {
-      done: steps.hasFriend,
-      title: "Bring a friend",
-      body: steps.hasFriend ? null : (
-        <>
-          <p style={body}>
-            Use Invite friends below, or search someone already on burnlog.
-          </p>
-        </>
-      ),
-    },
   ];
 
   const complete = items.filter((i) => i.done).length;
