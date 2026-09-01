@@ -4,6 +4,7 @@ import { useState } from "react";
 import { RANKS } from "@/lib/ranks";
 import { FAQ } from "@/lib/faq";
 import { formatTokens } from "@/lib/format";
+import { AgentPaste } from "./AgentPaste";
 
 /**
  * The logged-out landing page.
@@ -63,6 +64,7 @@ export function LandingRest({
 }) {
   return (
     <div style={{ fontFamily: SANS }}>
+      <PasteIntoAgent />
       <HowItWorks full={full} />
       <WhatItCounts />
       <Faq />
@@ -103,6 +105,16 @@ function Hero({
 
           <div style={{ marginTop: 30 }}>
             <InstallLine />
+          </div>
+
+          {/* The terminal is not where most people are sitting. The agent in
+              front of them can run the whole setup, so that route gets a line
+              of its own rather than a footnote further down the page. */}
+          <div style={{ marginTop: 12, fontFamily: MONO, fontSize: 11.5, color: "#52525B" }}>
+            no terminal handy?{" "}
+            <a href="#agent" style={{ color: "#D97706", textDecoration: "none" }}>
+              paste one prompt into your agent →
+            </a>
           </div>
 
           <div style={{ display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap", alignItems: "center" }}>
@@ -284,6 +296,37 @@ function Row({ mark, color, text }: { mark: string; color: string; text: string 
 }
 
 /* -------------------------------------------------------- how it works --- */
+
+/**
+ * The zero-terminal path onto the board.
+ *
+ * It sits above HowItWorks because it *is* how it works for most visitors now:
+ * the three-command explainer below answers "what will it actually do", which
+ * is a second question, asked by fewer people.
+ */
+function PasteIntoAgent() {
+  return (
+    <div id="agent">
+      <Section
+        eyebrowText="no terminal required"
+        title="Paste this into your agent. It handles the rest."
+      >
+        <p style={{ ...bodyText, margin: "-14px 0 20px", maxWidth: 600 }}>
+          Your agent fetches the setup instructions, reads the token counts already
+          sitting on your disk, shows you the number, and asks before anything is
+          published.
+        </p>
+        <AgentPaste />
+        <div style={{ marginTop: 14, fontFamily: MONO, fontSize: 11, color: "#3F3F46" }}>
+          <a href="/agent" style={{ color: "#52525B", textDecoration: "none" }}>
+            burnlog.net/agent
+          </a>{" "}
+          — the shareable version of this block
+        </div>
+      </Section>
+    </div>
+  );
+}
 
 function HowItWorks({ full = true }: { full?: boolean }) {
   const steps = [

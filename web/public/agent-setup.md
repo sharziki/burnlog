@@ -183,6 +183,7 @@ Then `npx @sxnalabs/burnlog sync`.
 ## Reference
 
 - Site: <https://burnlog.net>
+- The prompt that sent you here: <https://burnlog.net/agent>
 - Per-agent detail: <https://burnlog.net/tools>
 - What is stored: <https://burnlog.net/privacy>
 - Source (MIT): <https://github.com/sharziki/burnlog>

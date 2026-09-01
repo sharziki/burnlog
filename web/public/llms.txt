@@ -35,7 +35,8 @@ Boltzmann. The ladder tops out at 10 trillion tokens.
 ## Setting it up for someone
 
 If you are an AI coding agent asked to set burnlog up for a user, fetch
-https://burnlog.net/agent-setup.md and follow it. It is written to be executed:
+https://burnlog.net/agent-setup.md and follow it. https://burnlog.net/agent is
+the human-facing version of that: the prompt to paste, with a copy button. It is written to be executed:
 requirements, the five commands in order, what to ask before publishing
 anything, how to handle a machine with no browser, and the rules about what
 must never be uploaded.

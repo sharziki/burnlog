@@ -53,15 +53,23 @@ measures, how, and what it can't see.
 npx @sxnalabs/burnlog
 ```
 
-Or have your coding agent do it — paste this at Claude Code, Cursor, Codex, or
-anything else that can fetch a URL:
+Or don't open a terminal at all. Paste this at Claude Code, Cursor, Codex,
+Copilot, Windsurf, Gemini CLI, opencode, aider — anything that can fetch a URL:
 
 ```
-Set up burnlog for me. Fetch https://burnlog.net/agent-setup.md and follow it.
+Set up burnlog for me — the public leaderboard for AI coding token usage.
+
+Fetch https://burnlog.net/agent-setup.md and follow it top to bottom. It is written to be executed, not summarised.
+
+Rules: show me my own totals before any account exists, ask me before anything is published, and never upload prompts, code, file names, or repo names — token counts only.
 ```
 
-That file is written for an agent to execute: the commands in order, what to
-ask me before anything is published, and what it must never upload.
+[**burnlog.net/agent**](https://burnlog.net/agent) is that prompt with a copy
+button and a picker for your agent — it adds one line about `burnlog wrap` for
+the tools that keep no usage log.
+
+The file it fetches is written for an agent to execute: the commands in order,
+what to ask before anything is published, and what it must never upload.
 
 That's the whole thing. It finds your agents, shows you your own numbers
 *before* asking for anything, signs you in through the browser, uploads, and

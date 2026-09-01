@@ -48,6 +48,9 @@ export function Footer() {
         </span>
       </div>
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+        <a href="/agent" style={{ color: "#52525B", textDecoration: "none" }}>
+          setup
+        </a>
         <a href="/tools" style={{ color: "#52525B", textDecoration: "none" }}>
           agents
         </a>

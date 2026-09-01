@@ -4,6 +4,19 @@ Copy-paste one of the prompts below into your AI coding agent. It installs burnl
 and wires up auto-sync. **No API key to copy** — `burnlog login` signs you in with
 GitHub in the browser.
 
+> **The short version, for any agent:** paste this and stop reading.
+>
+> ```
+> Set up burnlog for me — the public leaderboard for AI coding token usage.
+>
+> Fetch https://burnlog.net/agent-setup.md and follow it top to bottom. It is written to be executed, not summarised.
+>
+> Rules: show me my own totals before any account exists, ask me before anything is published, and never upload prompts, code, file names, or repo names — token counts only.
+> ```
+>
+> <https://burnlog.net/agent> is the same prompt with a copy button and a picker
+> for your agent. Everything below is the manual, per-agent long form.
+
 > Prefer it fully automatic? Drop [`AGENTS.md`](./AGENTS.md) into your repo (or
 > global agent config) and your agent self-enrolls.
 

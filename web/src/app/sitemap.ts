@@ -26,6 +26,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: abs("/"), lastModified: now, changeFrequency: "hourly", priority: 1 },
     { url: abs("/embed"), lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: abs("/tools"), lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    // The prompt page is the primary onboarding route now, so it ranks above
+    // the tool index it links into.
+    { url: abs("/agent"), lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     // The per-agent pages answer "how do I track token usage in <agent>",
     // which is the query shape with the intent behind it.
     ...TOOLS.map((t) => ({

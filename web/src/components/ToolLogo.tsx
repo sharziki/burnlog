@@ -4,6 +4,20 @@ const PATHS: Record<string, string> = {
   cursor: "M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23",
   "gemini-cli": "M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81",
   opencode: "M22 24H2V0h20zM17 4.8H7v14.4h10z",
+  copilot:
+    "M205.3 31.4c14 14.8 20 35.2 22.5 63.6 6.6 0 12.8 1.5 17 7.2l7.8 10.6c2.2 3 3.4 6.6 3.4 10.4v28.7a12 12 0 0 1-4.8 9.5C215.9 187.2 172.3 208 128 208c-49 0-98.2-28.3-123.2-46.6a12 12 0 0 1-4.8-9.5v-28.7c0-3.8 1.2-7.4 3.4-10.5l7.8-10.5c4.2-5.7 10.4-7.2 17-7.2 2.5-28.4 8.4-48.8 22.5-63.6C77.3 3.2 112.6 0 127.6 0h.4c14.7 0 50.4 2.9 77.3 31.4ZM128 78.7c-3 0-6.5.2-10.3.6a27.1 27.1 0 0 1-6 12.1 45 45 0 0 1-32 13c-6.8 0-13.9-1.5-19.7-5.2-5.5 1.9-10.8 4.5-11.2 11-.5 12.2-.6 24.5-.6 36.8 0 6.1 0 12.3-.2 18.5 0 3.6 2.2 6.9 5.5 8.4C79.9 185.9 105 192 128 192s48-6 74.5-18.1a9.4 9.4 0 0 0 5.5-8.4c.3-18.4 0-37-.8-55.3-.4-6.6-5.7-9.1-11.2-11-5.8 3.7-13 5.1-19.7 5.1a45 45 0 0 1-32-12.9 27.1 27.1 0 0 1-6-12.1c-3.4-.4-6.9-.5-10.3-.6Zm-27 44c5.8 0 10.5 4.6 10.5 10.4v19.2a10.4 10.4 0 0 1-20.8 0V133c0-5.8 4.6-10.4 10.4-10.4Zm53.4 0c5.8 0 10.4 4.6 10.4 10.4v19.2a10.4 10.4 0 0 1-20.8 0V133c0-5.8 4.7-10.4 10.4-10.4Zm-73-94.4c-11.2 1.1-20.6 4.8-25.4 10-10.4 11.3-8.2 40.1-2.2 46.2A31.2 31.2 0 0 0 75 91.7c6.8 0 19.6-1.5 30.1-12.2 4.7-4.5 7.5-15.7 7.2-27-.3-9.1-2.9-16.7-6.7-19.9-4.2-3.6-13.6-5.2-24.2-4.3Zm69 4.3c-3.8 3.2-6.4 10.8-6.7 19.9-.3 11.3 2.5 22.5 7.2 27a41.7 41.7 0 0 0 30 12.2c8.9 0 17-2.9 21.3-7.2 6-6.1 8.2-34.9-2.2-46.3-4.8-5-14.2-8.8-25.4-9.9-10.6-1-20 .7-24.2 4.3ZM128 56c-2.6 0-5.6.2-9 .5.4 1.7.5 3.7.7 5.7 0 1.5 0 3-.2 4.5 3.2-.3 6-.3 8.5-.3 2.6 0 5.3 0 8.5.3-.2-1.6-.2-3-.2-4.5.2-2 .3-4 .7-5.7-3.4-.3-6.4-.5-9-.5Z",
+  windsurf:
+    "M897.246 286.869H889.819C850.735 286.808 819.017 318.46 819.017 357.539V515.589C819.017 547.15 792.93 572.716 761.882 572.716C743.436 572.716 725.02 563.433 714.093 547.85L552.673 317.304C539.28 298.16 517.486 286.747 493.895 286.747C457.094 286.747 423.976 318.034 423.976 356.657V515.619C423.976 547.181 398.103 572.746 366.842 572.746C348.335 572.746 329.949 563.463 319.021 547.881L138.395 289.882C134.316 284.038 125.154 286.93 125.154 294.052V431.892C125.154 438.862 127.285 445.619 131.272 451.34L309.037 705.2C319.539 720.204 335.033 731.344 352.9 735.392C397.616 745.557 438.77 711.135 438.77 667.278V508.406C438.77 476.845 464.339 451.279 495.904 451.279H495.995C515.02 451.279 532.857 460.562 543.785 476.145L705.235 706.661C718.659 725.835 739.327 737.218 763.983 737.218C801.606 737.218 833.841 705.9 833.841 667.308V508.376C833.841 476.815 859.41 451.249 890.975 451.249H897.276C901.233 451.249 904.43 448.053 904.43 444.097V294.021C904.43 290.065 901.233 286.869 897.276 286.869H897.246Z",
+};
+
+/**
+ * Marks that aren't drawn on a 24-unit grid. Rather than re-tracing an official
+ * logo to fit — which is how a brand mark ends up subtly wrong — each one keeps
+ * the viewBox it ships with and the <svg> scales it.
+ */
+const VIEWBOX: Record<string, string> = {
+  copilot: "0 0 256 208",
+  windsurf: "0 0 1024 1024",
 };
 
 const COLORS: Record<string, string> = {
@@ -12,15 +26,56 @@ const COLORS: Record<string, string> = {
   cursor: "#E4E4E7",
   "gemini-cli": "#8E75B2",
   opencode: "#E4E4E7",
+  copilot: "#E4E4E7",
+  windsurf: "#E4E4E7",
 };
 
-export function ToolLogo({ slug, size = 24 }: { slug: string; size?: number }) {
-  if (slug === "aider") {
+/**
+ * `wordmark` is on by default because aider has no icon-only mark — svgl has
+ * none and inventing one would be worse than setting its name in type. Callers
+ * that already print the product name next to the logo pass `wordmark={false}`
+ * to get the generic terminal glyph instead, so the label isn't printed twice.
+ */
+export function ToolLogo({
+  slug,
+  size = 24,
+  wordmark = true,
+}: {
+  slug: string;
+  size?: number;
+  wordmark?: boolean;
+}) {
+  if (slug === "aider" && wordmark) {
     return <span aria-hidden style={{ color: "#FAFAFA", fontFamily: 'var(--font-mono), monospace', fontSize: size * 0.52, fontWeight: 700, letterSpacing: -1 }}>aider</span>;
   }
+  // No mark on file — a generic terminal, drawn in stroke rather than fill. The
+  // filled version of this path collapses into a solid square, which reads as a
+  // missing icon rather than a stand-in for one.
+  const path = PATHS[slug];
+  if (!path) {
+    return (
+      <svg
+        aria-hidden
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ color: COLORS[slug] ?? "#E4E4E7" }}
+      >
+        <rect x="2.5" y="4.5" width="19" height="15" rx="2" />
+        <path d="m7 10 2.5 2.5L7 15" />
+        <path d="M13 15h4" />
+      </svg>
+    );
+  }
+
   return (
-    <svg aria-hidden width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color: COLORS[slug] ?? "#E4E4E7" }}>
-      <path d={PATHS[slug] ?? "M4 5h16v14H4zM7 9l3 3-3 3m5 0h5"} fillRule={slug === "opencode" ? "evenodd" : undefined} />
+    <svg aria-hidden width={size} height={size} viewBox={VIEWBOX[slug] ?? "0 0 24 24"} fill="currentColor" style={{ color: COLORS[slug] ?? "#E4E4E7" }}>
+      <path d={path} fillRule={slug === "opencode" ? "evenodd" : undefined} />
     </svg>
   );
 }
