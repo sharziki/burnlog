@@ -1,14 +1,19 @@
 import React from "react";
 import { AbsoluteFill, Sequence, useVideoConfig } from "remotion";
 import { fontCss } from "./brand";
-import { Climb, Cta, Hook, Open, Terminal } from "./scenes";
+import { Climb, Cta, Hook, Terminal } from "./scenes";
 
 /**
- * The launch film. Five beats, cut so each one lands a single idea:
- * what it is, why you care, how you start, what you get, where to go.
+ * The launch film. Four beats, cut so each one lands a single idea:
+ * why you care, how you start, what you get, where to go.
+ *
+ * It used to open on three seconds of the mark. That is the one move every
+ * guide on the format tells you not to make — a logo answers no question the
+ * viewer has yet, and it spends the only seconds you are guaranteed. The film
+ * now opens on the problem and keeps the mark for the end card, where it
+ * signs off work the viewer has already seen.
  */
 export const SCENES = [
-  { C: Open, seconds: 3 },
   { C: Hook, seconds: 4 },
   { C: Terminal, seconds: 6 },
   { C: Climb, seconds: 6 },

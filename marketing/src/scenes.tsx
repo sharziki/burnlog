@@ -10,15 +10,17 @@ import { RANKS } from "./ranks";
  * vertical cut is the same film rather than a second one to keep in step —
  * at 1080 wide the 1560px content column would otherwise simply overflow.
  */
-const useLayout = () => {
+export const useLayout = () => {
   const { width, height } = useVideoConfig();
-  const portrait = height > width;
-  // Scaling the vertical cut by width/1920 shrank everything to half size and
+  // Scaling every cut by width/1920 shrank the vertical one to half size and
   // stranded it in the middle of a much taller frame. Type should fill the
-  // measure it actually has, so portrait scales against a narrower reference
-  // width instead of the landscape one.
-  const k = width / (portrait ? 1150 : 1920);
-  const pad = Math.round(120 * k);
+  // measure it actually has, so each aspect scales against its own reference
+  // width rather than the landscape one.
+  const ref = height > width ? 1150 : height === width ? 1350 : 1920;
+  const k = width / ref;
+  // Never tighter than the safe area a 1080-wide frame needs (~80px a side);
+  // a proportional pad alone puts the square cut inside that margin.
+  const pad = Math.round(Math.max(120 * k, width * 0.075));
   return { k, pad, col: Math.min(Math.round(1560 * k), width - 2 * pad) };
 };
 
