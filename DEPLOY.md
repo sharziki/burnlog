@@ -4,12 +4,7 @@ Production is **burnlog.net** — Next.js on Vercel, Postgres on `sxna-runtime-0
 
 ## TL;DR
 
-```bash
-cd web
-npx vercel@latest deploy --prod
-```
-
-That's it. Migrations run themselves (see below). Everything else in this file
+Push to `master`. That's it. Migrations run themselves (see below). Everything else in this file
 is context for when something goes wrong.
 
 ---
@@ -26,30 +21,25 @@ is context for when something goes wrong.
 burnlog.net and its `burnlog-*` containers are stopped. The `burnlog_burnlog_pgdata`
 volume there is a cold backup of the pre-2026-08-11 data, nothing more.
 
-## Deploys are manual
+## Deploys run on push
 
-The Vercel project is **not connected to GitHub**, so pushing to `master`
-deploys nothing. This is easy to forget and easy to misread as "the deploy is
-broken" — it never ran.
+The Vercel project is connected to GitHub with its Root Directory set to `web`,
+so a push to `master` deploys production. Until 2026-09-23 the Root Directory
+was `.`, so every push failed in five seconds with "Couldn't find any `pages`
+or `app` directory" and prod only moved on CLI deploys.
 
-Deploy from `web/`, not the repo root: the CLI treats the working directory as
-the project root, and the Next.js app lives one level down.
+To deploy by hand (a branch, or git is down), run the CLI from the **repo
+root**, not `web/`: the project now adds `web` itself, so running it from
+`web/` looks for `web/web`.
 
 ```bash
-cd web
 npx vercel@latest deploy --prod      # production
 npx vercel@latest deploy             # preview URL, same database
 ```
 
 Use `npx vercel@latest`. A globally-installed Vercel CLI has previously stalled
-deploys in `UNKNOWN` state.
-
-### If you'd rather push to deploy
-
-Connect the repo in the Vercel dashboard → Project → Settings → Git, set the
-production branch to `master` and the Root Directory to `web`. After that a
-push deploys and this file's first section becomes obsolete. It is a dashboard
-action; the CLI cannot create the link.
+deploys in `UNKNOWN` state. If `@latest` fails with ETARGET, npm is mid-publish;
+pin the previous version.
 
 ## Migrations run on deploy
 

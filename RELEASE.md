@@ -23,12 +23,13 @@ npm run test:load               # only before a launch, or after touching a quer
      does not say so. There are three of them in the deployment history.
 3. **`npm run test:prod`.** The GitHub Action runs this on every push and every
    30 minutes anyway, but run it yourself when you are watching a change land.
-   It checks the public surface answers, the staged surface still 404s, the
+   It checks the public surface answers, the
    APIs the CLI depends on are *not* gated, every sitemap URL resolves, and the
    board is not advertising accounts that never synced.
 
 If the deploy needs to happen by hand — Git integration off, or deploying a
-branch — it is `cd web && npx vercel@latest deploy --prod`. Use `npx`, never a
+branch — it is `npx vercel@latest deploy --prod` from the repo root (the project's Root
+Directory is `web`, so running it inside `web/` looks for `web/web`). Use `npx`, never a
 global `vercel`: a stale global CLI parks deploys in `UNKNOWN` forever. Put the
 token in `VERCEL_TOKEN` rather than passing `--token`, which npm echoes into
 your scrollback.
