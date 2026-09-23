@@ -4,20 +4,9 @@ import { usePathname } from "next/navigation";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
-// [href, label, staged] — `staged` links only appear on a full-surface
-// deployment (see lib/surface.ts).
-const NAV_LINKS: [string, string, boolean?][] = [
+const NAV_LINKS: [string, string][] = [
   ["/", "leaderboard"],
-  ["/challenges", "challenges", true],
-  ["/companies", "companies", true],
-  // /teams is the pricing page. Labelling it "teams" collided with the Clubs
-  // tab on the board (a different thing) and with a Company's clubs (a third).
-  // The nav word matches the destination; the page title matches the nav.
-  // The per-agent pages are the first thing a visitor wants ("does it work with
-  // my thing"), and they were reachable only from the footer.
-  ["/tools", "agents"],
-  ["/embed", "embed"],
-  ["/teams", "pricing", true],
+  ["/agent", "setup"],
 ];
 
 /**
@@ -25,17 +14,16 @@ const NAV_LINKS: [string, string, boolean?][] = [
  *
  * Split into a client component purely because knowing the active route needs
  * `usePathname`; the surrounding header stays a server component so the
- * session lookup isn't pushed to the client. `full` is read on the server and
- * passed down for the same reason.
+ * session lookup isn't pushed to the client.
  */
-export function NavLinks({ full = true }: { full?: boolean }) {
+export function NavLinks() {
   const pathname = usePathname() ?? "/";
 
   return (
     <nav style={{ display: "flex", gap: 4, justifySelf: "center" }} className="nav-links">
-      {NAV_LINKS.filter(([, , staged]) => full || !staged).map(([href, label]) => {
+      {NAV_LINKS.map(([href, label]) => {
         // "/" would prefix-match everything, so it has to match exactly;
-        // everything else marks its whole subtree (/challenges/<code> included).
+        // everything else marks its whole subtree.
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
           <a

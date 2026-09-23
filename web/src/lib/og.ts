@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
 /**
  * Shared building blocks for the Open Graph cards.
  *
@@ -40,3 +43,30 @@ export function markDataUri(size = 56, ground = OG.bg): string {
 export const OG_HEADERS = {
   "Cache-Control": "public, max-age=300, s-maxage=900, stale-while-revalidate=86400",
 };
+
+/**
+ * Real fonts for the cards. Satori's fallback has one weight, so a "big bold
+ * number" came out regular and the card read like a spreadsheet. Satori takes
+ * TTF/OTF but not WOFF2 or variable fonts, so these are static cuts of the
+ * site's own faces (Instrument Sans 400/700, IBM Plex Mono 500/700) in
+ * web/assets/og. The literal `process.cwd()` joins are what file tracing
+ * follows; next.config.mjs includes the folder too, belt and braces.
+ */
+
+type OgFont = { name: string; data: Buffer; weight: 400 | 500 | 700; style: "normal" };
+let fonts: Promise<OgFont[]> | null = null;
+
+export function ogFonts(): Promise<OgFont[]> {
+  fonts ??= Promise.all([
+    readFile(join(process.cwd(), "assets/og/instrument-sans-400.ttf")),
+    readFile(join(process.cwd(), "assets/og/instrument-sans-700.ttf")),
+    readFile(join(process.cwd(), "assets/og/plex-mono-500.ttf")),
+    readFile(join(process.cwd(), "assets/og/plex-mono-700.ttf")),
+  ]).then(([s4, s7, m5, m7]) => [
+    { name: "Sans", data: s4, weight: 400, style: "normal" },
+    { name: "Sans", data: s7, weight: 700, style: "normal" },
+    { name: "Mono", data: m5, weight: 500, style: "normal" },
+    { name: "Mono", data: m7, weight: 700, style: "normal" },
+  ]);
+  return fonts;
+}

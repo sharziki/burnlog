@@ -1,12 +1,15 @@
 import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
-import { estimateCostUsd, formatUsd } from "@/lib/cost";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/lib/achievements";
-import { ImpactPanel } from "@/components/ImpactPanel";
+import { ShareCard } from "@/components/ShareCard";
 import type { UserStats } from "@/lib/stats";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
+
+// The challenge trophies stay in the ledger but not on the shelf: there are no
+// challenges to win on the site any more.
+const SHOWN = ACHIEVEMENTS.filter((a) => a.key !== "duelist" && a.key !== "champion");
 
 const SOURCE_LABELS: Record<string, string> = {
   "claude-code": "Claude Code",
@@ -28,75 +31,6 @@ function relativeTime(iso: string | null): string {
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
   return `${Math.floor(days / 30)}mo ago`;
-}
-
-function formatUSD(n: number): string {
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
-  if (n >= 1) return `$${n.toFixed(2)}`;
-  return `$${n.toFixed(4)}`;
-}
-
-// --- Sparkline ---
-/**
- * `width`/`height` are the coordinate space, not the rendered size: the SVG
- * scales to whatever column it lands in. A fixed 360px width here was wider
- * than the whole phone viewport and dragged 175px of the profile off-screen,
- * where an `overflow: hidden` ancestor amputated it with no way to scroll back.
- */
-function Sparkline({ data, color = "#FAFAFA", height = 40, width = 120 }: { data: number[]; color?: string; height?: number; width?: number }) {
-  const box = { width: "100%", height: "auto", display: "block" } as const;
-  const viewBox = `0 0 ${width} ${height}`;
-  if (!data.length) return <svg viewBox={viewBox} style={box} />;
-  const allZero = data.every((v) => v === 0);
-  if (allZero) {
-    const mid = height / 2;
-    return (
-      <svg viewBox={viewBox} style={box}>
-        <line x1={0} y1={mid} x2={width} y2={mid} stroke="#27272A" strokeWidth={1.5} strokeDasharray="4 4" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const points = data
-    .map((v, i) => {
-      const x = (i / Math.max(data.length - 1, 1)) * width;
-      const y = height - ((v - min) / range) * (height - 4) - 2;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  const lastY = height - ((data[data.length - 1] - min) / range) * (height - 4) - 2;
-  return (
-    <svg viewBox={viewBox} style={{ ...box, overflow: "visible" }}>
-      <polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={width} cy={lastY} r={3} fill={color} />
-    </svg>
-  );
-}
-
-// --- Provider Bar ---
-function ProviderBar({ providers }: { providers: UserStats["providers"] }) {
-  const colors: Record<string, string> = { anthropic: "#D97706", openai: "#10B981", google: "#3B82F6", other: "#52525B" };
-  const labels: Record<string, string> = { anthropic: "Anthropic", openai: "OpenAI", google: "Google", other: "Other" };
-  const entries = Object.entries(providers).filter(([, v]) => v > 0);
-  return (
-    <div>
-      <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 8, background: "#18181B" }}>
-        {entries.map(([k, v]) => (
-          <div key={k} style={{ width: `${v * 100}%`, background: colors[k], transition: "width 0.6s ease" }} />
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {entries.map(([k, v]) => (
-          <span key={k} style={{ fontSize: 11, color: "#52525B", display: "flex", alignItems: "center", gap: 4, fontFamily: MONO }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: colors[k], display: "inline-block" }} />
-            {labels[k]} {Math.round(v * 100)}%
-          </span>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // --- Activity Heatmap ---
@@ -121,8 +55,7 @@ function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
           gridRow: day + 1,
           background,
           border: "1px solid #09090B",
-          borderRadius: 6,
-          aspectRatio: "1 / 1",
+          borderRadius: 4,
           transition: "background 0.2s ease",
         }}
       />
@@ -130,22 +63,11 @@ function ActivityHeatmap({ heatmap }: { heatmap: number[] }) {
   });
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gridTemplateRows: "repeat(7, auto)", gap: 6, width: "100%" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 18px)", gridTemplateRows: "repeat(7, 18px)", gap: 4 }}>
       {cells}
     </div>
   );
 }
-
-export type ProfileChallenge = {
-  id: string;
-  inviteCode: string;
-  name: string;
-  typeLabel: string;
-  icon: string;
-  place: number;
-  won: boolean;
-  ended: boolean;
-};
 
 /** "a", "a and b", "a, b and c" — a list that reads as prose. */
 function joinNames(names: string[]): string {
@@ -169,20 +91,15 @@ export function ProfileClient({
   user,
   joinedAt,
   achievements,
-  challenges,
   viewer,
-  full = true,
   place = null,
   neighbours = [],
 }: {
   user: UserStats;
   joinedAt: string;
   achievements: string[];
-  challenges: ProfileChallenge[];
-  /** Signed-in viewer's username, for the compare link. Null when logged out. */
+  /** Signed-in viewer's username; the owner gets the README badge. Null when logged out. */
   viewer: string | null;
-  /** False on a core deployment: head-to-head and challenges are staged. */
-  full?: boolean;
   /** Position on the global board, 1-indexed. Null if they aren't on it. */
   place?: number | null;
   /** The burners immediately above and below, for context and for crawl paths. */
@@ -192,8 +109,6 @@ export function ProfileClient({
   const rank = getRank(user.totalTokens);
   const nextRank = RANKS.find((r) => r.min > user.totalTokens) ?? null;
   const toNext = nextRank ? nextRank.min - user.totalTokens : 0;
-  // Cache-aware: a flat per-token rate overstated a real account 10x.
-  const spend = estimateCostUsd(user.buckets);
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
   return (
@@ -332,33 +247,7 @@ export function ProfileClient({
           </div>
         </div>
 
-        {/* ─── Stats Grid ─── */}
-        {/* minmax(0, 1fr), not 1fr: a bare 1fr floors at min-content, so the
-            four cards resolved wider than their container and sheared off. */}
-        <div className="profile-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 32 }}>
-          {[
-            { label: "Total Tokens", value: formatTokens(user.totalTokens), sub: `${formatUsd(spend)} est. API cost` },
-            { label: "Weekly Tokens", value: formatTokens(user.weeklyTokens), sub: null },
-            { label: "Streak", value: `${user.streak}d`, sub: user.longestStreak > user.streak ? `best: ${user.longestStreak}d` : user.streak > 0 ? "personal best!" : "no active streak" },
-            { label: "Sessions", value: user.commits.toLocaleString(), sub: user.tokensPerCommit ? `~${formatTokens(user.tokensPerCommit)} tok/session` : null },
-          ].map((s) => (
-            <div
-              key={s.label}
-              style={{
-                background: "#0C0C0E",
-                border: "1px solid #18181B",
-                borderRadius: 10,
-                padding: "18px 20px",
-              }}
-            >
-              <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6, fontFamily: MONO }}>
-                {s.label}
-              </div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: "#FAFAFA", fontFamily: MONO }}>{s.value}</div>
-              {s.sub && <div style={{ fontSize: 11, color: "#3F3F46", marginTop: 4, fontFamily: MONO }}>{s.sub}</div>}
-            </div>
-          ))}
-        </div>
+        <ShareCard username={user.username} tokens={formatTokens(user.totalTokens)} place={place} own={viewer === user.username} />
 
         {/* ─── Summary line ───
             Every number above this is a chart or a tile, which a search engine
@@ -390,7 +279,7 @@ export function ProfileClient({
             12-WEEK ACTIVITY
           </div>
           <ActivityHeatmap heatmap={user.heatmap} />
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 4, marginTop: 10, alignItems: "center" }}>
             <span style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginRight: 4 }}>Less</span>
             {[0, 0.12, 0.28, 0.45, 0.7, 1].map((opacity, i) => (
               <div
@@ -405,22 +294,6 @@ export function ProfileClient({
               />
             ))}
             <span style={{ fontSize: 10, color: "#3F3F46", fontFamily: MONO, marginLeft: 4 }}>More</span>
-          </div>
-        </div>
-
-        {/* ─── Weekly Sparkline + Provider Split ─── */}
-        <div className="profile-pair" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12, marginBottom: 24 }}>
-          <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
-            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
-              7-DAY TREND
-            </div>
-            <Sparkline data={user.weeklyHistory} color="#D97706" height={60} width={360} />
-          </div>
-          <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
-            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
-              PROVIDER SPLIT
-            </div>
-            <ProviderBar providers={user.providers} />
           </div>
         </div>
 
@@ -523,35 +396,6 @@ export function ProfileClient({
           </div>
         )}
 
-        {/* ─── Compare ───
-            /h2h lost every entry point when the board's H2H tab was removed,
-            leaving a working page reachable only by typing the URL. */}
-        {full && viewer && viewer !== user.username && (
-          <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <a
-              href={`/h2h/${viewer}-vs-${user.username}`}
-              style={{
-                padding: "11px 18px",
-                borderRadius: 8,
-                border: "1px solid #D9770655",
-                background: "#D9770618",
-                color: "#D97706",
-                fontFamily: MONO,
-                fontSize: 12,
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
-            >
-              Compare with @{user.username}
-            </a>
-          </div>
-        )}
-
-        {/* ─── Environmental impact ─── */}
-        <div style={{ marginTop: 20 }}>
-          <ImpactPanel tokens={user.totalTokens} title={`ENVIRONMENTAL IMPACT · ${user.username}`} />
-        </div>
-
         {/* ─── Trophy case ─── */}
         <div style={{ marginTop: 20, background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16 }}>
@@ -559,11 +403,11 @@ export function ProfileClient({
               ACHIEVEMENTS
             </span>
             <span style={{ fontSize: 11, color: "#3F3F46", fontFamily: MONO }}>
-              {unlockedKeys.size} / {ACHIEVEMENTS.length}
+              {SHOWN.filter((a) => unlockedKeys.has(a.key)).length} / {SHOWN.length}
             </span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))", gap: 8 }}>
-            {ACHIEVEMENTS.map((a) => {
+            {SHOWN.map((a) => {
               const earned = unlockedKeys.has(a.key);
               const color = TIER_COLOR[a.tier];
               return (
@@ -591,54 +435,6 @@ export function ProfileClient({
           </div>
         </div>
 
-        {/* ─── Challenge record ─── */}
-        {full && challenges.length > 0 && (
-          <div style={{ marginTop: 20, background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
-            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
-              CHALLENGES
-            </div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {challenges.map((c) => (
-                <a
-                  key={c.id}
-                  href={`/c/${c.inviteCode}`}
-                  className="hover-lift"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    border: "1px solid #18181B",
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    textDecoration: "none",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span style={{ color: c.won ? "#D97706" : "#3F3F46", fontFamily: MONO, fontSize: 13 }}>
-                    {c.won ? "★" : c.icon}
-                  </span>
-                  <span style={{ color: "#E4E4E7", fontSize: 13 }}>{c.name}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: "#52525B" }}>{c.typeLabel}</span>
-                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 10, color: c.ended ? "#52525B" : "#10B981" }}>
-                    {c.ended ? (c.won ? "won" : `#${c.place}`) : "live"}
-                  </span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Embed controls belong to the account owner, not profile visitors. */}
-        {viewer === user.username && (
-          <div style={{ background: "#0C0C0E", border: "1px solid #18181B", borderRadius: 10, padding: 20 }}>
-            <div style={{ fontSize: 11, color: "#52525B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14, fontFamily: MONO }}>
-              YOUR BADGE
-            </div>
-            <a href="/embed" style={{ color: "#D97706", fontFamily: MONO, fontSize: 11, textDecoration: "none" }}>
-              Copy your embed →
-            </a>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -32,7 +32,7 @@ type Agent = {
   method: "log" | "wrap";
 };
 
-const AGENTS: Agent[] = [
+export const AGENTS: Agent[] = [
   { slug: "claude-code", name: "Claude Code", method: "log" },
   { slug: "codex", name: "Codex", method: "log" },
   { slug: "cursor", name: "Cursor", method: "wrap" },

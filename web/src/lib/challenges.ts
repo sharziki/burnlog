@@ -377,7 +377,7 @@ export async function getChallenge(
                 ? `"${challenge.name}" ended — @${winner.username} took it. You placed ${s.place}.`
                 : `"${challenge.name}" ended with no qualifying entrant.`,
           meta: { challengeId: challenge.id, place: s.place, won: s.userId === winner?.userId },
-          link: `/c/${challenge.inviteCode}`,
+          link: "/",
         }),
       ),
       // A win can unlock the Duelist achievement.

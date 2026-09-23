@@ -132,7 +132,7 @@ export async function checkOvertake(
     type: "overtake",
     message: `You passed @${victim.username} on the leaderboard!`,
     meta: { overtaken: victim.username },
-    link: `/h2h/${username}-vs-${victim.username}`,
+    link: `/u/${victim.username}`,
   });
 
   // Also notify the overtaken user
@@ -143,7 +143,7 @@ export async function checkOvertake(
     type: "overtake",
     message: `@${username} just passed you on the leaderboard!`,
     meta: { by: username },
-    link: `/h2h/${victim.username}-vs-${username}`,
+    link: `/u/${username}`,
   });
 }
 

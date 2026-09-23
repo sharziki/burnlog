@@ -2,7 +2,6 @@ import { auth, signIn } from "@/auth";
 import { NotificationBell } from "./NotificationBell";
 import { Logo } from "./Logo";
 import { NavLinks } from "./NavLinks";
-import { isFullSurface } from "@/lib/surface";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 
@@ -41,7 +40,7 @@ export async function Nav() {
         <Logo size={32} />
       </a>
 
-      <NavLinks full={isFullSurface()} />
+      <NavLinks />
 
       {user?.username ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>

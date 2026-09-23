@@ -9,6 +9,8 @@ const nextConfig = {
   poweredByHeader: false,
   output: "standalone",
   outputFileTracingRoot: __dirname,
+  // The OG cards read their fonts off disk at request time.
+  outputFileTracingIncludes: { "/og/**": ["./assets/og/**"] },
   experimental: {
     serverActions: { bodySizeLimit: "10mb" },
   },

@@ -9,7 +9,7 @@
  *    resolving. It only worked on the author's laptop, whose config had been
  *    hand-pointed at the real site, so `npx @sxnalabs/burnlog` was dead for
  *    every new user and nothing said so.
- *  - The landing page advertised opencode as supported while no adapter for it
+ *  - The site advertised opencode as supported while no adapter for it
  *    existed, so anyone who ran the CLI counted zero of it.
  */
 import { readFileSync } from "fs";
@@ -46,12 +46,11 @@ if (cliDefault) {
 // 2. Every tool the site lists as "read from local logs" must have an adapter.
 const adapterNames = [...read("cli/src/adapters/index.ts").matchAll(/new (\w+)Adapter\(\)/g)]
   .map((m) => m[1].toLowerCase());
-const logTools = (read("web/src/components/Landing.tsx").match(/const LOG_TOOLS = \[([^\]]*)\]/)?.[1] ?? "")
-  .split(",")
-  .map((t) => t.trim().replace(/^"|"$/g, ""))
-  .filter(Boolean);
+// The onboarding prompt tells a "log" agent that plain sync covers it.
+const logTools = [...read("web/src/components/AgentPaste.tsx").matchAll(/name: "([^"]+)", method: "log"/g)]
+  .map((m) => m[1]);
 
-check("web: LOG_TOOLS is not empty", logTools.length > 0);
+check("web: log-read agents are listed", logTools.length > 0);
 for (const tool of logTools) {
   const slug = tool.toLowerCase().replace(/[^a-z]/g, "");
   check(

@@ -6,11 +6,9 @@ import { getBoard, getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { getAchievements } from "@/lib/achievements";
-import { getUserChallenges } from "@/lib/challenges";
-import { isFullSurface } from "@/lib/surface";
 import { SITE_URL } from "@/lib/seo";
 import { ProfileJsonLd } from "@/components/JsonLd";
-import { ProfileClient, type ProfileChallenge } from "./ProfileClient";
+import { ProfileClient } from "./ProfileClient";
 
 export const dynamic = "force-dynamic";
 
@@ -67,13 +65,9 @@ export default async function ProfilePage({ params }: Props) {
   const session = await auth();
   const viewer = (session?.user as { username?: string } | undefined)?.username ?? null;
 
-  // Challenges are staged, so a core deployment doesn't even load them —
-  // hiding the section after paying for the query would be the wrong order.
-  const full = isFullSurface();
-  const [stats, achievements, entered, board] = await Promise.all([
+  const [stats, achievements, board] = await Promise.all([
     getUserStats(user.id),
     getAchievements(user.id),
-    full ? getUserChallenges(user.id) : Promise.resolve([]),
     // Standing and neighbours. Also the only links between one profile and the
     // next: without them each profile is an island a crawler reaches only from
     // the sitemap, and internal links are how a page inherits any authority
@@ -87,20 +81,6 @@ export default async function ProfilePage({ params }: Props) {
     .map((u, i) => ({ place: i + 1, username: u.username, name: u.name, image: u.image, totalTokens: u.totalTokens }))
     .filter((u) => u.username !== username && Math.abs(u.place - place) <= 2)
     .slice(0, 4);
-
-  const challenges: ProfileChallenge[] = entered.map((c) => {
-    const mine = c.standings.find((s) => s.userId === user.id);
-    return {
-      id: c.id,
-      inviteCode: c.inviteCode,
-      name: c.name,
-      typeLabel: c.typeLabel,
-      icon: c.icon,
-      place: mine?.place ?? 0,
-      won: c.winnerUsername === username,
-      ended: c.status === "ended",
-    };
-  });
 
   return (
     <>
@@ -119,9 +99,7 @@ export default async function ProfilePage({ params }: Props) {
         user={stats}
         joinedAt={user.createdAt.toISOString()}
         achievements={achievements.map((a) => a.key)}
-        challenges={challenges}
         viewer={viewer}
-        full={full}
         place={place || null}
         neighbours={neighbours}
       />

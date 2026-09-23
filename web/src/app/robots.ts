@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 import { abs } from "@/lib/seo";
-import { isFullSurface } from "@/lib/surface";
 
 /**
  * There was no robots.txt at all, which is why `site:burnlog.net` returns
@@ -9,12 +8,9 @@ import { isFullSurface } from "@/lib/surface";
  *
  * Disallow is for pages that are real but worthless in an index — a signed-out
  * `/settings` is a sign-in button, `/cli-auth` is a token handshake, and the
- * JSON API is not a search result. Staged routes are added on a core
- * deployment so a crawler doesn't spend its budget collecting 404s.
+ * JSON API is not a search result.
  */
 export default function robots(): MetadataRoute.Robots {
-  const staged = ["/challenges", "/companies", "/teams", "/c/", "/h2h/"];
-
   return {
     rules: [
       {
@@ -29,7 +25,6 @@ export default function robots(): MetadataRoute.Robots {
           // from metadata, which is how they get fetched — they don't need to
           // be crawled as documents.
           "/og/",
-          ...(isFullSurface() ? [] : staged),
         ],
       },
     ],

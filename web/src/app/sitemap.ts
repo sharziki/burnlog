@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { abs } from "@/lib/seo";
 import { TOOLS } from "@/lib/tools";
 import { COMPARISONS } from "@/lib/comparisons";
-import { isFullSurface } from "@/lib/surface";
 
 // Users sign up and burn tokens continuously, so a sitemap baked at build time
 // would be wrong within the hour.
@@ -15,9 +14,7 @@ export const dynamic = "force-dynamic";
  * Profiles are the pages worth indexing at volume: one per burner, each with a
  * unique title, real numbers, and a rank. The static pages are here mostly so
  * the file is a complete answer to "what is on this site".
- *
- * Staged routes are omitted on a core deployment — they 404 there, and a
- * sitemap full of 404s is a crawl-budget bonfire.
+
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -49,14 +46,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: abs("/security"), lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: abs("/terms"), lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
-
-  if (isFullSurface()) {
-    staticRoutes.push(
-      { url: abs("/challenges"), lastModified: now, changeFrequency: "daily", priority: 0.7 },
-      { url: abs("/companies"), lastModified: now, changeFrequency: "weekly", priority: 0.5 },
-      { url: abs("/teams"), lastModified: now, changeFrequency: "weekly", priority: 0.6 },
-    );
-  }
 
   // `lastBurnDate` is a "YYYY-MM-DD" string kept for streak maths, which makes
   // it a free lastModified — no aggregate over BurnEvent needed.

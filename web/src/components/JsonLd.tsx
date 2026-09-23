@@ -1,4 +1,3 @@
-import { FAQ } from "@/lib/faq";
 import { PUBLISHER, SITE_DESCRIPTION, SITE_NAME, SITE_URL, abs } from "@/lib/seo";
 
 /**
@@ -71,27 +70,6 @@ export function SiteJsonLd() {
   );
 }
 
-/**
- * The landing page's FAQ. Rendered only when the landing itself is — schema
- * describing content the visitor can't see is the definition of markup spam.
- */
-export function FaqJsonLd() {
-  return (
-    <Ld
-      data={{
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: FAQ.map(({ q, a }) => ({
-          "@type": "Question",
-          name: q,
-          acceptedAnswer: { "@type": "Answer", text: a },
-        })),
-      }}
-    />
-  );
-}
-
-/** A burner's profile: the long-tail page type. */
 export function ProfileJsonLd({
   username,
   name,
