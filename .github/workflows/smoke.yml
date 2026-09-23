@@ -16,6 +16,11 @@ on:
   push:
     branches: [master]
 
+# A newer push supersedes an older one; its commit may never be the one serving.
+concurrency:
+  group: smoke-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
 jobs:
   smoke:
     name: burnlog.net answers, and answers fast
@@ -26,11 +31,20 @@ jobs:
         with:
           node-version: 20
 
-      # Deploys are triggered separately, so on a push give production a moment
-      # to finish rolling out before asking it questions.
-      - name: Wait for the deploy to land
+      # Wait for *this* commit to be serving, not just for time to pass. A
+      # failed deploy leaves the previous build up, and the previous build
+      # passes every smoke check — a fixed sleep let 23 days of failed deploys
+      # go green. No match in 10 minutes means the deploy did not land.
+      - name: Wait for this commit to be live
         if: github.event_name == 'push'
-        run: sleep 180
+        run: |
+          for i in $(seq 1 60); do
+            live=$(curl -fsS https://burnlog.net/api/health | node -pe 'JSON.parse(require("fs").readFileSync(0)).commit' || true)
+            if [ "$live" = "$GITHUB_SHA" ]; then echo "live: $live"; exit 0; fi
+            echo "serving ${live:-unknown}, waiting for $GITHUB_SHA"; sleep 10
+          done
+          echo "::error::Deploy of $GITHUB_SHA never went live. Check the Vercel deployment log (Root Directory must be 'web')."
+          exit 1
 
       - name: Smoke test production
         working-directory: web
