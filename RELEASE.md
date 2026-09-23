@@ -21,6 +21,9 @@ npm run test:load               # only before a launch, or after touching a quer
    - Commit as `sharziki@users.noreply.github.com`. Deploys authored by any
      other address come back `BLOCKED` — it is a team-membership refusal that
      does not say so. There are three of them in the deployment history.
+   - The `production smoke` Action then waits until `/api/health` reports the
+     pushed commit. If it goes red on "never went live", the deploy failed and
+     the old build is still serving — read the Vercel deployment log.
 3. **`npm run test:prod`.** The GitHub Action runs this on every push and every
    30 minutes anyway, but run it yourself when you are watching a change land.
    It checks the public surface answers, the
