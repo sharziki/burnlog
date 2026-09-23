@@ -176,7 +176,7 @@ export async function GET(
                       height: 20,
                       marginTop: d === 0 ? 0 : 5,
                       borderRadius: 4,
-                      background: v > 0 ? `rgba(245,158,11,${(0.18 + 0.82 * (v / peak)).toFixed(2)})` : "#16161A",
+                      background: v > 0 ? `rgba(245,158,11,${(0.2 + 0.8 * Math.sqrt(v / peak)).toFixed(2)})` : "#16161A",
                     }}
                   />
                 ))}
@@ -194,7 +194,7 @@ export async function GET(
             borderTop: `1px solid ${OG.border}`,
             paddingTop: 22,
             fontFamily: "Mono",
-            fontSize: 24,
+            fontSize: 21,
           }}
         >
           <div style={{ display: "flex" }}>
@@ -203,7 +203,7 @@ export async function GET(
               [`${stats.streak}d`, "streak"],
               [`~${formatUsd(estimateCostUsd(stats.buckets))}`, "at API prices"],
             ].map(([value, label], i) => (
-              <div key={label} style={{ display: "flex", marginLeft: i === 0 ? 0 : 40 }}>
+              <div key={label} style={{ display: "flex", marginLeft: i === 0 ? 0 : 28 }}>
                 <span style={{ color: OG.white, fontWeight: 700 }}>{value}</span>
                 <span style={{ color: OG.gray, marginLeft: 10 }}>{label}</span>
               </div>

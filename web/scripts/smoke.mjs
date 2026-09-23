@@ -76,7 +76,7 @@ check("sitemap: every URL 200", broken.length === 0, broken.join("; "));
 // --- content the deploy could quietly regress ---
 const { body: home } = await get("/");
 check("home: says Clubs, not Teams", !home.includes(">Teams<"));
-check("home: FAQ rendered server-side", home.includes("Does burnlog see my prompts"));
+check("home: copy-prompt onboarding rendered", home.includes("Copy prompt for Claude Code"));
 check("home: canonical present", home.includes('rel="canonical"'));
 check(
   "home: no unsynced accounts on the board",
