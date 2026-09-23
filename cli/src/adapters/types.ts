@@ -68,8 +68,12 @@ export interface Adapter {
   readonly name: AdapterName;
   /** True if this source appears to exist on disk. */
   detect(): boolean;
-  /** Parse available history into burn events. */
-  scan(opts?: ScanOptions): ScanResult;
+  /**
+   * Parse available history into burn events. Most adapters read files and
+   * return synchronously; the few that must ask an API (Cursor keeps usage on
+   * its servers) return a promise.
+   */
+  scan(opts?: ScanOptions): ScanResult | Promise<ScanResult>;
 }
 
 /**

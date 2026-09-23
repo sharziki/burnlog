@@ -20,8 +20,22 @@ export const adapters: Adapter[] = [
   new JsonlAdapter(),
 ];
 
-export function scanAll(opts: ScanOptions = {}): ScanResult[] {
-  return adapters.map((a) => a.scan(opts));
+/**
+ * Run every adapter. One adapter throwing (a format changed under us, a
+ * database locked) must not cost the user every other source, so a failure
+ * becomes an empty result with the reason in `note`.
+ */
+export async function scanAll(opts: ScanOptions = {}): Promise<ScanResult[]> {
+  return Promise.all(
+    adapters.map(async (a): Promise<ScanResult> => {
+      try {
+        return await a.scan(opts);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        return { source: a.name, events: [], scannedFiles: 0, totalLines: 0, note: `failed: ${reason}` };
+      }
+    }),
+  );
 }
 
 export function flatten(results: ScanResult[]): BurnEvent[] {

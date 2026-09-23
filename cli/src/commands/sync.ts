@@ -40,7 +40,7 @@ async function syncOnly(args: string[]): Promise<void> {
   // history needs rebuilding (e.g. after an adapter fix).
   const full = args.includes("--full");
   const since = full ? undefined : cfg.lastSync ? new Date(cfg.lastSync) : undefined;
-  const results = scanAll({ since });
+  const results = await scanAll({ since });
   // Session aggregates can exceed the server's per-event storage ceiling;
   // split them so the tokens are kept rather than rejected.
   const events = results.flatMap((r) => r.events).flatMap(splitOversized);

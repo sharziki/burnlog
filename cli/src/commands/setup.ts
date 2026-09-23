@@ -42,8 +42,8 @@ function banner(): void {
 }
 
 /** Step 1 — prove there's something to track before asking for a signup. */
-function survey(): { events: number; tokens: number; found: string[] } {
-  const results = scanAll();
+async function survey(): Promise<{ events: number; tokens: number; found: string[] }> {
+  const results = await scanAll();
   const found: string[] = [];
   let events = 0;
   let tokens = 0;
@@ -74,7 +74,7 @@ function survey(): { events: number; tokens: number; found: string[] } {
 
 export async function setup(_args: string[] = []): Promise<void> {
   banner();
-  const { events, tokens, found } = survey();
+  const { events, tokens, found } = await survey();
 
   if (events === 0) {
     console.log(pc.yellow("  no burn history found yet."));

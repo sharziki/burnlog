@@ -49,7 +49,7 @@ export async function doctor(_args: string[] = []): Promise<void> {
   }
 
   // ---- sources ----
-  const results = scanAll();
+  const results = await scanAll();
   const live = results.filter((r) => r.events.length > 0);
   const total = results.reduce((s, r) => s + r.events.reduce((t, e) => t + totalTokens(e), 0), 0);
 

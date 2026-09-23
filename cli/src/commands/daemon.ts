@@ -27,7 +27,7 @@ export async function daemon(_args: string[]): Promise<void> {
     if (running) return;
     running = true;
     try {
-      const results = scanAll();
+      const results = await scanAll();
       const events = results.flatMap((r) => r.events);
       const fresh = events.filter((e) => {
         const key = `${e.source}:${e.requestId}`;
@@ -72,7 +72,7 @@ export async function daemon(_args: string[]): Promise<void> {
 
   // First tick seeds the seen-set with everything already on disk without
   // uploading, so we only sync *new* activity while the daemon is running.
-  const results = scanAll();
+  const results = await scanAll();
   for (const r of results) for (const e of r.events) seen.add(`${e.source}:${e.requestId}`);
   const startCount = seen.size;
   console.log(

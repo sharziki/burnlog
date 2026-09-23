@@ -76,7 +76,7 @@ async function main(): Promise<void> {
       logout(rest);
       break;
     case "scan":
-      scan(rest);
+      await scan(rest);
       break;
     case "sync":
       await sync(rest);

@@ -2,8 +2,8 @@ import pc from "picocolors";
 import { scanAll, totalTokens } from "../adapters/index.js";
 import { formatTokens } from "../format.js";
 
-export function scan(_args: string[]): void {
-  const results = scanAll();
+export async function scan(_args: string[]): Promise<void> {
+  const results = await scanAll();
   const allEvents = results.flatMap((r) => r.events);
   const grand = allEvents.reduce((s, e) => s + totalTokens(e), 0);
 
