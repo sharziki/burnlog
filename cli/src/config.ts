@@ -6,6 +6,12 @@ export type Config = {
   apiUrl: string;
   apiKey?: string;
   lastSync?: string;
+  /**
+   * Sources whose full history has been read at least once. Incremental sync
+   * only re-reads files touched since lastSync, so a source added by an
+   * upgrade would otherwise never have its history backfilled.
+   */
+  backfilled?: string[];
   claudeProjectsDir?: string;
 };
 

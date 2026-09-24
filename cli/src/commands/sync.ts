@@ -1,6 +1,6 @@
 import pc from "picocolors";
 import { loadConfig, saveConfig } from "../config.js";
-import { scanAll, totalTokens, splitOversized } from "../adapters/index.js";
+import { adapters, scanAll, totalTokens, splitOversized } from "../adapters/index.js";
 import { ingest, fetchRank } from "../api.js";
 import { formatTokens } from "../format.js";
 
@@ -40,7 +40,14 @@ async function syncOnly(args: string[]): Promise<void> {
   // history needs rebuilding (e.g. after an adapter fix).
   const full = args.includes("--full");
   const since = full ? undefined : cfg.lastSync ? new Date(cfg.lastSync) : undefined;
-  const results = await scanAll({ since });
+  // Sources this machine has never fully read — new in this version, typically
+  // — get their whole history this once. Configs from before this field
+  // existed had fully read the original six.
+  const backfilled = new Set(
+    cfg.backfilled ?? ["claude-code", "codex", "hermes", "openclaw", "opencode", "jsonl"],
+  );
+  const fullFor = new Set(adapters.map((a) => a.name).filter((n) => !backfilled.has(n)));
+  const results = await scanAll({ since }, fullFor);
   // Session aggregates can exceed the server's per-event storage ceiling;
   // split them so the tokens are kept rather than rejected.
   const events = results.flatMap((r) => r.events).flatMap(splitOversized);
@@ -84,6 +91,9 @@ async function syncOnly(args: string[]): Promise<void> {
   }
 
   cfg.lastSync = new Date().toISOString();
+  // Only a source that actually produced events counts as backfilled: one
+  // that was signed out or empty today must get its full read when it has data.
+  cfg.backfilled = [...new Set([...backfilled, ...results.filter((r) => r.events.length).map((r) => r.source)])];
   saveConfig(cfg);
 
   log("");
