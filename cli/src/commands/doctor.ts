@@ -1,3 +1,4 @@
+import { BURNLOG_HOOK_RE } from "./install.js";
 import pc from "picocolors";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
@@ -162,7 +163,7 @@ function claudeHookInstalled(): boolean {
   const path = join(homedir(), ".claude", "settings.json");
   if (!existsSync(path)) return false;
   try {
-    return readFileSync(path, "utf8").includes("burnlog sync");
+    return BURNLOG_HOOK_RE.test(readFileSync(path, "utf8"));
   } catch {
     return false;
   }

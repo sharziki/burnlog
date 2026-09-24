@@ -11,7 +11,11 @@ type ClaudeSettings = {
   [k: string]: unknown;
 };
 
-const BURNLOG_MARK = "burnlog sync";
+/**
+ * Recognises our hook in both spellings: `burnlog sync …` and the npx form
+ * `@sxnalabs/burnlog@latest sync …`, which a plain substring check missed.
+ */
+export const BURNLOG_HOOK_RE = /burnlog(@[\w.-]+)? sync/;
 
 function settingsPath(): string {
   return join(homedir(), ".claude", "settings.json");
@@ -39,7 +43,7 @@ function saveSettings(path: string, settings: ClaudeSettings): void {
 function hasBurnlogHook(groups: ClaudeHookGroup[] | undefined): boolean {
   if (!groups) return false;
   return groups.some((g) =>
-    (g.hooks ?? []).some((h) => h.command?.includes(BURNLOG_MARK)),
+    (g.hooks ?? []).some((h) => BURNLOG_HOOK_RE.test(h.command ?? "")),
   );
 }
 
@@ -124,7 +128,7 @@ export function uninstall(_args: string[]): void {
       const filtered: ClaudeHookGroup[] = [];
       for (const g of groups ?? []) {
         const kept = (g.hooks ?? []).filter(
-          (h) => !h.command?.includes(BURNLOG_MARK),
+          (h) => !BURNLOG_HOOK_RE.test(h.command ?? ""),
         );
         if (kept.length !== (g.hooks ?? []).length) removed += (g.hooks ?? []).length - kept.length;
         if (kept.length > 0) filtered.push({ ...g, hooks: kept });

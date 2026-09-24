@@ -111,7 +111,7 @@ test("connect: redeems, saves the key, full-syncs, installs auto-sync, prints re
   const ingested = calls.filter((c) => c.url.endsWith("/api/ingest")).flatMap((c) => (c.body as { events: unknown[] }).events);
   assert.equal(ingested.length, 2);
 
-  assert.match(readFileSync(SETTINGS, "utf8"), /burnlog sync --quiet/);
+  assert.match(readFileSync(SETTINGS, "utf8"), /burnlog(@latest)? sync --quiet/);
 
   assert.deepEqual(out, [
     "✓ connected as @sharziki",

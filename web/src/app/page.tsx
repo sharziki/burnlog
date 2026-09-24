@@ -15,7 +15,9 @@ export const revalidate = 30;
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function Home() {
-  const users = await getBoard();
+  // A build with no reachable database (CI) renders an empty board rather than
+  // failing; the 30s revalidation fills it in on the first live request.
+  const users = await getBoard().catch(() => []);
   const rows: BoardRow[] = users.map((u) => ({
     id: u.id,
     username: u.username,

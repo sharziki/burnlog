@@ -1,6 +1,6 @@
 {
   "name": "@sxnalabs/burnlog",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "The public leaderboard for AI coding token usage. Counts tokens from Claude Code, Codex, Cursor, Gemini CLI, aider and 14 providers \u2014 tokens only, never prompts or code.",
   "keywords": [
     "claude-code",
