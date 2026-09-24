@@ -12,10 +12,7 @@ export const revalidate = 30;
 // The canonical matters: burnlog.net is reachable as three Vercel aliases.
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
-/**
- * One screen: what it is and the one action on the left, the board itself on
- * the right. The board is the product, so it is the hero.
- */
+/** The leaderboard is the home page; setup stays one action away. */
 export default async function Home() {
   // A build with no reachable database (CI) renders an empty board rather than
   // failing; the 30s revalidation fills it in on the first live request.
@@ -42,23 +39,31 @@ export default async function Home() {
   const rows = [...new Map([...burners.slice(0, TOP), ...byWeek].map((u) => [u.id, toRow(u)])).values()];
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-14 px-5 pb-28 pt-14 sm:px-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10 md:pt-16 lg:gap-20 lg:pt-20">
-      <div className="animate-rise md:sticky md:top-24 md:self-start">
-        <h1 className="m-0 max-w-[12ch] font-display text-[40px] leading-[1.02] text-ink md:text-[40px] lg:text-[48px]">
-          Every token you burn, ranked.
-        </h1>
-        <p className="m-0 mt-5 max-w-[27rem] text-[15.5px] leading-[1.6] text-soft">
-          Paste one prompt into your coding agent. It links your machine, counts every token since your first
-          session, and keeps you on the board. Counts only — never prompts or code.
-        </p>
-
-        <div className="mt-8">
+    <main className="mx-auto max-w-6xl px-5 pb-24 pt-10 sm:px-8 sm:pt-14">
+      <div className="animate-rise flex flex-col gap-8 border-b border-line pb-9 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="m-0 font-display text-[clamp(2.25rem,4vw,3.5rem)] leading-[1.05] text-ink">
+            Every token you burn, ranked.
+          </h1>
+          <p className="m-0 mt-3 max-w-2xl text-[15px] leading-[1.6] text-soft">
+            The public leaderboard for AI coding tokens. Counts only — never prompts or code.
+          </p>
+        </div>
+        <div className="shrink-0">
           <SetupCTA />
         </div>
+      </div>
 
-        <div className="mt-6 border-t border-line pt-6">
-          <YouLine />
-          <dl className="m-0 mt-5 grid grid-cols-3 gap-6">
+      <div className="mt-5">
+        <YouLine />
+      </div>
+      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_210px] lg:gap-12">
+        <div className="animate-rise [animation-delay:80ms]">
+          <Leaderboard rows={rows} burners={burners.length} />
+        </div>
+        <aside className="border-t border-line pt-5 lg:pt-0" aria-label="Board totals">
+          <p className="m-0 text-[12px] font-medium text-dim">Across the board</p>
+          <dl className="m-0 mt-4 grid grid-cols-3 gap-5 lg:grid-cols-1 lg:gap-6">
             {(
               [
                 ["Burned", formatTokens(total)],
@@ -72,11 +77,7 @@ export default async function Home() {
               </div>
             ))}
           </dl>
-        </div>
-      </div>
-
-      <div className="animate-rise [animation-delay:80ms]">
-        <Leaderboard rows={rows} burners={burners.length} />
+        </aside>
       </div>
     </main>
   );

@@ -1,16 +1,9 @@
 import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
-import { estimateCostUsd, formatUsd } from "@/lib/cost";
-import { ACHIEVEMENTS } from "@/lib/achievements";
 import { ShareCard } from "@/components/ShareCard";
 import { GithubIcon } from "@/components/ui/github-icon";
 import { sourceLabel } from "@/lib/sources";
-import { cn } from "@/lib/utils";
 import type { UserStats } from "@/lib/stats";
-
-// The challenge trophies stay in the ledger but not on the shelf: there are no
-// challenges to win on the site any more.
-const SHOWN = ACHIEVEMENTS.filter((a) => a.key !== "duelist" && a.key !== "champion");
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "never";
@@ -52,7 +45,7 @@ function Section({ title, aside, children }: { title: string; aside?: React.Reac
 function Heatmap({ heatmap }: { heatmap: number[] }) {
   const max = Math.max(...heatmap, 1);
   return (
-    <div className="grid w-full max-w-[260px] grid-flow-col grid-cols-[repeat(12,minmax(0,1fr))] grid-rows-7 gap-[3px]">
+    <div className="grid w-full max-w-[360px] grid-flow-col grid-cols-[repeat(12,minmax(0,1fr))] grid-rows-7 gap-[3px]">
       {heatmap.map((v, i) => (
         <div
           key={i}
@@ -99,38 +92,33 @@ function Rows({ items }: { items: { label: string; tokens: number }[] }) {
 export function ProfileClient({
   user,
   joinedAt,
-  achievements,
   place = null,
   neighbours = [],
 }: {
   user: UserStats;
   joinedAt: string;
-  achievements: string[];
   /** Position on the global board, 1-indexed. Null if they aren't on it. */
   place?: number | null;
   /** The burners immediately above and below, for context and for crawl paths. */
   neighbours?: { place: number; username: string; name: string; image: string | null; totalTokens: number }[];
 }) {
-  const unlocked = new Set(achievements);
   const rank = getRank(user.totalTokens);
   const next = RANKS.find((r) => r.min > user.totalTokens) ?? null;
   const progress = next ? Math.min(100, ((user.totalTokens - rank.min) / (next.min - rank.min)) * 100) : 100;
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  const earned = SHOWN.filter((a) => unlocked.has(a.key));
-
   return (
-    <main className="mx-auto max-w-3xl px-5 pb-28 pt-14 sm:px-8 sm:pt-20">
+    <main className="mx-auto max-w-5xl px-5 pb-24 pt-10 sm:px-8 sm:pt-14">
       {/* ─── Who ─── */}
-      <header className="animate-rise flex items-start gap-5">
+      <header className="animate-rise flex items-start gap-4 sm:gap-5">
         {user.image ? (
-          <img src={user.image} alt={user.username} width={64} height={64} className="size-16 shrink-0 rounded-full object-cover" />
+          <img src={user.image} alt="" width={56} height={56} className="size-12 shrink-0 rounded-full object-cover sm:size-14" />
         ) : (
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] font-mono text-lg text-soft">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] font-mono text-lg text-soft sm:size-14">
             {user.avatar}
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="m-0 font-display text-[40px] leading-none text-ink sm:text-[48px]">
+          <h1 className="m-0 break-words font-display text-[clamp(1.8rem,4vw,2.6rem)] leading-[1.1] text-ink">
             {user.name}
           </h1>
           <p className="m-0 mt-2.5 text-[14px] text-soft">
@@ -167,30 +155,29 @@ export function ProfileClient({
               </a>
             )}
             <span>joined {joinDate}</span>
-            <span>active {relativeTime(user.lastActive)}</span>
+            {user.lastActive && <span>active {relativeTime(user.lastActive)}</span>}
           </p>
         </div>
       </header>
 
       {/* ─── The numbers ─── */}
-      <dl className="animate-rise m-0 mt-12 grid grid-cols-2 gap-y-8 border-t border-line pt-8 [animation-delay:60ms] sm:grid-cols-4">
-        {(
-          [
-            ["Burned", formatTokens(user.totalTokens)],
-            ["This week", formatTokens(user.weeklyTokens)],
-            ["Streak", `${user.streak}d`],
-            ["At API prices", formatUsd(estimateCostUsd(user.buckets))],
-          ] as const
-        ).map(([label, v], i) => (
-          <div key={label}>
-            <dt className="text-[12px] text-dim">{label}</dt>
-            <dd className={cn("m-0 mt-1 font-mono tabular-nums text-ink", i === 0 ? "text-[32px] leading-none" : "text-[20px]")}>{v}</dd>
-          </div>
-        ))}
+      <div className="mt-7 border-t border-line pt-5">
+        <ShareCard username={user.username} tokens={formatTokens(user.totalTokens)} place={place} />
+      </div>
+
+      <dl className="animate-rise m-0 mt-8 grid grid-cols-2 gap-6 border-y border-line py-8 [animation-delay:60ms] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div>
+          <dt className="text-[13px] text-soft">Total tokens</dt>
+          <dd className="m-0 mt-2 font-mono text-[clamp(2rem,6vw,4rem)] leading-none tabular-nums tracking-tight text-ink">{formatTokens(user.totalTokens)}</dd>
+        </div>
+        <div>
+          <dt className="text-[13px] text-soft">This week</dt>
+          <dd className="m-0 mt-2 font-mono text-[clamp(2rem,6vw,4rem)] leading-none tabular-nums tracking-tight text-ink">{formatTokens(user.weeklyTokens)}</dd>
+        </div>
       </dl>
 
       {next && (
-        <div className="mt-8">
+        <div className="mt-5">
           <div className="h-px w-full bg-line">
             <div className="h-px bg-accent" style={{ width: `${Math.max(progress, 1)}%` }} />
           </div>
@@ -200,20 +187,14 @@ export function ProfileClient({
         </div>
       )}
 
-      {/* ─── The card ─── */}
-      <div className="animate-rise mt-12 [animation-delay:120ms]">
-        <ShareCard username={user.username} tokens={formatTokens(user.totalTokens)} place={place} />
-      </div>
-
       {/* Every number above is a tile or a chart, which a search engine reads as
           an empty page. This is the same data as a sentence. */}
-      <p className="m-0 mb-4 mt-2 text-[15px] leading-7 text-soft">
+      <p className="m-0 mb-4 mt-8 text-[14px] leading-6 text-soft">
         @{user.username} has burned {formatTokens(user.totalTokens)} tokens across {user.commits.toLocaleString()} session
         {user.commits === 1 ? "" : "s"} of AI coding
         {user.sources.length > 0 && <> with {joinNames(user.sources.slice(0, 3).map((x) => sourceLabel(x.source)))}</>}, rank{" "}
         {rank.name}
         {place ? <>, {ordinal(place)} on the global board</> : null}.
-        {user.streak > 0 && <> {user.streak}-day streak{user.longestStreak > user.streak ? `, ${user.longestStreak} at best` : ""}.</>}
       </p>
 
       <Section title="Last 12 weeks">
@@ -250,22 +231,6 @@ export function ProfileClient({
         </Section>
       )}
 
-      {/* Earned only, as one line of text: a 25-cell trophy wall was the
-          noisiest thing on the page and said less than a sentence does. */}
-      <Section title="Achievements" aside={`${earned.length} of ${SHOWN.length}`}>
-        {earned.length ? (
-          <p className="m-0 text-[14px] leading-7 text-soft">
-            {earned.map((a, i) => (
-              <span key={a.key} title={a.how} className="whitespace-nowrap">
-                {i > 0 && <span className="px-2 text-faint">·</span>}
-                {a.name}
-              </span>
-            ))}
-          </p>
-        ) : (
-          <p className="m-0 text-[14px] text-dim">None yet — the first one comes with the first sync.</p>
-        )}
-      </Section>
     </main>
   );
 }

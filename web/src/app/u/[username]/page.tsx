@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db";
 import { getBoard, getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
-import { getAchievements } from "@/lib/achievements";
 import { SITE_URL } from "@/lib/seo";
 import { ProfileJsonLd } from "@/components/JsonLd";
 import { ProfileClient } from "./ProfileClient";
@@ -66,9 +65,8 @@ export default async function ProfilePage({ params }: Props) {
   });
   if (!user) notFound();
 
-  const [stats, achievements, board] = await Promise.all([
+  const [stats, board] = await Promise.all([
     getUserStats(user.id),
-    getAchievements(user.id),
     // Standing and neighbours. Also the only links between one profile and the
     // next: without them each profile is an island a crawler reaches only from
     // the sitemap, and internal links are how a page inherits any authority
@@ -99,7 +97,6 @@ export default async function ProfilePage({ params }: Props) {
       <ProfileClient
         user={stats}
         joinedAt={user.createdAt.toISOString()}
-        achievements={achievements.map((a) => a.key)}
         place={place || null}
         neighbours={neighbours}
       />

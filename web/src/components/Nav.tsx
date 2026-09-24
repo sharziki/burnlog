@@ -21,27 +21,25 @@ export function Nav() {
           <span className="text-[15px] font-semibold tracking-tight">burnlog</span>
         </a>
 
-        <nav className="flex items-center gap-5 text-[13px]">
-          <a href="/#board" className="hidden text-soft no-underline transition-colors hover:text-ink sm:inline">
+        <nav className="flex items-center gap-4 text-[13px] sm:gap-6">
+          <a href="/" className="text-soft no-underline transition-colors hover:text-ink">
             Leaderboard
-          </a>
-          <a href="/agent" className="hidden text-soft no-underline transition-colors hover:text-ink sm:inline">
-            Setup
           </a>
           {me === undefined ? (
             <span className="h-7 w-16" aria-hidden />
           ) : me ? (
-            <span className="flex items-center gap-3">
+            <span className="flex items-center gap-4">
+              <a href={`/u/${me.username}`} className="flex items-center gap-2 text-ink no-underline" title={`@${me.username}`}>
+                <span className="hidden sm:inline">My profile</span>
+                {me.image ? (
+                  <img src={me.image} alt="My profile" width={26} height={26} className="size-[26px] rounded-full" />
+                ) : (
+                  <span className="sm:hidden">Profile</span>
+                )}
+              </a>
               <NotificationBell />
               <a href="/settings" aria-label="Settings" className="text-dim no-underline transition-colors hover:text-ink">
                 <Settings className="size-4" aria-hidden />
-              </a>
-              <a href={`/u/${me.username}`} className="flex items-center gap-2 text-ink no-underline" title={`@${me.username}`}>
-                {me.image ? (
-                  <img src={me.image} alt="" width={26} height={26} className="size-[26px] rounded-full" />
-                ) : (
-                  <span>@{me.username}</span>
-                )}
               </a>
             </span>
           ) : (
