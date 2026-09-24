@@ -20,6 +20,51 @@
   @keyframes rise-in { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
 }
 
+/* ── Shared primitives ──────────────────────────────────────────────────────
+   `.doc` styles plain HTML on reading pages; `.btn*` and `.field` are the only
+   button and input looks on the site. In the components layer so a utility
+   class on the element still wins. */
+@utility font-display {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
+@layer components {
+  .doc { color: var(--color-soft); font-size: 15.5px; line-height: 1.7; }
+  .doc > * + * { margin-top: 1rem; }
+  .doc h2 { margin: 2.75rem 0 0; padding-top: 1.75rem; border-top: 1px solid var(--color-line); color: var(--color-ink); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .doc h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .doc h3 { margin: 1.75rem 0 0; color: var(--color-ink); font-size: 15px; font-weight: 600; }
+  .doc p, .doc ul, .doc ol { margin-bottom: 0; }
+  .doc ul, .doc ol { padding-left: 1.2rem; }
+  .doc li + li { margin-top: 0.4rem; }
+  .doc li::marker { color: var(--color-faint); }
+  .doc strong { color: var(--color-ink); font-weight: 600; }
+  .doc a { color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-faint); text-underline-offset: 4px; }
+  .doc a:hover { text-decoration-color: var(--color-ink); }
+  .doc code { font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.88em; color: var(--color-ink); background: rgba(237, 234, 227, 0.06); padding: 0.1em 0.35em; border-radius: 4px; }
+  .doc pre { margin-top: 1rem; overflow-x: auto; border: 1px solid var(--color-line); border-radius: 8px; padding: 14px 16px; background: var(--color-surface); }
+  .doc pre code { background: none; padding: 0; font-size: 13px; line-height: 1.6; }
+  .doc table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .doc th { text-align: left; font-weight: 500; color: var(--color-dim); padding: 0 12px 10px 0; border-bottom: 1px solid var(--color-line); }
+  .doc td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--color-line); vertical-align: top; }
+  .doc hr { border: 0; border-top: 1px solid var(--color-line); margin: 2.5rem 0; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--color-line); background: transparent; color: var(--color-ink); font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; transition: border-color .15s, filter .15s, background-color .15s; }
+  .btn:hover { border-color: rgba(237, 234, 227, 0.25); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-bg); }
+  .btn-primary:hover { filter: brightness(1.1); border-color: var(--color-accent); }
+  .btn-danger { color: #F28B82; border-color: rgba(242, 139, 130, 0.35); }
+  .btn-danger:hover { border-color: #F28B82; }
+  .field { width: 100%; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink); font-size: 14px; outline: none; transition: border-color .15s; }
+  textarea.field { height: auto; min-height: 88px; padding: 10px 12px; line-height: 1.5; resize: vertical; }
+  .field:focus { border-color: rgba(237, 234, 227, 0.35); }
+  .field::placeholder { color: var(--color-faint); }
+  .label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--color-dim); }
+}
+
 @layer base {
 :root {
   --bg: #0B0B0A;

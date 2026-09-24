@@ -52,178 +52,89 @@ export function SettingsClient({
   }
 
   return (
-    <div
-      style={{
-        maxWidth: 720,
-        margin: "0 auto",
-        padding: "48px 24px",
-        fontFamily: "'JetBrains Mono', monospace",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+    <main className="mx-auto max-w-2xl px-5 pb-28 pt-14 sm:px-8 sm:pt-20">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <div style={{ fontSize: 10, color: "#6B7280", letterSpacing: 2, textTransform: "uppercase" }}>burnlog</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", marginTop: 2 }}>settings</div>
+          <p className="m-0 text-[13px] text-dim">burnlog</p>
+          <h1 className="m-0 mt-3 font-display text-[40px] leading-[1.02] text-ink sm:text-[52px]">
+            Settings
+          </h1>
         </div>
         <form action={signOutAction}>
-          <button
-            type="submit"
-            style={{
-              padding: "8px 14px",
-              background: "transparent",
-              color: "#6B7280",
-              border: "1px solid #1F1F1F",
-              borderRadius: 6,
-              fontSize: 11,
-              cursor: "pointer",
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
-          >
+          <button type="submit" className="btn">
             Sign out
           </button>
         </form>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <a
-          href={`/u/${username}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            background: "#0A0A0A",
-            border: "1px solid #141414",
-            borderRadius: 14,
-            padding: 20,
-            textDecoration: "none",
-          }}
-        >
+      <section className="mt-10 border-t border-line py-8">
+        <a href={`/u/${username}`} className="group flex items-center gap-4">
           {image && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="" width={44} height={44} style={{ borderRadius: 10 }} />
+            <img src={image} alt="" width={44} height={44} className="rounded-[10px]" />
           )}
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: 10, color: "#6B7280", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
-              signed in as
-            </span>
-            <span style={{ display: "block", color: "#FAFAFA", fontSize: 15, fontWeight: 700 }}>{name}</span>
-            <span style={{ display: "block", color: "#6B7280", fontSize: 11 }}>@{username}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] text-dim">Signed in as</span>
+            <span className="mt-1 block truncate text-[15px] font-medium text-ink">{name}</span>
+            <span className="block font-mono text-[12px] text-dim">@{username}</span>
           </span>
-          <span style={{ color: "#D97706", fontSize: 11 }}>view public profile →</span>
+          <span className="text-[13px] text-soft group-hover:text-ink">view public profile →</span>
         </a>
-      </div>
+      </section>
 
-      <div style={{ marginBottom: 16 }}>
+      <section className="border-t border-line py-8">
         <ProfileEditor initial={profile} />
-      </div>
+      </section>
 
-      <div
-        style={{
-          background: "#0A0A0A",
-          border: "1px solid #141414",
-          borderRadius: 14,
-          padding: 28,
-        }}
-      >
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>CLI API key</div>
-        <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
-          Generate a key, then run <code style={{ color: "#D97706" }}>burnlog login &lt;key&gt;</code> on the machine you burn on.
-        </div>
-        <button
-          onClick={createKey}
-          disabled={loading}
-          style={{
-            padding: "10px 18px",
-            background: "#D97706",
-            color: "#000",
-            border: "none",
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: loading ? "wait" : "pointer",
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
+      <section className="border-t border-line py-8">
+        <h2 className="m-0 text-[13px] font-medium text-soft">CLI API key</h2>
+        <p className="m-0 mb-5 mt-2 text-[14px] leading-relaxed text-dim">
+          Generate a key, then run <code className="font-mono text-ink">burnlog login &lt;key&gt;</code> on the machine you burn on.
+        </p>
+        <button onClick={createKey} disabled={loading} className="btn btn-primary">
           {loading ? "generating..." : "generate new key"}
         </button>
 
         {key && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: "14px 16px",
-              background: "#0D0D0D",
-              border: "1px solid #D9770644",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "#D97706",
-              wordBreak: "break-all",
-            }}
-          >
-            <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-              copy this once — it won't be shown again
-            </div>
-            {key}
+          <div className="mt-5">
+            <p className="m-0 mb-2 text-[13px] text-dim">Copy this once — it won&apos;t be shown again</p>
+            <pre className="m-0 whitespace-pre-wrap break-all rounded-lg border border-line bg-surface px-4 py-3 font-mono text-[13px] text-ink">
+              {key}
+            </pre>
           </div>
         )}
-      </div>
+      </section>
 
-      <div
-        style={{
-          background: "#0A0A0A",
-          border: "1px solid #3F1D1D",
-          borderRadius: 14,
-          padding: 28,
-          marginTop: 16,
-        }}
-      >
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 6 }}>Delete account</div>
-        <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
-          Permanently deletes your user profile, sessions, API keys, personal burn events, and clubs you own. Type <code style={{ color: "#EF4444" }}>delete my account</code> to confirm.
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <section className="border-t border-line py-8">
+        <h2 className="m-0 text-[13px] font-medium text-soft">Delete account</h2>
+        <p className="m-0 mb-5 mt-2 text-[14px] leading-relaxed text-dim">
+          Permanently deletes your user profile, sessions, API keys, personal burn events, and clubs you own. Type{" "}
+          <code className="font-mono text-ink">delete my account</code> to confirm.
+        </p>
+        <div className="flex flex-wrap gap-2">
           <input
             value={deleteConfirm}
             onChange={(e) => {
               setDeleteConfirm(e.target.value);
               setDeleteStatus("idle");
             }}
-            style={{
-              flex: 1,
-              minWidth: 220,
-              background: "#0D0D0D",
-              border: "1px solid #1F1F1F",
-              borderRadius: 6,
-              color: "#E4E4E7",
-              fontSize: 12,
-              padding: "10px 12px",
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
+            aria-label="Type delete my account to confirm"
+            className="field min-w-[220px] flex-1 font-mono"
           />
           <button
             onClick={deleteAccount}
             disabled={deleteConfirm !== "delete my account" || deleteStatus === "deleting"}
-            style={{
-              padding: "10px 18px",
-              background: deleteConfirm === "delete my account" ? "#EF4444" : "transparent",
-              color: deleteConfirm === "delete my account" ? "#000" : "#6B7280",
-              border: "1px solid #3F1D1D",
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: deleteStatus === "deleting" ? "wait" : "pointer",
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
+            className="btn btn-danger"
           >
             {deleteStatus === "deleting" ? "deleting..." : "delete account"}
           </button>
         </div>
         {deleteStatus === "error" && (
-          <div style={{ marginTop: 10, fontSize: 11, color: "#EF4444" }}>
+          <p className="m-0 mt-3 text-[13px] text-[#F28B82]">
             Delete failed. Check your session and try again.
-          </div>
+          </p>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

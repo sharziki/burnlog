@@ -42,50 +42,18 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "60vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        gap: 16,
-        fontFamily: 'var(--font-mono), "IBM Plex Mono", ui-monospace, monospace',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          color: "#52525B",
-          letterSpacing: 2,
-          textTransform: "uppercase",
-        }}
-      >
-        burnlog · sign in
-      </div>
+    <main className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center gap-5 px-5 text-center">
+      <p className="m-0 text-[13px] text-dim">burnlog · sign in</p>
       <form
         action={async () => {
           "use server";
           await signIn("github");
         }}
       >
-        <button
-          type="submit"
-          style={{
-            padding: "12px 24px",
-            background: "#D97706",
-            color: "#09090B",
-            border: "none",
-            borderRadius: 8,
-            fontWeight: 700,
-            cursor: "pointer",
-            fontFamily: 'var(--font-mono), "IBM Plex Mono", ui-monospace, monospace',
-            fontSize: 13,
-          }}
-        >
+        <button type="submit" className="btn btn-primary">
           Sign in with GitHub
         </button>
       </form>
-    </div>
+    </main>
   );
 }

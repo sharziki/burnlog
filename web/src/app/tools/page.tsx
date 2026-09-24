@@ -9,94 +9,70 @@ export const metadata: Metadata = {
   alternates: { canonical: "/tools" },
 };
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
-
 export default function ToolsIndex() {
   const logs = TOOLS.filter((t) => t.method === "log");
   const wire = TOOLS.filter((t) => t.method === "wrap");
 
   return (
-    <main style={{ maxWidth: 820, margin: "0 auto", padding: "48px 24px 72px", fontFamily: SANS }}>
-      <h1 style={{ fontSize: 34, fontWeight: 800, letterSpacing: -1.2, color: "#FAFAFA", margin: 0 }}>
+    <main className="mx-auto max-w-5xl px-5 pb-28 pt-14 sm:px-8 sm:pt-20">
+      <h1 className="m-0 font-display text-[40px] leading-[1.02] text-ink sm:text-[52px]">
         Agents burnlog counts
       </h1>
-      <p style={{ color: "#71717A", fontSize: 14, lineHeight: 1.65, margin: "12px 0 0", maxWidth: 580 }}>
+      <p className="m-0 mt-5 max-w-[34rem] text-[17px] leading-relaxed text-soft">
         Local logs when they exist. Provider usage when they don&apos;t. Tokens only.
       </p>
 
-      <div style={{ marginTop: 22, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", border: "1px solid #18181B", borderRadius: 8, background: "#0C0C0E", padding: "12px 14px" }}>
-        <code style={{ fontFamily: MONO, fontSize: 12, color: "#E4E4E7", flex: "1 1 220px" }}>
-          <span style={{ color: "#52525B" }}>$ </span>npx @sxnalabs/burnlog
+      <p className="m-0 mt-8 text-[13px] text-dim">
+        <code className="font-mono text-soft">
+          <span className="text-faint">$ </span>npx @sxnalabs/burnlog
         </code>
-        <span style={{ fontFamily: MONO, fontSize: 10, color: "#52525B" }}>
-          run once · already connected? skip it
-        </span>
-      </div>
+        <span className="ml-3">run once · already connected? skip it</span>
+      </p>
 
       <Group
         title="Read from local logs"
         note="The agent already writes its own usage to disk. Nothing to configure, and your first run counts history you already have."
         tools={logs}
-        color="#10B981"
       />
       <Group
         title="Counted at the wire"
         note="No readable log, so burnlog reads the usage field off the API response instead — the provider's own number, not an estimate."
         tools={wire}
-        color="#D97706"
       />
     </main>
   );
 }
 
-function Group({
-  title,
-  note,
-  tools,
-  color,
-}: {
-  title: string;
-  note: string;
-  tools: typeof TOOLS;
-  color: string;
-}) {
+function Group({ title, note, tools }: { title: string; note: string; tools: typeof TOOLS }) {
   return (
-    <section style={{ marginTop: 34 }}>
-      <h2 style={{ fontSize: 13, fontFamily: MONO, letterSpacing: 1, textTransform: "uppercase", color, margin: 0 }}>
-        {title}
-      </h2>
-      <p style={{ color: "#52525B", fontSize: 12.5, lineHeight: 1.6, margin: "8px 0 14px", maxWidth: 640 }}>
-        {note}
-      </p>
-      <div className="tool-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+    <section className="mt-16">
+      <h2 className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
+      <p className="m-0 mt-2 max-w-[40rem] text-[14px] leading-relaxed text-soft">{note}</p>
+      <ul className="m-0 mt-6 grid list-none grid-cols-1 border-t border-line p-0 sm:grid-cols-2 sm:gap-x-10">
         {tools.map((t) => (
-          <a
-            key={t.slug}
-            href={`/tools/${t.slug}`}
-            style={{
-              border: "1px solid #18181B",
-              borderRadius: 8,
-              background: "#0C0C0E",
-              padding: 16,
-              textDecoration: "none",
-              display: "flex",
-              gap: 12,
-              alignItems: "flex-start",
-            }}
-          >
-            <span style={{ width: 34, height: 34, flexShrink: 0, border: "1px solid #27272A", borderRadius: 7, display: "grid", placeItems: "center", color }}>
-              <ToolLogo slug={t.slug} size={20} />
-            </span>
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: "#FAFAFA" }}>{t.name}</span>
-              <span style={{ display: "block", color: "#71717A", fontSize: 12, lineHeight: 1.5, marginTop: 4 }}>
-                {t.method === "log" ? "Reads existing local usage. History included." : "Counts provider usage under burnlog wrap."}
+          <li key={t.slug} className="border-b border-line">
+            <a
+              href={`/tools/${t.slug}`}
+              className="group grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-4 py-5 no-underline"
+            >
+              <span className="mt-0.5 opacity-60 grayscale transition-opacity group-hover:opacity-100">
+                <ToolLogo slug={t.slug} size={18} wordmark={false} />
               </span>
-            </span>
-          </a>
+              <span className="min-w-0">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="text-[15px] text-ink">{t.name}</span>
+                  <span className="shrink-0 text-[12px] text-dim">
+                    {t.method === "log" ? "reads directly" : "via wrap"}
+                  </span>
+                </span>
+                <span className="mt-1 line-clamp-2 block text-[14px] leading-relaxed text-soft">
+                  {t.verdict}
+                </span>
+              </span>
+            </a>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

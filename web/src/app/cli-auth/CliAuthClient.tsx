@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-
 type Status = "idle" | "working" | "done" | "error";
 
 export function CliAuthClient({
@@ -48,57 +46,28 @@ export function CliAuthClient({
 
   if (status === "done") {
     return (
-      <p style={{ color: "#A1A1AA", maxWidth: 440, fontFamily: MONO }}>
-        Connected as <span style={{ color: "#D97706" }}>@{username}</span>. You can close this tab
+      <p className="m-0 text-[15px] leading-relaxed text-soft">
+        Connected as <span className="font-mono text-ink">@{username}</span>. You can close this tab
         and return to your terminal.
       </p>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", fontFamily: MONO }}>
-      <p style={{ color: "#A1A1AA", maxWidth: 440 }}>
+    <div className="flex flex-col items-center">
+      <p className="m-0 text-[15px] leading-relaxed text-soft">
         Connect the burnlog CLI / MCP on this machine as{" "}
-        <span style={{ color: "#D97706" }}>@{username}</span>? This creates an API key stored only on
+        <span className="font-mono text-ink">@{username}</span>? This creates an API key stored only on
         your computer.
       </p>
-      <div style={{ display: "flex", gap: 12 }}>
-        <button
-          onClick={approve}
-          disabled={status === "working"}
-          style={{
-            padding: "12px 24px",
-            background: "#D97706",
-            color: "#09090B",
-            border: "none",
-            borderRadius: 8,
-            fontWeight: 700,
-            cursor: status === "working" ? "default" : "pointer",
-            opacity: status === "working" ? 0.6 : 1,
-            fontFamily: MONO,
-            fontSize: 13,
-          }}
-        >
-          {status === "working" ? "connecting…" : "Approve & connect"}
-        </button>
-        <a
-          href="/"
-          style={{
-            padding: "12px 24px",
-            background: "transparent",
-            color: "#A1A1AA",
-            border: "1px solid #27272A",
-            borderRadius: 8,
-            textDecoration: "none",
-            fontFamily: MONO,
-            fontSize: 13,
-          }}
-        >
-          Cancel
-        </a>
-      </div>
+      <button onClick={approve} disabled={status === "working"} className="btn btn-primary mt-8">
+        {status === "working" ? "connecting…" : "Approve & connect"}
+      </button>
+      <a href="/" className="mt-4 text-[14px] text-dim underline decoration-faint underline-offset-4 hover:text-ink">
+        Cancel
+      </a>
       {status === "error" && (
-        <p style={{ color: "#F87171", fontSize: 12, maxWidth: 440 }}>{message}</p>
+        <p className="m-0 mt-5 text-[13px] text-[#F28B82]">{message}</p>
       )}
     </div>
   );

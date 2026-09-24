@@ -2,24 +2,24 @@
 
 import { formatTokens } from "@/lib/format";
 import { useMe } from "@/hooks/useMe";
-import type { BoardRow } from "@/components/Leaderboard";
+import { useStanding } from "@/hooks/useStanding";
+import { Skeleton } from "@/components/ui/skeleton";
 
-/** Your standing in one sentence, from the board the page already has. */
-export function YouLine({ rows }: { rows: BoardRow[] }) {
+/** Your standing in one sentence — from the server, so it holds past the top 100. */
+export function YouLine() {
   const me = useMe();
+  const s = useStanding();
+  if (me === undefined) return <Skeleton className="h-4 w-72" />;
   if (!me) return null;
-
-  const burners = rows.filter((r) => r.totalTokens > 0).sort((a, b) => b.totalTokens - a.totalTokens);
-  const place = burners.findIndex((r) => r.username === me.username) + 1;
-  const row = place ? burners[place - 1] : null;
+  if (!s) return <Skeleton className="h-4 w-72" />;
 
   return (
     <p className="m-0 text-[14px] leading-relaxed text-soft">
-      {row ? (
+      {s?.row && s.place ? (
         <>
-          You&apos;re <span className="text-ink">#{place}</span> of {burners.length} with{" "}
-          <span className="font-mono text-ink">{formatTokens(row.totalTokens)}</span> tokens
-          {row.streak > 1 ? <>, {row.streak} days running</> : null}.{" "}
+          You&apos;re <span className="text-ink">#{s.place}</span> of {s.total.toLocaleString()} with{" "}
+          <span className="font-mono text-ink">{formatTokens(s.row.totalTokens)}</span> tokens
+          {s.row.streak > 1 ? <>, {s.row.streak} days running</> : null}.{" "}
         </>
       ) : (
         <>Signed in as @{me.username}. Paste the prompt and you&apos;ll appear here. </>

@@ -3,6 +3,7 @@
 import { CopyButton } from "@/components/ui/copy-button";
 import { GithubIcon } from "@/components/ui/github-icon";
 import { useMe } from "@/hooks/useMe";
+import { Skeleton } from "@/components/ui/skeleton";
 import { signInWithGitHub } from "@/app/actions";
 
 function promptFor(code: string | null): string {
@@ -34,7 +35,7 @@ async function freshPrompt(): Promise<string> {
 export function SetupCTA() {
   const me = useMe();
 
-  if (me === undefined) return <div className="h-11" aria-hidden />;
+  if (me === undefined) return <Skeleton className="h-11 w-52 rounded-lg" />;
 
   if (!me) {
     return (

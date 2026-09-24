@@ -27,21 +27,19 @@ export default async function EmbedPage() {
 
   if (!username) {
     return (
-      <main style={{ maxWidth: 560, margin: "0 auto", padding: "72px 24px 96px", textAlign: "center" }}>
-        <div style={{ fontFamily: 'var(--font-mono), "IBM Plex Mono", monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#D97706" }}>
-          Your badge
-        </div>
-        <h1 style={{ margin: "12px 0 10px", fontSize: 34, letterSpacing: -1.2, color: "#FAFAFA" }}>
+      <main className="mx-auto max-w-xl px-5 pb-24 pt-16 text-center sm:px-8 sm:pt-24">
+        <p className="m-0 text-[13px] text-dim">Your badge</p>
+        <h1 className="m-0 mt-3 font-display text-[40px] leading-[1.02] text-ink sm:text-[52px]">
           Share your burn.
         </h1>
-        <p style={{ margin: "0 auto 24px", color: "#71717A", fontSize: 14, lineHeight: 1.6 }}>
+        <p className="m-0 mx-auto mb-8 mt-5 max-w-md text-[16px] leading-relaxed text-soft">
           Sign in so burnlog can use your account. No username field. No pretending to be someone else.
         </p>
         <form action={async () => {
           "use server";
           await signIn("github", { redirectTo: "/embed" });
         }}>
-          <button type="submit" style={{ minHeight: 42, padding: "10px 18px", border: 0, borderRadius: 7, background: "#D97706", color: "#09090B", fontFamily: 'var(--font-mono), "IBM Plex Mono", monospace', fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          <button type="submit" className="btn btn-primary">
             Sign in with GitHub
           </button>
         </form>

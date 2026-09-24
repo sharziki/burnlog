@@ -130,7 +130,7 @@ export function ProfileClient({
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="m-0 font-serif text-[40px] font-normal leading-none tracking-[-0.01em] text-ink sm:text-[48px]">
+          <h1 className="m-0 font-display text-[40px] leading-none text-ink sm:text-[48px]">
             {user.name}
           </h1>
           <p className="m-0 mt-2.5 text-[14px] text-soft">
@@ -250,18 +250,21 @@ export function ProfileClient({
         </Section>
       )}
 
+      {/* Earned only, as one line of text: a 25-cell trophy wall was the
+          noisiest thing on the page and said less than a sentence does. */}
       <Section title="Achievements" aside={`${earned.length} of ${SHOWN.length}`}>
-        <ul className="m-0 grid list-none grid-cols-2 gap-x-6 gap-y-3 p-0 sm:grid-cols-3">
-          {SHOWN.map((a) => {
-            const got = unlocked.has(a.key);
-            return (
-              <li key={a.key} title={got ? a.name : `Locked — ${a.how}`} className="min-w-0">
-                <span className={cn("block truncate text-[14px]", got ? "text-ink" : "text-faint")}>{a.name}</span>
-                <span className="block truncate text-[12px] text-dim">{got ? a.tier : a.how}</span>
-              </li>
-            );
-          })}
-        </ul>
+        {earned.length ? (
+          <p className="m-0 text-[14px] leading-7 text-soft">
+            {earned.map((a, i) => (
+              <span key={a.key} title={a.how}>
+                {i > 0 && <span className="px-2 text-faint">·</span>}
+                {a.name}
+              </span>
+            ))}
+          </p>
+        ) : (
+          <p className="m-0 text-[14px] text-dim">None yet — the first one comes with the first sync.</p>
+        )}
       </Section>
     </main>
   );

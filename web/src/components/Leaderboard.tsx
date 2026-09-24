@@ -6,6 +6,7 @@ import { formatTokens } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { useStanding } from "@/hooks/useStanding";
 
 export type BoardRow = {
   id: string;
@@ -19,6 +20,9 @@ export type BoardRow = {
   weeklyHistory: number[];
 };
 
+const FIRST = 10;
+const STEP = 25;
+
 function Spark({ data, hot }: { data: number[]; hot: boolean }) {
   const w = 64;
   const h = 18;
@@ -27,33 +31,80 @@ function Spark({ data, hot }: { data: number[]; hot: boolean }) {
   const pts = data.map((v, i) => `${(i / Math.max(data.length - 1, 1)) * w},${h - 1 - (v / max) * (h - 2)}`).join(" ");
   return (
     <svg width={w} height={h} className="overflow-visible" aria-hidden>
-      <polyline
-        points={pts}
-        fill="none"
-        stroke={hot ? "var(--color-accent)" : "var(--color-faint)"}
-        strokeWidth={1.25}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <polyline points={pts} fill="none" stroke={hot ? "var(--color-accent)" : "var(--color-faint)"} strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/** The board: one table, hairline rows, numbers in mono. */
-export function Leaderboard({ rows }: { rows: BoardRow[] }) {
+function Row({ r, place, value, mine }: { r: BoardRow; place: number; value: number; mine: boolean }) {
+  return (
+    <li className="border-b border-line">
+      <a
+        href={`/u/${r.username}`}
+        className={cn(
+          "group grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-4 px-2 py-3.5 text-inherit no-underline transition-colors hover:bg-ink/[0.025] sm:grid-cols-[2.75rem_minmax(0,1fr)_4rem_7rem]",
+          mine && "bg-ink/[0.035]",
+        )}
+      >
+        <span className={cn("font-mono text-[13px] tabular-nums", place === 1 ? "text-accent" : "text-dim")}>
+          {String(place).padStart(2, "0")}
+        </span>
+        <span className="flex min-w-0 items-center gap-3">
+          {r.image ? (
+            <img src={r.image} alt="" width={28} height={28} loading={place <= FIRST ? "eager" : "lazy"} className="size-7 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] font-mono text-[10px] text-soft">{r.avatar}</span>
+          )}
+          <span className="min-w-0 truncate text-[15px] text-ink">
+            {r.name}
+            <span className="ml-2 font-mono text-[12px] text-dim">@{r.username}</span>
+            {mine && <span className="ml-2 text-[12px] text-accent">you</span>}
+          </span>
+        </span>
+        <span className="hidden sm:block">
+          <Spark data={r.weeklyHistory} hot={place === 1} />
+        </span>
+        <span className="text-right">
+          <span className="block font-mono text-[15px] tabular-nums text-ink">{formatTokens(value)}</span>
+          <span className="block text-[11px] text-dim">{getRank(r.totalTokens).name}</span>
+        </span>
+      </a>
+    </li>
+  );
+}
+
+/**
+ * The board. Shows the top ten, grows 25 at a time, and keeps your own row
+ * pinned underneath when you're below what's shown — so it stays one calm list
+ * at ten burners or ten thousand.
+ */
+export function Leaderboard({ rows, burners }: { rows: BoardRow[]; burners: number }) {
   const me = useMe();
   const [range, setRange] = useState<"all" | "week">("all");
+  const [shown, setShown] = useState(FIRST);
+  const standing = useStanding();
+
   const value = (r: BoardRow) => (range === "week" ? r.weeklyTokens : r.totalTokens);
   const ranked = rows.filter((r) => value(r) > 0).sort((a, b) => value(b) - value(a));
+  const visible = ranked.slice(0, shown);
+  const mineVisible = visible.some((r) => r.username === me?.username);
+  const myPlace = range === "week" ? standing?.weekPlace : standing?.place;
+  const pinned = !mineVisible && standing?.row && myPlace ? { row: standing.row, place: myPlace } : null;
+  const more = Math.min(STEP, ranked.length - shown);
 
   return (
     <section id="board" aria-label="Leaderboard" className="scroll-mt-24">
       <div className="flex items-center justify-between gap-4 pb-4">
-        <h2 className="m-0 text-[13px] font-medium text-soft">Leaderboard</h2>
+        <h2 className="m-0 text-[13px] font-medium text-soft">
+          Leaderboard <span className="ml-1 font-mono text-dim">{burners.toLocaleString()}</span>
+        </h2>
         <SegmentedControl
           label="Time range"
           value={range}
-          onChange={setRange}
+          onChange={(v) => {
+            setRange(v);
+            setShown(FIRST);
+          }}
           options={[
             { value: "all", label: "All time" },
             { value: "week", label: "This week" },
@@ -65,53 +116,33 @@ export function Leaderboard({ rows }: { rows: BoardRow[] }) {
         {ranked.length === 0 && (
           <li className="py-10 text-center text-sm text-dim">Nobody has burned anything {range === "week" ? "this week" : "yet"}.</li>
         )}
-        {ranked.map((r, i) => {
-          const mine = me?.username === r.username;
-          return (
-            <li key={r.id} className="border-b border-line">
-              <a
-                href={`/u/${r.username}`}
-                className={cn(
-                  "group grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-4 px-2 py-3.5 text-inherit no-underline transition-colors hover:bg-ink/[0.025] sm:grid-cols-[2rem_minmax(0,1fr)_4rem_7rem]",
-                  mine && "bg-ink/[0.035]",
-                )}
-              >
-                <span className={cn("font-mono text-[13px] tabular-nums", i === 0 ? "text-accent" : "text-dim")}>
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="flex min-w-0 items-center gap-3">
-                  {r.image ? (
-                    <img
-                      src={r.image}
-                      alt=""
-                      width={28}
-                      height={28}
-                      loading={i < 10 ? "eager" : "lazy"}
-                      className="size-7 shrink-0 rounded-full object-cover grayscale-[35%] transition group-hover:grayscale-0"
-                    />
-                  ) : (
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] font-mono text-[10px] text-soft">
-                      {r.avatar}
-                    </span>
-                  )}
-                  <span className="min-w-0 truncate text-[15px] text-ink">
-                    {r.name}
-                    <span className="ml-2 font-mono text-[12px] text-dim">@{r.username}</span>
-                    {mine && <span className="ml-2 text-[12px] text-accent">you</span>}
-                  </span>
-                </span>
-                <span className="hidden sm:block">
-                  <Spark data={r.weeklyHistory} hot={i === 0} />
-                </span>
-                <span className="text-right">
-                  <span className="block font-mono text-[15px] tabular-nums text-ink">{formatTokens(value(r))}</span>
-                  <span className="block text-[11px] text-dim">{getRank(r.totalTokens).name}</span>
-                </span>
-              </a>
-            </li>
-          );
-        })}
+        {visible.map((r, i) => (
+          <Row key={r.id} r={r} place={i + 1} value={value(r)} mine={me?.username === r.username} />
+        ))}
       </ol>
+
+      {more <= 0 && ranked.length > 0 && burners > ranked.length && (
+        <p className="m-0 mt-4 text-center text-[13px] text-dim">
+          Top {ranked.length} of {burners.toLocaleString()}
+        </p>
+      )}
+
+      {more > 0 && (
+        <button type="button" onClick={() => setShown((s) => s + STEP)} className="btn mt-4 w-full">
+          Show {more} more
+        </button>
+      )}
+
+      {pinned && (
+        <>
+          <p className="m-0 mt-5 text-center font-mono text-[12px] text-faint" aria-hidden>
+            ···
+          </p>
+          <ol className="m-0 mt-3 list-none border-t border-line p-0">
+            <Row r={pinned.row} place={pinned.place} value={value(pinned.row)} mine />
+          </ol>
+        </>
+      )}
     </section>
   );
 }

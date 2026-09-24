@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-
 /**
  * Edit the fields your public profile displays.
  *
@@ -68,79 +66,33 @@ export function ProfileEditor({
   ];
 
   return (
-    <div style={card}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <div style={{ ...label, marginBottom: 0 }}>PUBLIC PROFILE</div>
-        <span aria-live="polite" style={{ ...fieldLabel, marginLeft: "auto", color: state === "error" ? "#EF4444" : state === "saved" ? "#10B981" : "#52525B" }}>
+    <div>
+      <div className="mb-5 flex items-baseline justify-between gap-4">
+        <h2 className="m-0 text-[13px] font-medium text-soft">Public profile</h2>
+        <span
+          aria-live="polite"
+          className={`text-[12px] ${state === "error" ? "text-[#F28B82]" : state === "saved" ? "text-soft" : "text-dim"}`}
+        >
           {state === "saving" ? "saving…" : state === "saved" ? "saved" : state === "error" ? "couldn't save" : "autosaves"}
         </span>
       </div>
-      <div style={{ display: "grid", gap: 10 }}>
+      <div className="grid gap-4">
         {fields.map(([name, value, set, placeholder, max]) => (
-          <label key={name} style={{ display: "grid", gap: 4 }}>
-            <span style={fieldLabel}>{name}</span>
+          <label key={name} className="block">
+            <span className="label capitalize">{name}</span>
             <input
               value={value}
               onChange={(e) => set(e.target.value)}
               placeholder={placeholder}
               maxLength={max}
-              style={input}
+              className="field"
             />
           </label>
         ))}
       </div>
       {state === "error" && (
-        <button onClick={() => void save()} style={saveBtn}>Retry save</button>
+        <button onClick={() => void save()} className="btn mt-5">Retry save</button>
       )}
     </div>
   );
 }
-
-const card: React.CSSProperties = {
-  background: "#0C0C0E",
-  border: "1px solid #18181B",
-  borderRadius: 10,
-  padding: 20,
-};
-
-const label: React.CSSProperties = {
-  fontSize: 11,
-  color: "#52525B",
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  fontFamily: MONO,
-  marginBottom: 14,
-};
-
-const fieldLabel: React.CSSProperties = {
-  fontFamily: MONO,
-  fontSize: 10,
-  color: "#52525B",
-  letterSpacing: 1,
-  textTransform: "uppercase",
-};
-
-const input: React.CSSProperties = {
-  width: "100%",
-  background: "#09090B",
-  border: "1px solid #18181B",
-  borderRadius: 6,
-  padding: "9px 12px",
-  color: "#FAFAFA",
-  fontFamily: MONO,
-  fontSize: 12.5,
-  outline: "none",
-};
-
-const saveBtn: React.CSSProperties = {
-  marginTop: 14,
-  padding: "9px 18px",
-  borderRadius: 6,
-  border: "1px solid #D9770655",
-  background: "#D9770618",
-  color: "#D97706",
-  fontFamily: MONO,
-  fontSize: 11,
-  fontWeight: 700,
-  cursor: "pointer",
-};

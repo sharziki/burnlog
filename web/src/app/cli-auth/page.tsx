@@ -3,8 +3,6 @@ import { CliAuthClient } from "./CliAuthClient";
 
 export const dynamic = "force-dynamic";
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-
 function parsePort(value: string | undefined): number | null {
   if (!value) return null;
   const n = Number(value);
@@ -21,24 +19,13 @@ function parseState(value: string | undefined): string | null {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        minHeight: "70vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        gap: 18,
-        fontFamily: MONO,
-        padding: 24,
-        textAlign: "center",
-      }}
-    >
-      <div style={{ fontSize: 10, color: "#52525B", letterSpacing: 2, textTransform: "uppercase" }}>
-        burnlog · connect
-      </div>
+    <main className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 text-center">
+      <p className="m-0 text-[13px] text-dim">burnlog · connect</p>
+      <h1 className="m-0 mb-5 mt-3 font-display text-[40px] leading-[1.02] text-ink">
+        Connect this machine
+      </h1>
       {children}
-    </div>
+    </main>
   );
 }
 
@@ -54,11 +41,11 @@ export default async function CliAuthPage({
   if (port === null || state === null) {
     return (
       <Shell>
-        <p style={{ color: "#F87171", maxWidth: 420 }}>
-          Invalid or missing connection request. Run <code>burnlog login</code> from your terminal
+        <p className="m-0 text-[15px] leading-relaxed text-[#F28B82]">
+          Invalid or missing connection request. Run <code className="font-mono">burnlog login</code> from your terminal
           and follow the link it opens.
         </p>
-        <a href="/" style={{ color: "#D97706" }}>
+        <a href="/" className="mt-6 text-[14px] text-soft underline decoration-faint underline-offset-4 hover:text-ink">
           ← back to burnlog
         </a>
       </Shell>
@@ -72,7 +59,7 @@ export default async function CliAuthPage({
     const redirectTo = `/cli-auth?port=${port}&state=${encodeURIComponent(state)}`;
     return (
       <Shell>
-        <p style={{ color: "#A1A1AA", maxWidth: 420 }}>
+        <p className="m-0 mb-8 text-[15px] leading-relaxed text-soft">
           Sign in with GitHub to connect the burnlog CLI / MCP on this machine.
         </p>
         <form
@@ -81,20 +68,7 @@ export default async function CliAuthPage({
             await signIn("github", { redirectTo });
           }}
         >
-          <button
-            type="submit"
-            style={{
-              padding: "12px 24px",
-              background: "#D97706",
-              color: "#09090B",
-              border: "none",
-              borderRadius: 8,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: MONO,
-              fontSize: 13,
-            }}
-          >
+          <button type="submit" className="btn btn-primary">
             Sign in with GitHub
           </button>
         </form>

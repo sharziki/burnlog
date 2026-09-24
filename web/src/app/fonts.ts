@@ -1,45 +1,26 @@
 import localFont from "next/font/local";
-import { Instrument_Serif } from "next/font/google";
-
+import { JetBrains_Mono } from "next/font/google";
 
 /**
- * Self-hosted so builds (including the Docker image) never need network
- * access to a font CDN, and so there's no third-party request at runtime.
- * Latin subsets only — the whole set is under 100KB.
+ * Switzer for everything you read, JetBrains Mono for numbers and code.
+ * Switzer is self-hosted (Fontshare, ITF Free Font License — free for
+ * commercial and web use); JetBrains Mono is OFL, bundled by next/font at build.
  */
-
 export const sans = localFont({
   src: [
-    {
-      path: "../../public/fonts/instrument-sans-400700.woff2",
-      weight: "400 700",
-      style: "normal",
-    },
+    { path: "../../public/fonts/switzer-400.woff2", weight: "400", style: "normal" },
+    { path: "../../public/fonts/switzer-500.woff2", weight: "500", style: "normal" },
+    { path: "../../public/fonts/switzer-600.woff2", weight: "600", style: "normal" },
+    { path: "../../public/fonts/switzer-700.woff2", weight: "700", style: "normal" },
   ],
   variable: "--font-sans",
   display: "swap",
   fallback: ["system-ui", "-apple-system", "Segoe UI", "sans-serif"],
 });
 
-export const mono = localFont({
-  src: [
-    { path: "../../public/fonts/ibm-plex-mono-400.woff2", weight: "400", style: "normal" },
-    { path: "../../public/fonts/ibm-plex-mono-500.woff2", weight: "500", style: "normal" },
-    { path: "../../public/fonts/ibm-plex-mono-600.woff2", weight: "600", style: "normal" },
-    { path: "../../public/fonts/ibm-plex-mono-700.woff2", weight: "700", style: "normal" },
-  ],
-  variable: "--font-mono",
-  display: "swap",
-  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
-});
-
-// Display serif for headlines — the editorial counterpart to Instrument Sans.
-// SIL Open Font License; self-hosted by next/font at build time.
-
-export const serif = Instrument_Serif({
-  weight: "400",
-  style: ["normal", "italic"],
+export const mono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-serif",
+  weight: ["400", "500"],
+  variable: "--font-mono",
   display: "swap",
 });

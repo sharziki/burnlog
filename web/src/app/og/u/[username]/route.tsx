@@ -86,7 +86,7 @@ export async function GET(
         {/* the number */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", fontFamily: "Serif", fontSize: 220, lineHeight: 0.9, letterSpacing: -4 }}>
+            <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 600, fontSize: 210, lineHeight: 0.9, letterSpacing: -16 }}>
               {formatTokens(stats.totalTokens)}
             </div>
             <div style={{ display: "flex", fontSize: 26, color: OG.soft, marginTop: 18 }}>

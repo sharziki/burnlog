@@ -23,8 +23,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-
 const MESSAGES: Record<string, { title: string; body: string }> = {
   AccessDenied: {
     title: "Sign-in was cancelled",
@@ -51,60 +49,24 @@ export default async function AuthErrorPage({
   const { title, body } = (error && MESSAGES[error]) || FALLBACK;
 
   return (
-    <div
-      style={{
-        minHeight: "70vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 18,
-        padding: 24,
-        textAlign: "center",
-      }}
-    >
-      <div style={{ fontFamily: MONO, fontSize: 10, color: "#52525B", letterSpacing: 2, textTransform: "uppercase" }}>
-        burnlog · sign in
-      </div>
+    <main className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 py-16 text-center">
+      <p className="m-0 text-[13px] text-dim">Sign in</p>
 
-      <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.8, color: "#FAFAFA", margin: 0 }}>
+      <h1 className="m-0 mt-3 font-display text-[40px] leading-[1.05] text-ink">
         {title}
       </h1>
 
-      <p style={{ fontSize: 14, color: "#71717A", lineHeight: 1.65, margin: 0, maxWidth: 440 }}>
-        {body}
-      </p>
+      <p className="m-0 mt-4 text-[15px] leading-relaxed text-soft">{body}</p>
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginTop: 6 }}>
-        <Link
-          href="/"
-          style={{
-            padding: "12px 22px",
-            background: "#D97706",
-            color: "#09090B",
-            border: "none",
-            borderRadius: 8,
-            fontFamily: MONO,
-            fontSize: 12.5,
-            fontWeight: 800,
-            textDecoration: "none",
-          }}
-        >
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <Link href="/" className="btn btn-primary">
           Try again
         </Link>
         <a
           href="https://github.com/sharziki/burnlog/issues"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            padding: "12px 20px",
-            border: "1px solid #27272A",
-            borderRadius: 8,
-            fontFamily: MONO,
-            fontSize: 12.5,
-            color: "#A1A1AA",
-            textDecoration: "none",
-          }}
+          className="btn"
         >
           Report it
         </a>
@@ -112,11 +74,7 @@ export default async function AuthErrorPage({
 
       {/* The slug is the only thing that makes a report actionable, so it's on
           the page rather than only in the query string. */}
-      {error && (
-        <div style={{ fontFamily: MONO, fontSize: 11, color: "#3F3F46" }}>
-          reference: {error}
-        </div>
-      )}
-    </div>
+      {error && <p className="m-0 mt-8 font-mono text-[12px] text-faint">reference: {error}</p>}
+    </main>
   );
 }

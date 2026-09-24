@@ -1,8 +1,5 @@
 "use client";
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
-
 export default function Error({
   error,
   reset,
@@ -11,62 +8,13 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div
-      style={{
-        maxWidth: 480,
-        margin: "0 auto",
-        padding: "80px 24px",
-        textAlign: "center",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 48,
-          fontWeight: 800,
-          color: "#D97706",
-          fontFamily: MONO,
-          marginBottom: 16,
-        }}
-      >
-        oops
-      </div>
-      <div
-        style={{
-          fontSize: 14,
-          color: "#71717A",
-          fontFamily: SANS,
-          marginBottom: 8,
-        }}
-      >
-        Something went wrong loading this page.
-      </div>
-      {error.digest && (
-        <div
-          style={{
-            fontSize: 10,
-            color: "#3F3F46",
-            fontFamily: MONO,
-            marginBottom: 24,
-          }}
-        >
-          error id: {error.digest}
-        </div>
-      )}
-      <button
-        onClick={reset}
-        style={{
-          fontSize: 12,
-          color: "#D97706",
-          background: "transparent",
-          border: "1px solid #18181B",
-          borderRadius: 6,
-          padding: "8px 20px",
-          cursor: "pointer",
-          fontFamily: MONO,
-        }}
-      >
-        try again
+    <main className="mx-auto max-w-md px-5 py-24 text-center sm:py-32">
+      <h1 className="m-0 font-display text-[40px] leading-[1.05] text-ink">Oops</h1>
+      <p className="m-0 mt-4 text-[15px] leading-relaxed text-soft">Something went wrong loading this page.</p>
+      {error.digest && <p className="m-0 mt-3 font-mono text-[12px] text-faint">error id: {error.digest}</p>}
+      <button type="button" onClick={reset} className="btn mt-8">
+        Try again
       </button>
-    </div>
+    </main>
   );
 }

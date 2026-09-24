@@ -20,7 +20,7 @@ export default async function Home() {
   // A build with no reachable database (CI) renders an empty board rather than
   // failing; the 30s revalidation fills it in on the first live request.
   const users = await getBoard().catch(() => []);
-  const rows: BoardRow[] = users.map((u) => ({
+  const toRow = (u: (typeof users)[number]): BoardRow => ({
     id: u.id,
     username: u.username,
     name: u.name,
@@ -30,15 +30,21 @@ export default async function Home() {
     weeklyTokens: u.weeklyTokens,
     streak: u.streak,
     weeklyHistory: u.weeklyHistory,
-  }));
-  const burners = rows.filter((r) => r.totalTokens > 0);
-  const total = burners.reduce((s, r) => s + r.totalTokens, 0);
-  const week = burners.reduce((s, r) => s + r.weeklyTokens, 0);
+  });
+  const burners = users.filter((u) => u.totalTokens > 0);
+  const total = burners.reduce((s, u) => s + u.totalTokens, 0);
+  const week = burners.reduce((s, u) => s + u.weeklyTokens, 0);
+  // Ship the top of the board, not all of it: the 100 biggest all-time and the
+  // 100 biggest this week. The page stays the same size at any board size;
+  // your own row, if it's further down, comes from /api/me/standing.
+  const TOP = 100;
+  const byWeek = [...burners].sort((a, b) => b.weeklyTokens - a.weeklyTokens).slice(0, TOP);
+  const rows = [...new Map([...burners.slice(0, TOP), ...byWeek].map((u) => [u.id, toRow(u)])).values()];
 
   return (
     <main className="mx-auto grid max-w-6xl gap-14 px-5 pb-28 pt-16 sm:px-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20 lg:pt-24">
       <div className="animate-rise lg:sticky lg:top-28 lg:self-start">
-        <h1 className="m-0 font-serif text-[52px] font-normal leading-[0.98] tracking-[-0.02em] text-ink sm:text-[64px]">
+        <h1 className="m-0 font-display text-[52px] leading-[0.98] text-ink sm:text-[64px]">
           Every token you burn, ranked.
         </h1>
         <p className="m-0 mt-6 max-w-[26rem] text-[16px] leading-relaxed text-soft">
@@ -57,7 +63,7 @@ export default async function Home() {
         </p>
 
         <div className="mt-10 border-t border-line pt-6">
-          <YouLine rows={rows} />
+          <YouLine />
           <dl className="m-0 mt-6 grid grid-cols-3 gap-6">
             {(
               [
@@ -76,7 +82,7 @@ export default async function Home() {
       </div>
 
       <div className="animate-rise [animation-delay:80ms]">
-        <Leaderboard rows={rows} />
+        <Leaderboard rows={rows} burners={burners.length} />
       </div>
     </main>
   );

@@ -18,7 +18,7 @@ const STEPS = [
 export default function AgentPage() {
   return (
     <main className="mx-auto max-w-3xl px-5 pb-28 pt-16 sm:px-8 sm:pt-24">
-      <h1 className="animate-rise m-0 font-serif text-[48px] font-normal leading-none tracking-[-0.02em] text-ink sm:text-[60px]">
+      <h1 className="animate-rise m-0 font-display text-[48px] leading-none text-ink sm:text-[60px]">
         One paste. That&apos;s setup.
       </h1>
       <p className="m-0 mt-6 max-w-[30rem] text-[16px] leading-relaxed text-soft">

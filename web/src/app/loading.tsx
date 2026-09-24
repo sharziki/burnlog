@@ -1,72 +1,17 @@
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+import { Skeleton } from "@/components/ui/skeleton";
 
-function Skeleton({ width, height = 16 }: { width: number | string; height?: number }) {
-  return (
-    <div
-      style={{
-        width,
-        height,
-        borderRadius: 4,
-        background: "#18181B",
-        animation: "pulse 1.5s ease-in-out infinite",
-      }}
-    />
-  );
-}
-
+/** Shown while a page renders on the server. Shaped like a page, not a spinner. */
 export default function Loading() {
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
-
-      {/* Header skeleton */}
-      <div style={{ marginBottom: 32 }}>
-        <Skeleton width={200} height={24} />
-        <div style={{ marginTop: 8 }}>
-          <Skeleton width={320} height={12} />
-        </div>
+    <main className="mx-auto max-w-2xl px-5 pb-28 pt-14 sm:px-8 sm:pt-20" role="status" aria-label="Loading">
+      <Skeleton className="h-3 w-24" />
+      <Skeleton className="mt-5 h-11 w-4/5" />
+      <Skeleton className="mt-3 h-11 w-3/5" />
+      <div className="mt-10 space-y-3">
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-11/12" />
+        <Skeleton className="h-3.5 w-4/6" />
       </div>
-
-      {/* Leaderboard rows skeleton */}
-      {[...Array(5)].map((_, i) => (
-        <div
-          key={i}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            padding: "16px 0",
-            borderBottom: "1px solid #18181B",
-          }}
-        >
-          <Skeleton width={24} height={24} />
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              background: "#18181B",
-              animation: "pulse 1.5s ease-in-out infinite",
-            }}
-          />
-          <div style={{ flex: 1 }}>
-            <Skeleton width={120} height={14} />
-            <div style={{ marginTop: 6 }}>
-              <Skeleton width={80} height={10} />
-            </div>
-          </div>
-          <Skeleton width={80} height={14} />
-        </div>
-      ))}
-
-      <div style={{ textAlign: "center", marginTop: 32, fontFamily: MONO, fontSize: 11, color: "#3F3F46" }}>
-        loading...
-      </div>
-    </div>
+    </main>
   );
 }

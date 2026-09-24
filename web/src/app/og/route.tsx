@@ -50,7 +50,7 @@ export async function GET() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", fontFamily: "Serif", fontSize: 112, lineHeight: 0.98, letterSpacing: -2 }}>
+          <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 600, fontSize: 104, lineHeight: 1, letterSpacing: -4 }}>
             Every token you burn, ranked.
           </div>
           <div style={{ display: "flex", fontSize: 28, color: OG.soft, marginTop: 24 }}>

@@ -2,9 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, sans-serif';
-
 type RankRow = { name: string; icon: string; color: string; blurb: string; threshold: string };
 
 export function EmbedClient({
@@ -68,47 +65,49 @@ export function EmbedClient({
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "44px 24px 80px", fontFamily: SANS, color: "#E4E4E7" }}>
-      <div style={eyebrow}>Your badge</div>
-      <h1 style={{ margin: "10px 0 0", fontSize: 34, letterSpacing: -1.2, lineHeight: 1.05, color: "#FAFAFA" }}>
+    <main className="mx-auto max-w-2xl px-5 pb-28 pt-14 sm:px-8 sm:pt-20">
+      <p className="m-0 text-[13px] text-dim">Your badge</p>
+      <h1 className="m-0 mt-3 font-display text-[40px] leading-[1.02] text-ink sm:text-[52px]">
         Share @{username}&apos;s burn.
       </h1>
-      <p style={{ margin: "10px 0 0", color: "#71717A", fontSize: 13.5, lineHeight: 1.6 }}>
+      <p className="m-0 mt-5 text-[17px] leading-relaxed text-soft">
         Locked to your account. Updates every 15 minutes.
       </p>
 
       {/* Live previews — the real endpoint, not a mock. */}
-      <div style={{ ...card, marginTop: 20, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="mt-10 flex flex-wrap items-center gap-4 rounded-lg border border-line bg-surface p-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={path()} alt="Your burnlog badge" height={20} />
-        <button onClick={() => copy("Markdown", snippets[0][2])} style={{ ...copyBtn, marginLeft: "auto", background: "#D97706", borderColor: "#D97706", color: "#09090B", fontWeight: 700 }}>
+        <button onClick={() => copy("Markdown", snippets[0][2])} className="btn btn-primary ml-auto">
           {copied === "Markdown" ? "copied" : "copy for README"}
         </button>
       </div>
 
-      <details style={{ ...card, marginTop: 12 }}>
-        <summary style={{ cursor: "pointer", color: "#A1A1AA", fontFamily: MONO, fontSize: 11 }}>
+      <details className="mt-8 border-t border-line pt-6">
+        <summary className="cursor-pointer text-[13px] font-medium text-soft hover:text-ink">
           HTML, widget, and badge styles
         </summary>
-        <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-          <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+        <div className="mt-6 grid gap-8">
+          <div className="flex flex-wrap items-center gap-5 rounded-lg border border-line bg-surface p-5">
             {["default", "flat", "compact"].map((style) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img key={style} src={path(style)} alt={`burnlog badge, ${style}`} height={20} />
             ))}
           </div>
           {snippets.map(([label, hint, code]) => (
-          <div key={label} style={{ borderTop: "1px solid #18181B", paddingTop: 14 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-              <span style={{ fontSize: 13, color: "#FAFAFA", fontWeight: 600 }}>{label}</span>
-              <span style={{ fontFamily: MONO, fontSize: 10, color: "#52525B" }}>{hint}</span>
-              <button onClick={() => copy(label, code)} style={copyBtn}>
+          <div key={label}>
+            <div className="mb-3 flex items-center gap-3">
+              <span className="text-[14px] font-medium text-ink">{label}</span>
+              <span className="text-[13px] text-dim">{hint}</span>
+              <button onClick={() => copy(label, code)} className="btn ml-auto h-8 px-3 text-[13px]">
                 {copied === label ? "copied" : "copy"}
               </button>
             </div>
-            <code style={codeBlock}>{code}</code>
+            <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg border border-line bg-surface px-4 py-3 font-mono text-[13px] leading-relaxed text-soft">
+              <code>{code}</code>
+            </pre>
             {label === "Widget" && (
-              <div ref={widgetSlot} style={{ marginTop: 12, minHeight: 158 }} />
+              <div ref={widgetSlot} className="mt-4 min-h-[158px] rounded-lg border border-line bg-surface p-5" />
             )}
           </div>
           ))}
@@ -116,78 +115,27 @@ export function EmbedClient({
       </details>
 
       {/* The ladder — what's next, not just where you are. */}
-      <h2 style={{ ...eyebrow, marginTop: 32 }}>The ranks</h2>
-      <div style={{ ...card, marginTop: 12, padding: 0, overflow: "hidden" }}>
-        {ranks
-          .slice()
-          .reverse()
-          .map((r, i) => (
-            <div
-              key={r.name}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "28px minmax(0,1fr) auto",
-                gap: 12,
-                alignItems: "center",
-                padding: "12px 18px",
-                borderTop: i === 0 ? "none" : "1px solid #131316",
-              }}
-            >
-              <span style={{ fontFamily: MONO, fontSize: 15, color: r.color, textAlign: "center" }}>{r.icon}</span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#E4E4E7" }}>{r.name}</span>
-                <span style={{ display: "block", fontFamily: MONO, fontSize: 10.5, color: "#52525B", marginTop: 2 }}>
-                  {r.blurb}
+      <section className="mt-8 border-t border-line pt-8">
+        <h2 className="m-0 text-[13px] font-medium text-soft">The ranks</h2>
+        <ol className="m-0 mt-5 list-none p-0">
+          {ranks
+            .slice()
+            .reverse()
+            .map((r) => (
+              <li
+                key={r.name}
+                className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 border-b border-line py-3 first:border-t"
+              >
+                <span className="text-center font-mono text-[15px]" style={{ color: r.color }}>{r.icon}</span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] text-ink">{r.name}</span>
+                  <span className="mt-0.5 block text-[13px] text-dim">{r.blurb}</span>
                 </span>
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 11, color: "#52525B", whiteSpace: "nowrap" }}>
-                {r.threshold}
-              </span>
-            </div>
-          ))}
-      </div>
+                <span className="whitespace-nowrap font-mono text-[12px] text-dim">{r.threshold}</span>
+              </li>
+            ))}
+        </ol>
+      </section>
     </main>
   );
 }
-
-const card: React.CSSProperties = {
-  background: "#0C0C0E",
-  border: "1px solid #18181B",
-  borderRadius: 12,
-  padding: 18,
-};
-
-const eyebrow: React.CSSProperties = {
-  fontFamily: MONO,
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: 2,
-  textTransform: "uppercase",
-  color: "#D97706",
-  margin: 0,
-};
-
-const codeBlock: React.CSSProperties = {
-  display: "block",
-  fontFamily: MONO,
-  fontSize: 11.5,
-  color: "#A1A1AA",
-  background: "#09090B",
-  border: "1px solid #18181B",
-  borderRadius: 6,
-  padding: "10px 12px",
-  overflowX: "auto",
-  whiteSpace: "pre",
-};
-
-const copyBtn: React.CSSProperties = {
-  marginLeft: "auto",
-  padding: "5px 10px",
-  borderRadius: 5,
-  border: "1px solid #27272A",
-  background: "transparent",
-  color: "#71717A",
-  fontFamily: MONO,
-  fontSize: 10,
-  cursor: "pointer",
-};
