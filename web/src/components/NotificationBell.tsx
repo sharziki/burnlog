@@ -132,20 +132,19 @@ export function NotificationBell() {
   };
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", display: "flex", alignItems: "center" }}>
       {/* Bell button */}
       <button
         onClick={handleOpen}
         style={{
           background: "transparent",
-          border: "1px solid #18181B",
-          borderRadius: 6,
-          padding: "6px 10px",
+          border: "none",
+          padding: 0,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           gap: 4,
-          color: unreadCount > 0 ? "#D97706" : "#52525B",
+          color: "#7A766E",
           fontFamily: MONO,
           fontSize: 14,
           position: "relative",
@@ -170,26 +169,21 @@ export function NotificationBell() {
           />
         </svg>
         {unreadCount > 0 && (
+          // A dot, not a count: it says "something new" without shouting.
           <span
+            aria-hidden
             style={{
               position: "absolute",
-              top: -4,
-              right: -4,
-              background: "#D97706",
-              color: "#09090B",
-              fontSize: 9,
-              fontWeight: 700,
+              // Anchored to the icon, not the box: phones stretch buttons to a
+              // 40px tap target, which floated a top-pinned dot off the bell.
+              top: "calc(50% - 9px)",
+              right: -2,
+              width: 6,
+              height: 6,
               borderRadius: "50%",
-              width: 16,
-              height: 16,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: MONO,
+              background: "#F2651C",
             }}
-          >
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
+          />
         )}
       </button>
 

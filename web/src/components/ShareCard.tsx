@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const SITE = "https://burnlog.net";
 
 const btn =
-  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 font-mono text-xs font-semibold text-ink no-underline transition-colors hover:border-amber/40";
+  "inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-[13px] text-soft no-underline transition-colors hover:text-ink";
 
 /**
  * The flex. The card is the same image that unfurls when the link is pasted,
@@ -50,16 +50,16 @@ export function ShareCard({
         href={card}
         target="_blank"
         rel="noopener noreferrer"
-        className="group block overflow-hidden rounded-2xl border border-line shadow-[0_30px_80px_-30px_rgba(245,158,11,0.35)] transition-transform hover:-translate-y-0.5"
+        className="block overflow-hidden rounded-xl border border-line"
       >
         <img src={card} alt={`${username}'s burnlog card`} width={1200} height={630} className="block h-auto w-full" />
       </a>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         <a
           href={`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className={cn(btn, "border-transparent bg-linear-to-r from-amber to-flame text-bg hover:border-transparent hover:brightness-110")}
+          className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3.5 text-[13px] font-medium text-bg no-underline transition-[filter] hover:brightness-110"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -70,7 +70,7 @@ export function ShareCard({
           LinkedIn
         </a>
         <button type="button" onClick={() => copy("link")} className={btn}>
-          {copied === "link" ? <Check className="size-3.5 text-amber" /> : <LinkIcon className="size-3.5" />}
+          {copied === "link" ? <Check className="size-3.5 text-accent" /> : <LinkIcon className="size-3.5" />}
           {copied === "link" ? "Copied" : "Copy link"}
         </button>
         <a href={card} download={`burnlog-${username}.png`} className={btn}>
@@ -78,7 +78,7 @@ export function ShareCard({
         </a>
         {own && (
           <button type="button" onClick={() => copy("badge")} className={btn}>
-            {copied === "badge" ? <Check className="size-3.5 text-amber" /> : <Code className="size-3.5" />}
+            {copied === "badge" ? <Check className="size-3.5 text-accent" /> : <Code className="size-3.5" />}
             {copied === "badge" ? "Copied" : "README badge"}
           </button>
         )}

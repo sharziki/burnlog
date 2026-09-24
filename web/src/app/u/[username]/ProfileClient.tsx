@@ -1,7 +1,7 @@
-import { Globe } from "lucide-react";
 import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
-import { ACHIEVEMENTS, TIER_COLOR } from "@/lib/achievements";
+import { estimateCostUsd, formatUsd } from "@/lib/cost";
+import { ACHIEVEMENTS } from "@/lib/achievements";
 import { ShareCard } from "@/components/ShareCard";
 import { GithubIcon } from "@/components/ui/github-icon";
 import { sourceLabel } from "@/lib/sources";
@@ -37,12 +37,12 @@ function ordinal(n: number): string {
   return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 }
 
-function Panel({ title, aside, className, children }: { title: string; aside?: React.ReactNode; className?: string; children: React.ReactNode }) {
+function Section({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className={cn("rounded-2xl border border-line bg-surface/80 p-5 backdrop-blur", className)}>
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h2 className="m-0 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-dim">{title}</h2>
-        {aside}
+    <section className="border-t border-line py-8">
+      <div className="mb-5 flex items-baseline justify-between gap-4">
+        <h2 className="m-0 text-[13px] font-medium text-soft">{title}</h2>
+        {aside && <span className="text-[12px] text-dim">{aside}</span>}
       </div>
       {children}
     </section>
@@ -52,37 +52,43 @@ function Panel({ title, aside, className, children }: { title: string; aside?: R
 function Heatmap({ heatmap }: { heatmap: number[] }) {
   const max = Math.max(...heatmap, 1);
   return (
-    <div className="grid grid-flow-col grid-cols-[repeat(12,minmax(0,1fr))] grid-rows-7 gap-1">
+    <div className="grid w-full max-w-[260px] grid-flow-col grid-cols-[repeat(12,minmax(0,1fr))] grid-rows-7 gap-[3px]">
       {heatmap.map((v, i) => (
         <div
           key={i}
           title={`${formatTokens(v)} tokens`}
-          className="aspect-square rounded-[4px]"
-          style={{ background: v > 0 ? `rgba(245,158,11,${(0.14 + 0.86 * Math.sqrt(v / max)).toFixed(2)})` : "#141417" }}
+          className="aspect-square rounded-[2px]"
+          style={{
+            // Ivory for activity; orange is saved for the single heaviest day.
+            background:
+              v === max && v > 0
+                ? "var(--color-accent)"
+                : v > 0
+                  ? `rgba(237,234,227,${(0.12 + 0.6 * Math.sqrt(v / max)).toFixed(2)})`
+                  : "rgba(237,234,227,0.05)",
+          }}
         />
       ))}
     </div>
   );
 }
 
-function Bars({ items }: { items: { label: string; tokens: number }[] }) {
-  if (!items.length) return <div className="font-mono text-xs text-faint">No data yet</div>;
+function Rows({ items }: { items: { label: string; tokens: number }[] }) {
+  if (!items.length) return <p className="m-0 text-[13px] text-dim">Nothing yet.</p>;
   const total = items.reduce((s, x) => s + x.tokens, 0) || 1;
   return (
-    <ul className="m-0 flex list-none flex-col gap-3 p-0">
+    <ul className="m-0 list-none p-0">
       {items.map((x) => {
-        const pct = Math.round((x.tokens / total) * 100);
+        const pct = (x.tokens / total) * 100;
         return (
-          <li key={x.label} className="font-mono text-xs">
-            <div className="mb-1.5 flex justify-between gap-3">
-              <span className="truncate text-ink">{x.label}</span>
-              <span className="shrink-0 text-dim">
-                {formatTokens(x.tokens)} · {pct}%
-              </span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
-              <div className="h-full rounded-full bg-linear-to-r from-ember to-amber" style={{ width: `${Math.max(pct, 1)}%` }} />
-            </div>
+          <li key={x.label} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-2">
+            <span className="truncate text-[14px] text-ink">{x.label}</span>
+            <span className="font-mono text-[13px] tabular-nums text-soft">
+              {formatTokens(x.tokens)} <span className="text-dim">{Math.round(pct)}%</span>
+            </span>
+            <span className="col-span-2 mt-1.5 block h-px bg-line">
+              <span className="block h-px bg-ink/60" style={{ width: `${Math.max(pct, 0.5)}%` }} />
+            </span>
           </li>
         );
       })}
@@ -110,180 +116,153 @@ export function ProfileClient({
   const next = RANKS.find((r) => r.min > user.totalTokens) ?? null;
   const progress = next ? Math.min(100, ((user.totalTokens - rank.min) / (next.min - rank.min)) * 100) : 100;
   const joinDate = new Date(joinedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const earned = SHOWN.filter((a) => unlocked.has(a.key));
 
   return (
-    <main className="relative">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[520px]"
-        style={{ background: `radial-gradient(ellipse 55% 60% at 50% -10%, ${rank.color}33, transparent)` }}
-      />
-      <div className="relative mx-auto max-w-4xl px-4 pb-24 pt-12">
-        {/* ─── Header ─── */}
-        <header className="animate-rise flex flex-col items-start gap-5 sm:flex-row sm:items-center">
-          {user.image ? (
-            <img
-              src={user.image}
-              alt={user.username}
-              width={88}
-              height={88}
-              className="size-[88px] rounded-2xl object-cover ring-2 ring-offset-4 ring-offset-bg"
-              style={{ ["--tw-ring-color" as string]: rank.color }}
-            />
-          ) : (
-            <div
-              className="flex size-[88px] items-center justify-center rounded-2xl font-mono text-3xl font-bold"
-              style={{ background: `${rank.color}22`, color: rank.color }}
-            >
-              {user.avatar}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="m-0 text-3xl font-bold tracking-tight text-ink sm:text-4xl">{user.name}</h1>
-              <span
-                className="rounded-full border px-2.5 py-1 font-mono text-[11px] font-semibold"
-                style={{ color: rank.color, borderColor: `${rank.color}45`, background: `${rank.color}14` }}
-              >
-                {rank.icon} {rank.name}
-              </span>
-              {place ? (
-                <span className="rounded-full border border-amber/30 bg-amber/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-amber">
-                  #{place} on the board
-                </span>
-              ) : null}
-            </div>
-            <div className="mt-1 font-mono text-sm text-dim">@{user.username}</div>
-            {user.bio && <p className="m-0 mt-2.5 max-w-2xl text-[15px] leading-relaxed text-soft">{user.bio}</p>}
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-dim">
-              {user.github && (
-                <a href={`https://github.com/${user.github}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-soft no-underline hover:text-ink">
-                  <GithubIcon className="size-3.5" /> {user.github}
-                </a>
-              )}
-              {user.twitter && (
-                <a href={`https://x.com/${user.twitter}`} target="_blank" rel="noopener noreferrer" className="text-soft no-underline hover:text-ink">
-                  𝕏 @{user.twitter}
-                </a>
-              )}
-              {user.website && (
-                <a
-                  href={user.website.startsWith("http") ? user.website : `https://${user.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-soft no-underline hover:text-ink"
-                >
-                  <Globe className="size-3.5" aria-hidden /> {user.website.replace(/^https?:\/\//, "")}
-                </a>
-              )}
-              <span>joined {joinDate}</span>
-              <span>active {relativeTime(user.lastActive)}</span>
-            </div>
-          </div>
-        </header>
-
-        {/* ─── Next rank ─── */}
-        {next && (
-          <div className="animate-rise mt-8 [animation-delay:60ms]">
-            <div className="mb-2 flex justify-between font-mono text-xs">
-              <span style={{ color: rank.color }}>{rank.name}</span>
-              <span className="text-dim">
-                {formatTokens(next.min - user.totalTokens)} to <span style={{ color: next.color }}>{next.name}</span>
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/5">
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${Math.max(progress, 2)}%`, background: `linear-gradient(90deg, ${rank.color}, ${next.color})` }}
-              />
-            </div>
+    <main className="mx-auto max-w-3xl px-5 pb-28 pt-14 sm:px-8 sm:pt-20">
+      {/* ─── Who ─── */}
+      <header className="animate-rise flex items-start gap-5">
+        {user.image ? (
+          <img src={user.image} alt={user.username} width={64} height={64} className="size-16 shrink-0 rounded-full object-cover" />
+        ) : (
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] font-mono text-lg text-soft">
+            {user.avatar}
           </div>
         )}
-
-        {/* ─── The card ─── */}
-        <div className="animate-rise mt-8 [animation-delay:120ms]">
-          <ShareCard username={user.username} tokens={formatTokens(user.totalTokens)} place={place} />
-        </div>
-
-        {/* ─── Summary ───
-            Every number here is a chart or a tile, which a search engine reads
-            as an empty page. This is the same data as a sentence. */}
-        <p className="m-0 mb-6 max-w-3xl text-[15px] leading-7 text-soft">
-          <strong className="font-semibold text-ink">@{user.username}</strong> has burned{" "}
-          <strong className="font-semibold text-ink">{formatTokens(user.totalTokens)} tokens</strong> across{" "}
-          {user.commits.toLocaleString()} session{user.commits === 1 ? "" : "s"} of AI coding
-          {user.sources.length > 0 && <> with {joinNames(user.sources.slice(0, 3).map((x) => sourceLabel(x.source)))}</>}, rank{" "}
-          <strong className="font-semibold" style={{ color: rank.color }}>
+        <div className="min-w-0">
+          <h1 className="m-0 font-serif text-[40px] font-normal leading-none tracking-[-0.01em] text-ink sm:text-[48px]">
+            {user.name}
+          </h1>
+          <p className="m-0 mt-2.5 text-[14px] text-soft">
+            <span className="font-mono text-dim">@{user.username}</span>
+            <span className="text-faint"> · </span>
             {rank.name}
-          </strong>
-          {place ? <> and {ordinal(place)} on the global board</> : null}.
-          {user.streak > 0 && <> {user.streak}-day streak{user.longestStreak > user.streak ? `, ${user.longestStreak} at best` : ""}.</>}{" "}
-          Tokens only — burnlog never sees prompts, code, or file names.
-        </p>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Panel title="12-week activity" aside={<span className="font-mono text-xs text-dim">{formatTokens(user.weeklyTokens)} this week</span>}>
-            <Heatmap heatmap={user.heatmap} />
-          </Panel>
-          <Panel title="Agents">
-            <Bars items={user.sources.map((s) => ({ label: sourceLabel(s.source), tokens: s.tokens }))} />
-          </Panel>
-          <Panel title="Top models" className="md:col-span-2">
-            <Bars items={user.topModels.map((m) => ({ label: m.model, tokens: m.tokens }))} />
-          </Panel>
+            {place ? (
+              <>
+                <span className="text-faint"> · </span>
+                <span className={place === 1 ? "text-accent" : "text-ink"}>#{place}</span> on the board
+              </>
+            ) : null}
+          </p>
+          {user.bio && <p className="m-0 mt-3 max-w-xl text-[15px] leading-relaxed text-soft">{user.bio}</p>}
+          <p className="m-0 mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-dim">
+            {user.github && (
+              <a href={`https://github.com/${user.github}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-soft no-underline hover:text-ink">
+                <GithubIcon className="size-3.5" /> {user.github}
+              </a>
+            )}
+            {user.twitter && (
+              <a href={`https://x.com/${user.twitter}`} target="_blank" rel="noopener noreferrer" className="text-soft no-underline hover:text-ink">
+                x.com/{user.twitter}
+              </a>
+            )}
+            {user.website && (
+              <a
+                href={user.website.startsWith("http") ? user.website : `https://${user.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-soft no-underline hover:text-ink"
+              >
+                {user.website.replace(/^https?:\/\//, "")}
+              </a>
+            )}
+            <span>joined {joinDate}</span>
+            <span>active {relativeTime(user.lastActive)}</span>
+          </p>
         </div>
+      </header>
 
-        {neighbours.length > 0 && (
-          <Panel title="Nearby on the board" className="mt-4">
-            <div className="flex flex-wrap gap-2">
-              {neighbours.map((n) => (
-                <a
-                  key={n.username}
-                  href={`/u/${n.username}`}
-                  className="flex items-center gap-2 rounded-full border border-line bg-bg py-1 pl-1 pr-3 font-mono text-xs text-ink no-underline transition-colors hover:border-amber/40"
-                >
-                  {n.image ? <img src={n.image} alt="" width={22} height={22} className="size-[22px] rounded-full" /> : null}
-                  <span className="text-dim">#{n.place}</span> @{n.username}
-                  <span className="text-dim">{formatTokens(n.totalTokens)}</span>
-                </a>
-              ))}
-            </div>
-          </Panel>
-        )}
-
-        <Panel
-          title="Achievements"
-          aside={
-            <span className="font-mono text-xs text-dim">
-              {SHOWN.filter((a) => unlocked.has(a.key)).length} / {SHOWN.length}
-            </span>
-          }
-          className="mt-4"
-        >
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
-            {SHOWN.map((a) => {
-              const earned = unlocked.has(a.key);
-              const color = TIER_COLOR[a.tier];
-              return (
-                <div
-                  key={a.key}
-                  title={earned ? a.name : `Locked — ${a.how}`}
-                  className={cn("rounded-xl border px-3 py-2.5 transition-transform", earned ? "hover:-translate-y-0.5" : "border-line opacity-45")}
-                  style={earned ? { borderColor: `${color}45`, background: `${color}0F` } : undefined}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm" style={{ color: earned ? color : "#3F3F46" }}>
-                      {a.icon}
-                    </span>
-                    <span className={cn("text-xs font-semibold", earned ? "text-ink" : "text-dim")}>{a.name}</span>
-                  </div>
-                  <div className="mt-1 font-mono text-[10px] leading-snug text-dim">{earned ? a.tier : a.how}</div>
-                </div>
-              );
-            })}
+      {/* ─── The numbers ─── */}
+      <dl className="animate-rise m-0 mt-12 grid grid-cols-2 gap-y-8 border-t border-line pt-8 [animation-delay:60ms] sm:grid-cols-4">
+        {(
+          [
+            ["Burned", formatTokens(user.totalTokens)],
+            ["This week", formatTokens(user.weeklyTokens)],
+            ["Streak", `${user.streak}d`],
+            ["At API prices", formatUsd(estimateCostUsd(user.buckets))],
+          ] as const
+        ).map(([label, v], i) => (
+          <div key={label}>
+            <dt className="text-[12px] text-dim">{label}</dt>
+            <dd className={cn("m-0 mt-1 font-mono tabular-nums text-ink", i === 0 ? "text-[32px] leading-none" : "text-[20px]")}>{v}</dd>
           </div>
-        </Panel>
+        ))}
+      </dl>
+
+      {next && (
+        <div className="mt-8">
+          <div className="h-px w-full bg-line">
+            <div className="h-px bg-accent" style={{ width: `${Math.max(progress, 1)}%` }} />
+          </div>
+          <p className="m-0 mt-2.5 text-[12px] text-dim">
+            {formatTokens(next.min - user.totalTokens)} to {next.name}
+          </p>
+        </div>
+      )}
+
+      {/* ─── The card ─── */}
+      <div className="animate-rise mt-12 [animation-delay:120ms]">
+        <ShareCard username={user.username} tokens={formatTokens(user.totalTokens)} place={place} />
       </div>
+
+      {/* Every number above is a tile or a chart, which a search engine reads as
+          an empty page. This is the same data as a sentence. */}
+      <p className="m-0 mb-4 mt-2 text-[15px] leading-7 text-soft">
+        @{user.username} has burned {formatTokens(user.totalTokens)} tokens across {user.commits.toLocaleString()} session
+        {user.commits === 1 ? "" : "s"} of AI coding
+        {user.sources.length > 0 && <> with {joinNames(user.sources.slice(0, 3).map((x) => sourceLabel(x.source)))}</>}, rank{" "}
+        {rank.name}
+        {place ? <>, {ordinal(place)} on the global board</> : null}.
+        {user.streak > 0 && <> {user.streak}-day streak{user.longestStreak > user.streak ? `, ${user.longestStreak} at best` : ""}.</>}
+      </p>
+
+      <Section title="Last 12 weeks">
+        <Heatmap heatmap={user.heatmap} />
+      </Section>
+
+      <div className="grid gap-x-12 sm:grid-cols-2">
+        <Section title="Agents">
+          <Rows items={user.sources.map((s) => ({ label: sourceLabel(s.source), tokens: s.tokens }))} />
+        </Section>
+        <Section title="Models">
+          <Rows items={user.topModels.map((m) => ({ label: m.model, tokens: m.tokens }))} />
+        </Section>
+      </div>
+
+      {neighbours.length > 0 && (
+        <Section title="Nearby on the board">
+          <ul className="m-0 list-none p-0">
+            {neighbours.map((n) => (
+              <li key={n.username}>
+                <a
+                  href={`/u/${n.username}`}
+                  className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 py-2 text-inherit no-underline hover:text-ink"
+                >
+                  <span className="font-mono text-[13px] text-dim">{String(n.place).padStart(2, "0")}</span>
+                  <span className="truncate text-[14px] text-ink">
+                    {n.name} <span className="font-mono text-[12px] text-dim">@{n.username}</span>
+                  </span>
+                  <span className="font-mono text-[13px] tabular-nums text-soft">{formatTokens(n.totalTokens)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      <Section title="Achievements" aside={`${earned.length} of ${SHOWN.length}`}>
+        <ul className="m-0 grid list-none grid-cols-2 gap-x-6 gap-y-3 p-0 sm:grid-cols-3">
+          {SHOWN.map((a) => {
+            const got = unlocked.has(a.key);
+            return (
+              <li key={a.key} title={got ? a.name : `Locked — ${a.how}`} className="min-w-0">
+                <span className={cn("block truncate text-[14px]", got ? "text-ink" : "text-faint")}>{a.name}</span>
+                <span className="block truncate text-[12px] text-dim">{got ? a.tier : a.how}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </Section>
     </main>
   );
 }

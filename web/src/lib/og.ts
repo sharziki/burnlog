@@ -13,15 +13,13 @@ import { join } from "node:path";
 export const OG_SIZE = { width: 1200, height: 630 };
 
 export const OG = {
-  bg: "#09090B",
-  surface: "#0C0C0E",
-  border: "#18181B",
-  subtle: "#3F3F46",
-  gray: "#71717A",
-  light: "#E4E4E7",
-  white: "#FAFAFA",
-  amber: "#D97706",
-  amberBright: "#F59E0B",
+  bg: "#0B0B0A",
+  line: "rgba(237,234,227,0.10)",
+  faint: "#4A4742",
+  dim: "#7A766E",
+  soft: "#A8A39A",
+  ink: "#EDEAE3",
+  accent: "#F2651C",
 };
 
 /** The burnlog mark, inlined as SVG markup Satori can rasterise. */
@@ -48,7 +46,7 @@ export const OG_HEADERS = {
  * Real fonts for the cards. Satori's fallback has one weight, so a "big bold
  * number" came out regular and the card read like a spreadsheet. Satori takes
  * TTF/OTF but not WOFF2 or variable fonts, so these are static cuts of the
- * site's own faces (Instrument Sans 400/700, IBM Plex Mono 500/700) in
+ * site's own faces (Instrument Sans 400/700, IBM Plex Mono 500/700, Instrument Serif) in
  * web/assets/og. The literal `process.cwd()` joins are what file tracing
  * follows; next.config.mjs includes the folder too, belt and braces.
  */
@@ -62,11 +60,13 @@ export function ogFonts(): Promise<OgFont[]> {
     readFile(join(process.cwd(), "assets/og/instrument-sans-700.ttf")),
     readFile(join(process.cwd(), "assets/og/plex-mono-500.ttf")),
     readFile(join(process.cwd(), "assets/og/plex-mono-700.ttf")),
-  ]).then(([s4, s7, m5, m7]) => [
+    readFile(join(process.cwd(), "assets/og/instrument-serif-400.ttf")),
+  ]).then(([s4, s7, m5, m7, serif]) => [
     { name: "Sans", data: s4, weight: 400, style: "normal" },
     { name: "Sans", data: s7, weight: 700, style: "normal" },
     { name: "Mono", data: m5, weight: 500, style: "normal" },
     { name: "Mono", data: m7, weight: 700, style: "normal" },
+    { name: "Serif", data: serif, weight: 400, style: "normal" },
   ]);
   return fonts;
 }

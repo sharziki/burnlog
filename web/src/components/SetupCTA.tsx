@@ -1,9 +1,7 @@
 "use client";
 
+import { CopyButton } from "@/components/ui/copy-button";
 import { GithubIcon } from "@/components/ui/github-icon";
-import { useState } from "react";
-import { Check, Copy, Terminal } from "lucide-react";
-import { GlowButton } from "@/components/ui/glow-button";
 import { useMe } from "@/hooks/useMe";
 import { signInWithGitHub } from "@/app/actions";
 
@@ -22,71 +20,34 @@ It reads token counts from every coding agent on this machine — never prompts,
   } Then tell me my rank and my profile link.`;
 }
 
-/**
- * The whole onboarding. Signed in: one click copies a prompt carrying a
- * single-use code, so the agent's one command links straight to this account.
- * Signed out: sign in first (one click), then copy.
- */
+async function freshPrompt(): Promise<string> {
+  try {
+    const res = await fetch("/api/connect", { method: "POST" });
+    if (res.ok) return promptFor(((await res.json()) as { code: string }).code);
+  } catch {
+    // The prompt still works without a code, via browser sign-in.
+  }
+  return promptFor(null);
+}
+
+/** Signed out: one click to sign in. Signed in: one click to copy the prompt. */
 export function SetupCTA() {
   const me = useMe();
-  const [state, setState] = useState<"idle" | "working" | "copied" | "error">("idle");
 
-  async function copy() {
-    setState("working");
-    let code: string | null = null;
-    try {
-      const res = await fetch("/api/connect", { method: "POST" });
-      if (res.ok) code = ((await res.json()) as { code: string }).code;
-    } catch {
-      // No code: the prompt still works, via browser sign-in.
-    }
-    try {
-      await navigator.clipboard.writeText(promptFor(code));
-      setState("copied");
-      setTimeout(() => setState("idle"), 4000);
-    } catch {
-      setState("error");
-    }
-  }
-
-  if (me === undefined) {
-    return <div className="h-[52px]" aria-hidden />;
-  }
+  if (me === undefined) return <div className="h-11" aria-hidden />;
 
   if (!me) {
     return (
-      <div className="flex flex-col items-center gap-4">
-        <form action={signInWithGitHub}>
-          <GlowButton type="submit">
-            <GithubIcon className="size-4" aria-hidden /> Sign in with GitHub
-          </GlowButton>
-        </form>
-        <p className="m-0 font-mono text-xs text-dim">
-          then copy one prompt into your coding agent · that&apos;s the whole setup
-        </p>
-      </div>
+      <form action={signInWithGitHub}>
+        <button
+          type="submit"
+          className="inline-flex h-11 cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-accent px-5 text-[14px] font-medium text-bg transition-[filter] hover:brightness-110"
+        >
+          <GithubIcon className="size-4" /> Sign in with GitHub
+        </button>
+      </form>
     );
   }
 
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <GlowButton type="button" onClick={copy} disabled={state === "working"}>
-        {state === "copied" ? (
-          <>
-            <Check className="size-4 text-amber" aria-hidden /> Copied — paste it into your agent
-          </>
-        ) : (
-          <>
-            <Copy className="size-4" aria-hidden /> {state === "working" ? "Preparing…" : "Copy setup prompt"}
-          </>
-        )}
-      </GlowButton>
-      <p className="m-0 flex items-center gap-2 font-mono text-xs text-dim">
-        <Terminal className="size-3.5" aria-hidden />
-        {state === "error"
-          ? "Clipboard blocked — allow it and try again."
-          : "works in Claude Code, Codex, Cursor, Gemini, Copilot and 50 more"}
-      </p>
-    </div>
-  );
+  return <CopyButton getValue={freshPrompt} label="Copy setup prompt" copiedLabel="Copied — paste it into your agent" />;
 }

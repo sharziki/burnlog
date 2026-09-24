@@ -1,4 +1,6 @@
 import localFont from "next/font/local";
+import { Instrument_Serif } from "next/font/google";
+
 
 /**
  * Self-hosted so builds (including the Docker image) never need network
@@ -29,4 +31,15 @@ export const mono = localFont({
   variable: "--font-mono",
   display: "swap",
   fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+});
+
+// Display serif for headlines — the editorial counterpart to Instrument Sans.
+// SIL Open Font License; self-hosted by next/font at build time.
+
+export const serif = Instrument_Serif({
+  weight: "400",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
 });

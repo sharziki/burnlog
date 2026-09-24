@@ -9,43 +9,41 @@ export const metadata: Metadata = {
 };
 
 const STEPS = [
-  ["Sign in", "One click with GitHub. That's your account and your place on the board."],
+  ["Sign in", "One click with GitHub. That is your account and your place on the board."],
   ["Copy the prompt", "It carries a one-time code for your account, good for 30 minutes."],
-  ["Paste it into your agent", "It runs one command: links this machine, uploads every agent's history, turns on auto-sync."],
+  ["Paste it into your agent", "It runs one command: links this machine, uploads every agent's history, and turns on auto-sync."],
 ] as const;
 
 /** The link you send someone who asks "how do I get on this thing". */
 export default function AgentPage() {
   return (
-    <main className="relative">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_50%_60%_at_50%_-10%,rgba(245,158,11,0.18),transparent)]"
-      />
-      <div className="relative mx-auto max-w-3xl px-4 pb-24 pt-20 text-center">
-        <h1 className="animate-rise m-0 text-4xl font-bold tracking-tighter text-ink sm:text-6xl">
-          One paste. <span className="bg-linear-to-r from-amber to-flame bg-clip-text text-transparent">That&apos;s setup.</span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-soft">
-          Works in any coding agent — Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode, pi, Amp and 50 more.
-          Token counts only, never prompts, code, or file names.
-        </p>
-        <div className="mt-10">
-          <SetupCTA />
-        </div>
-        <ol className="m-0 mt-16 grid list-none gap-3 p-0 text-left sm:grid-cols-3">
-          {STEPS.map(([title, body], i) => (
-            <li key={title} className="rounded-2xl border border-line bg-surface/80 p-5">
-              <div className="font-mono text-xs text-amber">0{i + 1}</div>
-              <div className="mt-2 font-semibold text-ink">{title}</div>
-              <p className="m-0 mt-1.5 text-sm leading-relaxed text-dim">{body}</p>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-10 font-mono text-xs text-dim">
-          Prefer a terminal? <code className="text-soft">npx @sxnalabs/burnlog connect</code>
-        </p>
+    <main className="mx-auto max-w-3xl px-5 pb-28 pt-16 sm:px-8 sm:pt-24">
+      <h1 className="animate-rise m-0 font-serif text-[48px] font-normal leading-none tracking-[-0.02em] text-ink sm:text-[60px]">
+        One paste. That&apos;s setup.
+      </h1>
+      <p className="m-0 mt-6 max-w-[30rem] text-[16px] leading-relaxed text-soft">
+        Works in any coding agent — Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode, pi, Amp and 50 more.
+        Token counts only, never prompts, code, or file names.
+      </p>
+      <div className="mt-9">
+        <SetupCTA />
       </div>
+
+      <ol className="m-0 mt-16 list-none border-t border-line p-0">
+        {STEPS.map(([title, body], i) => (
+          <li key={title} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-4 border-b border-line py-6">
+            <span className="font-mono text-[13px] text-dim">{String(i + 1).padStart(2, "0")}</span>
+            <span>
+              <span className="block text-[15px] text-ink">{title}</span>
+              <span className="mt-1 block text-[14px] leading-relaxed text-soft">{body}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      <p className="m-0 mt-8 text-[13px] text-dim">
+        Prefer a terminal? <code className="font-mono text-soft">npx @sxnalabs/burnlog connect</code>
+      </p>
     </main>
   );
 }

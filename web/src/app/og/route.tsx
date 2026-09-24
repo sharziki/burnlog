@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/db";
 import { formatTokens } from "@/lib/format";
-import { OG, OG_HEADERS, OG_SIZE, markDataUri } from "@/lib/og";
+import { OG, OG_HEADERS, OG_SIZE, markDataUri, ogFonts } from "@/lib/og";
 
 export const runtime = "nodejs";
 
@@ -27,6 +27,7 @@ export async function GET() {
     // Leave the stat strip out rather than fail the image.
   }
 
+  const fonts = await ogFonts();
   return new ImageResponse(
     (
       <div
@@ -35,87 +36,48 @@ export async function GET() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background: OG.bg,
-          padding: 72,
           justifyContent: "space-between",
-          // A warm bloom off the top-right, echoing the app's glow.
-          backgroundImage:
-            "radial-gradient(900px 500px at 85% -10%, rgba(217,119,6,0.18) 0%, rgba(9,9,11,0) 70%)",
+          background: OG.bg,
+          padding: "64px 72px 56px",
+          fontFamily: "Sans",
+          color: OG.ink,
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={markDataUri(64)} width={64} height={64} alt="" />
-          <div style={{ display: "flex", flexDirection: "column", marginLeft: 20 }}>
-            <div style={{ display: "flex", color: OG.white, fontSize: 40, fontWeight: 700, lineHeight: 1 }}>
-              burnlog
-            </div>
-            <div
-              style={{
-                display: "flex",
-                color: OG.subtle,
-                fontSize: 17,
-                letterSpacing: 5,
-                marginTop: 8,
-              }}
-            >
-              TOKEN BURN TRACKER
-            </div>
-          </div>
+          <img src={markDataUri(34, OG.bg)} width={34} height={34} alt="" />
+          <div style={{ display: "flex", fontSize: 28, fontWeight: 700, marginLeft: 12, letterSpacing: -0.5 }}>burnlog</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              display: "flex",
-              color: OG.white,
-              fontSize: 78,
-              fontWeight: 800,
-              letterSpacing: -3,
-              lineHeight: 1.04,
-            }}
-          >
-            See how hard you ship with AI.
+          <div style={{ display: "flex", fontFamily: "Serif", fontSize: 112, lineHeight: 0.98, letterSpacing: -2 }}>
+            Every token you burn, ranked.
           </div>
-          <div style={{ display: "flex", color: OG.gray, fontSize: 27, marginTop: 20, maxWidth: 900 }}>
-            Every token your agents burn — counted, ranked, and put on a board
-            against everyone else plugged in.
+          <div style={{ display: "flex", fontSize: 28, color: OG.soft, marginTop: 24 }}>
+            The leaderboard for AI coding — one prompt into your agent and you are on it.
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            {burned > 0 ? (
-              <>
-                <div style={{ display: "flex", color: OG.amberBright, fontSize: 38, fontWeight: 700 }}>
-                  {formatTokens(burned)}
-                </div>
-                <div style={{ display: "flex", color: OG.gray, fontSize: 24, marginLeft: 12 }}>
-                  tokens burned by {burners} developer{burners === 1 ? "" : "s"}
-                </div>
-              </>
-            ) : (
-              <div style={{ display: "flex", color: OG.gray, fontSize: 24 }}>
-                Claude Code · Codex · Cursor · 14 providers
-              </div>
-            )}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderTop: `1px solid ${OG.line}`,
+            paddingTop: 26,
+            fontSize: 24,
+            color: OG.dim,
+          }}
+        >
+          <div style={{ display: "flex" }}>
+            {burned > 0
+              ? `${formatTokens(burned)} tokens burned by ${burners} developer${burners === 1 ? "" : "s"}`
+              : "Claude Code · Codex · Cursor and 50 more agents"}
           </div>
-          <div
-            style={{
-              display: "flex",
-              color: OG.amber,
-              fontSize: 24,
-              border: `1px solid ${OG.border}`,
-              borderRadius: 10,
-              padding: "12px 22px",
-              background: OG.surface,
-            }}
-          >
-            npx @sxnalabs/burnlog
-          </div>
+          <div style={{ display: "flex", fontFamily: "Mono", fontSize: 20 }}>burnlog.net</div>
         </div>
       </div>
     ),
-    { ...OG_SIZE, headers: OG_HEADERS },
+    { ...OG_SIZE, fonts, headers: OG_HEADERS },
   );
 }

@@ -7,26 +7,22 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 @theme {
-  --color-bg: #09090B;
-  --color-surface: #0C0C0E;
-  --color-line: #1C1C21;
-  --color-ink: #FAFAFA;
-  --color-soft: #A1A1AA;
-  --color-dim: #71717A;
-  --color-faint: #3F3F46;
-  --color-amber: #F59E0B;
-  --color-ember: #D97706;
-  --color-flame: #EA580C;
-  --animate-grid: grid 18s linear infinite;
-  --animate-spin-slow: spin 3s linear infinite;
-  --animate-rise: rise-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  @keyframes grid { 0% { transform: translateY(-50%); } 100% { transform: translateY(0); } }
-  @keyframes rise-in { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
+  /* One warm near-black, ivory text, warm greys, hairlines, one orange. */
+  --color-bg: #0B0B0A;
+  --color-surface: #11110F;
+  --color-line: rgba(237, 234, 227, 0.08);
+  --color-ink: #EDEAE3;
+  --color-soft: #A8A39A;
+  --color-dim: #7A766E;
+  --color-faint: #4A4742;
+  --color-accent: #F2651C;
+  --animate-rise: rise-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes rise-in { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
 }
 
 @layer base {
 :root {
-  --bg: #09090B;
+  --bg: #0B0B0A;
   --surface: #0C0C0E;
   --border: #18181B;
   --muted: #27272A;
