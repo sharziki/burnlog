@@ -40,7 +40,7 @@ export default function SecurityPage() {
 
       <h2>Spend controls</h2>
       <ul>
-        <li>Monthly club budgets with warning/over notifications.</li>
+        <li>Monthly club budgets with optional signed webhooks.</li>
         <li>Optional hard budget guard for club API key ingest.</li>
         <li>Per-club-key monthly caps for CI, services, and client-specific keys.</li>
         <li>CSV reports split service usage by key label.</li>

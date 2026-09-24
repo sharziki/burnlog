@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { revalidateTag } from "next/cache";
 
 export async function PATCH(req: Request) {
   const session = await auth();
@@ -29,5 +30,6 @@ export async function PATCH(req: Request) {
   }
 
   await prisma.user.update({ where: { id: userId }, data });
+  revalidateTag("profile-stats");
   return NextResponse.json({ ok: true });
 }

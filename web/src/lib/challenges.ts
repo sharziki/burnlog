@@ -1,7 +1,6 @@
 import { randomBytes } from "crypto";
 import { prisma } from "./db";
-import { notifyUser } from "./notifications";
-import { evaluateAndNotify } from "./achievements";
+import { evaluateAchievements } from "./achievements";
 
 /**
  * Challenges are scored *derivatively*: nothing is written per burn event.
@@ -363,26 +362,8 @@ export async function getChallenge(
       ),
     ]);
 
-    // Announce the result to everyone who entered. Fire-and-forget: a failed
-    // notification must never block the page that triggered settlement.
-    void Promise.allSettled([
-      ...standings.map((s) =>
-        notifyUser({
-          userId: s.userId,
-          type: "challenge",
-          message:
-            s.userId === winner?.userId
-              ? `You won "${challenge.name}"!`
-              : winner
-                ? `"${challenge.name}" ended — @${winner.username} took it. You placed ${s.place}.`
-                : `"${challenge.name}" ended with no qualifying entrant.`,
-          meta: { challengeId: challenge.id, place: s.place, won: s.userId === winner?.userId },
-          link: "/",
-        }),
-      ),
-      // A win can unlock the Duelist achievement.
-      winner ? evaluateAndNotify(winner.userId) : Promise.resolve([]),
-    ]);
+    // A win can still unlock the Duelist achievement.
+    if (winner) void evaluateAchievements(winner.userId);
   }
 
   const t = challengeType(type);

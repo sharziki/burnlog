@@ -4,14 +4,7 @@ import { prisma } from "@/lib/db";
 import { hashApiKey } from "@/lib/apiKey";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { updateStreak } from "@/lib/streak";
-import {
-  checkRankUp,
-  checkOvertake,
-  checkMilestone,
-  checkStreakMilestone,
-  checkClubBudgetAlerts,
-} from "@/lib/notifications";
-import { evaluateAndNotify } from "@/lib/achievements";
+import { checkClubBudgetAlerts } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -315,24 +308,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Snapshot pre-insert totals for notification checks
-  let oldTotal = 0;
-  let oldStreak = 0;
-  if (rows.length) {
-    const snap = await prisma.$queryRaw<{ total: bigint; streak: number }[]>`
-      SELECT COALESCE(
-        (SELECT SUM("totalTokens") FROM "BurnEvent" WHERE "userId" = ${keyRow.userId}), 0
-      ) AS total,
-      COALESCE(
-        (SELECT "currentStreak" FROM "User" WHERE id = ${keyRow.userId}), 0
-      ) AS streak
-    `;
-    if (snap.length > 0) {
-      oldTotal = Number(snap[0].total);
-      oldStreak = snap[0].streak;
-    }
-  }
-
   let inserted = 0;
   let grown = 0;
   if (rows.length) {
@@ -377,24 +352,8 @@ export async function POST(req: Request) {
   if (inserted + grown > 0) {
     await updateStreak(keyRow.userId);
 
-    // Fire-and-forget notification checks (non-blocking)
-    const newTotal = oldTotal + rows.reduce((s, r) => s + r.totalTokens, 0);
-    const user = await prisma.user.findUnique({
-      where: { id: keyRow.userId },
-      select: { username: true, currentStreak: true },
-    });
-    const username = user?.username ?? keyRow.user.username ?? "";
-    const newStreak = user?.currentStreak ?? 0;
-
-    // Run all checks concurrently, don't await — fire and forget
-    void Promise.allSettled([
-      checkRankUp(keyRow.userId, oldTotal, newTotal),
-      checkOvertake(keyRow.userId, username, newTotal),
-      checkMilestone(keyRow.userId, oldTotal, newTotal),
-      checkStreakMilestone(keyRow.userId, oldStreak, newStreak),
-      checkClubBudgetAlerts(keyRow.userId),
-      evaluateAndNotify(keyRow.userId),
-    ]);
+    // Club budget webhooks remain available to connected teams.
+    void checkClubBudgetAlerts(keyRow.userId);
   }
 
   return NextResponse.json(

@@ -9,16 +9,16 @@ export const metadata: Metadata = {
 };
 
 const STEPS = [
-  ["Sign in", "One click with GitHub. That is your account and your place on the board."],
-  ["Copy the prompt", "It carries a one-time code for your account, good for 30 minutes."],
-  ["Paste it into your agent", "It runs one command: links this machine, uploads every agent's history, and turns on auto-sync."],
+  ["Copy the prompt", "If you're signed in, it includes a one-time code. Otherwise the setup opens GitHub sign-in."],
+  ["Paste it into your agent", "It runs one command that links this machine and uploads token counts."],
+  ["See your profile", "Your agent turns on auto-sync and gives you a profile link."],
 ] as const;
 
 /** The link you send someone who asks "how do I get on this thing". */
 export default function AgentPage() {
   return (
     <main className="mx-auto max-w-3xl px-5 pb-28 pt-16 sm:px-8 sm:pt-24">
-      <h1 className="animate-rise m-0 font-display text-[48px] leading-none text-ink sm:text-[60px]">
+      <h1 className="m-0 font-display text-[48px] leading-none text-ink sm:text-[60px]">
         One paste. That&apos;s setup.
       </h1>
       <p className="m-0 mt-6 max-w-[30rem] text-[16px] leading-relaxed text-soft">

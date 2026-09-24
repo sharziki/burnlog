@@ -5,11 +5,7 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Edit the fields your public profile displays.
  *
- * Restored after a consolidation pass deleted the only caller of
- * PATCH /api/me/profile: bio, Twitter and website were still rendered
- * on /u/[username] but had become unsettable through any UI. It lives in
- * settings rather than back on the board, which is where account management
- * belongs — the original placement was the actual mistake.
+ * Rendered only for the owner, below their public token profile.
  */
 export function ProfileEditor({
   initial,

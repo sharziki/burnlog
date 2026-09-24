@@ -36,22 +36,13 @@ function Section({ title, aside, children }: { title: string; aside?: React.Reac
   );
 }
 
-/**
- * Settings, in the order people come for them: how you look on the board, the
- * machines that feed it, and the account itself.
- */
-export function SettingsClient({
-  username,
-  name,
-  image,
+/** Owner-only controls on the personal profile. */
+export function AccountControls({
   profile,
   machines,
   signOutAction,
   disconnectAction,
 }: {
-  username: string;
-  name: string;
-  image: string | null;
   profile: { bio: string; twitter: string; website: string };
   machines: Machine[];
   signOutAction: () => Promise<void>;
@@ -95,23 +86,8 @@ export function SettingsClient({
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-5 pb-28 pt-14 sm:px-8 sm:pt-20">
-      <header className="flex items-center gap-4 pb-9">
-        {image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt="" width={48} height={48} className="size-12 rounded-full" />
-        )}
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 font-display text-[32px] leading-none text-ink">Settings</h1>
-          <p className="m-0 mt-2 truncate text-[14px] text-soft">
-            {name} <span className="font-mono text-[13px] text-dim">@{username}</span>
-          </p>
-        </div>
-        <a href={`/u/${username}`} className="btn shrink-0">
-          View profile
-        </a>
-      </header>
-
+    <div id="account" className="mt-10 scroll-mt-20">
+      <h2 className="m-0 font-display text-[24px] text-ink">Manage your profile</h2>
       <section className="border-t border-line py-9">
         <ProfileEditor initial={profile} />
       </section>
@@ -220,6 +196,6 @@ export function SettingsClient({
           </div>
         </details>
       </Section>
-    </main>
+    </div>
   );
 }

@@ -94,6 +94,8 @@ export function ProfileClient({
   joinedAt,
   place = null,
   neighbours = [],
+  isOwner = false,
+  accountControls = null,
 }: {
   user: UserStats;
   joinedAt: string;
@@ -101,6 +103,8 @@ export function ProfileClient({
   place?: number | null;
   /** The burners immediately above and below, for context and for crawl paths. */
   neighbours?: { place: number; username: string; name: string; image: string | null; totalTokens: number }[];
+  isOwner?: boolean;
+  accountControls?: React.ReactNode;
 }) {
   const rank = getRank(user.totalTokens);
   const next = RANKS.find((r) => r.min > user.totalTokens) ?? null;
@@ -109,7 +113,7 @@ export function ProfileClient({
   return (
     <main className="mx-auto max-w-5xl px-5 pb-24 pt-10 sm:px-8 sm:pt-14">
       {/* ─── Who ─── */}
-      <header className="animate-rise flex items-start gap-4 sm:gap-5">
+      <header className="flex items-start gap-4 sm:gap-5">
         {user.image ? (
           <img src={user.image} alt="" width={56} height={56} className="size-12 shrink-0 rounded-full object-cover sm:size-14" />
         ) : (
@@ -157,6 +161,7 @@ export function ProfileClient({
             <span>joined {joinDate}</span>
             {user.lastActive && <span>active {relativeTime(user.lastActive)}</span>}
           </p>
+          {isOwner && <a href="#account" className="mt-4 inline-block text-[13px] text-accent underline underline-offset-4">Edit profile and machines</a>}
         </div>
       </header>
 
@@ -165,7 +170,7 @@ export function ProfileClient({
         <ShareCard username={user.username} tokens={formatTokens(user.totalTokens)} place={place} />
       </div>
 
-      <dl className="animate-rise m-0 mt-8 grid grid-cols-2 gap-6 border-y border-line py-8 [animation-delay:60ms] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <dl className="m-0 mt-8 grid grid-cols-2 gap-6 border-y border-line py-8 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div>
           <dt className="text-[13px] text-soft">Total tokens</dt>
           <dd className="m-0 mt-2 font-mono text-[clamp(2rem,6vw,4rem)] leading-none tabular-nums tracking-tight text-ink">{formatTokens(user.totalTokens)}</dd>
@@ -230,6 +235,8 @@ export function ProfileClient({
           </ul>
         </Section>
       )}
+
+      {accountControls}
 
     </main>
   );

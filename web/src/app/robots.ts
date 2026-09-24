@@ -7,7 +7,7 @@ import { abs } from "@/lib/seo";
  * exist either.
  *
  * Disallow is for pages that are real but worthless in an index — a signed-out
- * `/settings` is a sign-in button, `/cli-auth` is a token handshake, and the
+ * `/me` is an account sign-in or redirect, `/cli-auth` is a token handshake, and the
  * JSON API is not a search result.
  */
 export default function robots(): MetadataRoute.Robots {
@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
           "/api/",
           "/admin",
           "/settings",
+          "/me",
           "/cli-auth",
           // The OG image routes render a picture, never a page. They're linked
           // from metadata, which is how they get fetched — they don't need to

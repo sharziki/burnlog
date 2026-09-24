@@ -37,7 +37,7 @@ export default function TermsPage() {
         You own your data. You grant us a limited license to store and
         display the burn-event counts you upload so the service can
         function. You can delete your account at any time from{" "}
-        <code>/settings</code>, which
+        <a href="/me">your profile</a>, which
         permanently removes your stored events. See the{" "}
         <a href="/privacy">privacy page</a>{" "}
         for what we do and don&apos;t store.

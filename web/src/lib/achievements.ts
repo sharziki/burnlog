@@ -1,5 +1,4 @@
 import { prisma } from "./db";
-import { notifyUser } from "./notifications";
 
 /**
  * Achievements are derived, never incrementally counted. We recompute the
@@ -252,25 +251,6 @@ export async function evaluateAchievements(userId: string): Promise<Achievement[
   } catch {
     return [];
   }
-}
-
-/**
- * Evaluate and announce. Every path that can unlock an achievement should use
- * this rather than `evaluateAchievements` directly, so an unlock is never
- * silent — winning a challenge announces the same way syncing does.
- */
-export async function evaluateAndNotify(userId: string): Promise<Achievement[]> {
-  const unlocked = await evaluateAchievements(userId);
-  for (const a of unlocked) {
-    await notifyUser({
-      userId,
-      type: "achievement",
-      message: `Achievement unlocked — ${a.icon} ${a.name}`,
-      meta: { key: a.key, icon: a.icon, tier: a.tier },
-      link: "/settings",
-    });
-  }
-  return unlocked;
 }
 
 export type UnlockedAchievement = Achievement & { unlockedAt: string };

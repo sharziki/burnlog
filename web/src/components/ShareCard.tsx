@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useMe } from "@/hooks/useMe";
 import { Check, Code, Download, Link as LinkIcon } from "lucide-react";
 
 const SITE = "https://burnlog.net";
@@ -22,14 +21,11 @@ export function ShareCard({
   tokens: string;
   place: number | null;
 }) {
-  const own = useMe()?.username === username;
   const [copied, setCopied] = useState<"link" | "badge" | null>(null);
   const url = `${SITE}/u/${username}`;
   const card = `/og/u/${username}`;
   const standing = place ? ` #${place} on burnlog.` : " on burnlog.";
-  const text = own
-    ? `I've burned ${tokens} tokens shipping with AI.${standing}`
-    : `@${username} has burned ${tokens} tokens shipping with AI.${standing}`;
+  const text = `@${username} has burned ${tokens} tokens shipping with AI.${standing}`;
 
   async function copy(kind: "link" | "badge") {
     const value = kind === "link" ? url : `[![burnlog](${SITE}/badge/${username})](${url})`;
@@ -66,12 +62,10 @@ export function ShareCard({
         <a href={card} download={`burnlog-${username}.png`} className={btn}>
           <Download className="size-3.5" aria-hidden /> Download image
         </a>
-        {own && (
-          <button type="button" onClick={() => copy("badge")} className={btn}>
-            {copied === "badge" ? <Check className="size-3.5 text-accent" /> : <Code className="size-3.5" />}
-            {copied === "badge" ? "Copied" : "README badge"}
-          </button>
-        )}
+        <button type="button" onClick={() => copy("badge")} className={btn}>
+          {copied === "badge" ? <Check className="size-3.5 text-accent" /> : <Code className="size-3.5" />}
+          {copied === "badge" ? "Copied" : "README badge"}
+        </button>
       </div>
     </section>
   );

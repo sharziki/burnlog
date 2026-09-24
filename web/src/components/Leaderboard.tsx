@@ -4,9 +4,7 @@ import { useState } from "react";
 import { getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { useMe } from "@/hooks/useMe";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { useStanding } from "@/hooks/useStanding";
 
 export type BoardRow = {
   id: string;
@@ -36,15 +34,12 @@ function Spark({ data, hot }: { data: number[]; hot: boolean }) {
   );
 }
 
-function Row({ r, place, value, mine }: { r: BoardRow; place: number; value: number; mine: boolean }) {
+function Row({ r, place, value }: { r: BoardRow; place: number; value: number }) {
   return (
     <li className="border-b border-line">
       <a
         href={`/u/${r.username}`}
-        className={cn(
-          "group grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-4 px-2 py-3.5 text-inherit no-underline transition-colors hover:bg-ink/[0.025] sm:grid-cols-[2.75rem_minmax(0,1fr)_4rem_7rem]",
-          mine && "bg-ink/[0.035]",
-        )}
+        className="group grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-4 px-2 py-3.5 text-inherit no-underline transition-colors hover:bg-ink/[0.025] sm:grid-cols-[2.75rem_minmax(0,1fr)_4rem_7rem]"
       >
         <span className={cn("font-mono text-[13px] tabular-nums", place === 1 ? "text-accent" : "text-dim")}>
           {String(place).padStart(2, "0")}
@@ -58,7 +53,6 @@ function Row({ r, place, value, mine }: { r: BoardRow; place: number; value: num
           <span className="min-w-0 truncate text-[15px] text-ink">
             {r.name}
             <span className="ml-2 font-mono text-[12px] text-dim">@{r.username}</span>
-            {mine && <span className="ml-2 text-[12px] text-accent">you</span>}
           </span>
         </span>
         <span className="hidden sm:block">
@@ -74,22 +68,15 @@ function Row({ r, place, value, mine }: { r: BoardRow; place: number; value: num
 }
 
 /**
- * The board. Shows the top ten, grows 25 at a time, and keeps your own row
- * pinned underneath when you're below what's shown — so it stays one calm list
- * at ten burners or ten thousand.
+ * The board. Shows the top ten and grows 25 at a time.
  */
 export function Leaderboard({ rows, burners }: { rows: BoardRow[]; burners: number }) {
-  const me = useMe();
   const [range, setRange] = useState<"all" | "week">("all");
   const [shown, setShown] = useState(FIRST);
-  const standing = useStanding();
 
   const value = (r: BoardRow) => (range === "week" ? r.weeklyTokens : r.totalTokens);
   const ranked = rows.filter((r) => value(r) > 0).sort((a, b) => value(b) - value(a));
   const visible = ranked.slice(0, shown);
-  const mineVisible = visible.some((r) => r.username === me?.username);
-  const myPlace = range === "week" ? standing?.weekPlace : standing?.place;
-  const pinned = !mineVisible && standing?.row && myPlace ? { row: standing.row, place: myPlace } : null;
   const more = Math.min(STEP, ranked.length - shown);
 
   return (
@@ -117,7 +104,7 @@ export function Leaderboard({ rows, burners }: { rows: BoardRow[]; burners: numb
           <li className="py-10 text-center text-sm text-dim">Nobody has burned anything {range === "week" ? "this week" : "yet"}.</li>
         )}
         {visible.map((r, i) => (
-          <Row key={r.id} r={r} place={i + 1} value={value(r)} mine={me?.username === r.username} />
+          <Row key={r.id} r={r} place={i + 1} value={value(r)} />
         ))}
       </ol>
 
@@ -133,16 +120,6 @@ export function Leaderboard({ rows, burners }: { rows: BoardRow[]; burners: numb
         </button>
       )}
 
-      {pinned && (
-        <>
-          <p className="m-0 mt-5 text-center font-mono text-[12px] text-faint" aria-hidden>
-            ···
-          </p>
-          <ol className="m-0 mt-3 list-none border-t border-line p-0">
-            <Row r={pinned.row} place={pinned.place} value={value(pinned.row)} mine />
-          </ol>
-        </>
-      )}
     </section>
   );
 }

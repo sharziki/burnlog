@@ -3,7 +3,6 @@ import { getBoard } from "@/lib/stats";
 import { formatTokens } from "@/lib/format";
 import { Leaderboard, type BoardRow } from "@/components/Leaderboard";
 import { SetupCTA } from "@/components/SetupCTA";
-import { YouLine } from "@/components/YouLine";
 
 // Static, refreshed every 30s. Who's looking is resolved in the browser, so
 // every visitor gets the cached page from the edge instead of a fresh render.
@@ -40,7 +39,7 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-6xl px-5 pb-24 pt-10 sm:px-8 sm:pt-14">
-      <div className="animate-rise flex flex-col gap-8 border-b border-line pb-9 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-8 border-b border-line pb-9 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="m-0 font-display text-[clamp(2.25rem,4vw,3.5rem)] leading-[1.05] text-ink">
             Every token you burn, ranked.
@@ -54,11 +53,8 @@ export default async function Home() {
         </div>
       </div>
 
-      <div className="mt-5">
-        <YouLine />
-      </div>
       <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_210px] lg:gap-12">
-        <div className="animate-rise [animation-delay:80ms]">
+        <div>
           <Leaderboard rows={rows} burners={burners.length} />
         </div>
         <aside className="border-t border-line pt-5 lg:pt-0" aria-label="Board totals">

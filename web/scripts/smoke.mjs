@@ -29,7 +29,7 @@ const PUBLIC = [
   "/", "/tools", "/tools/claude-code", "/tools/codex", "/tools/cursor",
   "/tools/gemini-cli", "/tools/aider", "/tools/opencode",
   "/vs/ccusage", "/vs/viberank", "/vs/ccgather",
-  "/agent", "/embed", "/privacy", "/security", "/terms", "/settings",
+  "/agent", "/embed", "/privacy", "/security", "/terms", "/settings", "/me",
   "/robots.txt", "/sitemap.xml", "/llms.txt", "/agent-setup.md",
 ];
 for (const p of PUBLIC) {
