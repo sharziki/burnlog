@@ -76,7 +76,7 @@ check("sitemap: every URL 200", broken.length === 0, broken.join("; "));
 // --- content the deploy could quietly regress ---
 const { body: home } = await get("/");
 check("home: says Clubs, not Teams", !home.includes(">Teams<"));
-check("home: hero and board rendered", home.includes("ship with AI") && home.includes('id="board"'));
+check("home: hero and board rendered", home.includes("Every token you burn") && home.includes('id="board"'));
 
 // One-paste setup: a code needs a signed-in user, and a bad code is refused.
 {
