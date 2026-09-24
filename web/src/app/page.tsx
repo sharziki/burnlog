@@ -42,39 +42,33 @@ export default async function Home() {
   const rows = [...new Map([...burners.slice(0, TOP), ...byWeek].map((u) => [u.id, toRow(u)])).values()];
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-14 px-5 pb-28 pt-16 sm:px-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20 lg:pt-24">
-      <div className="animate-rise lg:sticky lg:top-28 lg:self-start">
-        <h1 className="m-0 font-display text-[52px] leading-[0.98] text-ink sm:text-[64px]">
+    <main className="mx-auto grid max-w-6xl gap-14 px-5 pb-28 pt-14 sm:px-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10 md:pt-16 lg:gap-20 lg:pt-20">
+      <div className="animate-rise md:sticky md:top-24 md:self-start">
+        <h1 className="m-0 max-w-[12ch] font-display text-[40px] leading-[1.02] text-ink md:text-[40px] lg:text-[48px]">
           Every token you burn, ranked.
         </h1>
-        <p className="m-0 mt-6 max-w-[26rem] text-[16px] leading-relaxed text-soft">
+        <p className="m-0 mt-5 max-w-[27rem] text-[15.5px] leading-[1.6] text-soft">
           Paste one prompt into your coding agent. It links your machine, counts every token since your first
           session, and keeps you on the board. Counts only — never prompts or code.
         </p>
 
-        <div className="mt-9">
+        <div className="mt-8">
           <SetupCTA />
         </div>
-        <p className="m-0 mt-4 text-[13px] text-dim">
-          Claude Code, Codex, Cursor and 50 more agents.{" "}
-          <a href="/agent" className="text-soft underline decoration-faint underline-offset-4 hover:text-ink">
-            How it works
-          </a>
-        </p>
 
-        <div className="mt-10 border-t border-line pt-6">
+        <div className="mt-6 border-t border-line pt-6">
           <YouLine />
-          <dl className="m-0 mt-6 grid grid-cols-3 gap-6">
+          <dl className="m-0 mt-5 grid grid-cols-3 gap-6">
             {(
               [
                 ["Burned", formatTokens(total)],
                 ["This week", formatTokens(week)],
-                ["Burners", String(burners.length)],
+                ["Burners", burners.length.toLocaleString()],
               ] as const
             ).map(([label, v]) => (
               <div key={label}>
                 <dt className="text-[12px] text-dim">{label}</dt>
-                <dd className="m-0 mt-1 font-mono text-[20px] tabular-nums text-ink">{v}</dd>
+                <dd className="m-0 mt-1 font-mono text-[18px] tabular-nums text-ink">{v}</dd>
               </div>
             ))}
           </dl>
