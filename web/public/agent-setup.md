@@ -108,11 +108,21 @@ Then tell the user:
 
 ---
 
-## Counting agents that keep no usage log
+## Which agents are counted
 
-Steps 1–5 cover agents that write their usage to disk: **Claude Code, Codex,
-Hermes**. Everything else — Cursor on your own API key, Gemini CLI, aider,
-opencode, your own scripts — is counted by running it under the proxy:
+Step 1 reads these directly, history included, with nothing extra to run:
+**Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot (CLI, desktop, VS Code
+chat), opencode, pi, Amp, Factory Droid, Cline, Roo Code, Kilo Code, Goose,
+Zed, Qwen Code, Kimi CLI, Junie, Kiro, Antigravity, Grok CLI, Hermes, Devin,
+Augment, jcode, Codebuff** and about 30 more. `burnlog scan` lists every one it
+found on this machine.
+
+Cursor usage comes from Cursor's own usage records, fetched with the Cursor
+login already on this machine. That login is sent only to cursor.com — never to
+burnlog. Cursor must be signed in on this machine for it to count.
+
+Anything else (aider, Windsurf, your own scripts) is counted by running it under
+the proxy:
 
 ```bash
 npx @sxnalabs/burnlog wrap -- <the command as they'd normally run it>
@@ -165,18 +175,17 @@ Then `npx @sxnalabs/burnlog sync`.
    config; tell the user which file changed.
 5. **Report real output.** If `sync` fails, show the error rather than assuring
    the user it worked. `npx @sxnalabs/burnlog doctor` diagnoses most failures.
-6. **Don't invent numbers.** If a tool's usage can't be counted — Cursor on its
-   included subscription is the common case, because those tokens are spent by
-   Cursor's servers and never touch the machine — say so plainly instead of
-   estimating.
+6. **Don't invent numbers.** If a tool's usage can't be counted, say so plainly
+   instead of estimating.
 
 ## Troubleshooting
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `scan` finds nothing | No supported agent has written logs yet. Check `~/.claude/projects` and `~/.codex/sessions` exist; otherwise use `wrap`. |
+| `scan` finds nothing | No supported agent has recorded usage yet — run a session first. For an agent burnlog doesn't read, use `wrap`. |
 | `sync` says not authenticated | Step 2 didn't complete. Re-run `login`; check `~/.burnlog/config.json` has an `apiKey`. |
-| Numbers look low | The agent in question keeps no readable log. Use `wrap`. |
+| Numbers look low | The agent keeps no readable usage (or cleaned up old sessions). Use `wrap` for the former. |
+| Cursor shows 0 | Cursor isn't signed in on this machine, or its saved login expired — open Cursor and sync again. |
 | Nothing syncs automatically | The hook isn't installed — `npx @sxnalabs/burnlog install`. |
 | Anything else | `npx @sxnalabs/burnlog doctor` |
 

@@ -19,7 +19,7 @@ const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, M
  * it; a short one that points at a URL makes fetching the file the only way to
  * proceed, which is what keeps the instructions in one place we can update.
  *
- * Agents that write their usage to disk need nothing extra. The ones that
+ * Agents burnlog reads directly need nothing extra. The ones that
  * don't get one added line about `wrap`, because an agent that skips it will
  * cheerfully report "nothing found" and leave the user thinking burnlog is
  * broken.
@@ -28,18 +28,18 @@ const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, M
 type Agent = {
   slug: string;
   name: string;
-  /** "log" reads usage off disk; "wrap" has to be counted at the wire. */
+  /** "log": the CLI reads its usage directly. "wrap": counted at the wire. */
   method: "log" | "wrap";
 };
 
 export const AGENTS: Agent[] = [
   { slug: "claude-code", name: "Claude Code", method: "log" },
   { slug: "codex", name: "Codex", method: "log" },
-  { slug: "cursor", name: "Cursor", method: "wrap" },
-  { slug: "copilot", name: "Copilot", method: "wrap" },
+  { slug: "cursor", name: "Cursor", method: "log" },
+  { slug: "copilot", name: "Copilot", method: "log" },
   { slug: "windsurf", name: "Windsurf", method: "wrap" },
-  { slug: "gemini-cli", name: "Gemini CLI", method: "wrap" },
-  { slug: "opencode", name: "opencode", method: "wrap" },
+  { slug: "gemini-cli", name: "Gemini CLI", method: "log" },
+  { slug: "opencode", name: "opencode", method: "log" },
   { slug: "aider", name: "aider", method: "wrap" },
 ];
 
@@ -51,7 +51,7 @@ Rules: show me my own totals before any account exists, ask me before anything i
 
 export function promptFor(agent: Agent): string {
   if (agent.method === "log") {
-    return `${BASE}\n\nI use ${agent.name}, which writes its own usage log, so the plain sync path covers it.`;
+    return `${BASE}\n\nI use ${agent.name}, which burnlog reads directly, so the plain sync path covers it.`;
   }
   return `${BASE}\n\nI use ${agent.name}, which keeps no usage log of its own — count it with \`burnlog wrap\` as that file describes.`;
 }

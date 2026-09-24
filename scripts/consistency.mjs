@@ -47,12 +47,13 @@ if (cliDefault) {
 const adapterNames = [...read("cli/src/adapters/index.ts").matchAll(/new (\w+)Adapter\(\)/g)]
   .map((m) => m[1].toLowerCase());
 // The onboarding prompt tells a "log" agent that plain sync covers it.
-const logTools = [...read("web/src/components/AgentPaste.tsx").matchAll(/name: "([^"]+)", method: "log"/g)]
+const logTools = [...read("web/src/components/AgentPaste.tsx").matchAll(/slug: "([^"]+)", name: "[^"]+", method: "log"/g)]
   .map((m) => m[1]);
 
 check("web: log-read agents are listed", logTools.length > 0);
 for (const tool of logTools) {
-  const slug = tool.toLowerCase().replace(/[^a-z]/g, "");
+  // "gemini-cli" is the GeminiAdapter: the product says CLI, the adapter doesn't.
+  const slug = tool.toLowerCase().replace(/-cli$/, "").replace(/[^a-z]/g, "");
   check(
     `web: "${tool}" is listed as log-read and has an adapter`,
     adapterNames.some((a) => a === slug),

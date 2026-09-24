@@ -2,6 +2,7 @@ import { RANKS, getRank } from "@/lib/ranks";
 import { formatTokens } from "@/lib/format";
 import { ACHIEVEMENTS, TIER_COLOR } from "@/lib/achievements";
 import { ShareCard } from "@/components/ShareCard";
+import { sourceLabel } from "@/lib/sources";
 import type { UserStats } from "@/lib/stats";
 
 const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -10,15 +11,6 @@ const SANS = 'var(--font-sans), "Instrument Sans", system-ui, -apple-system, san
 // The challenge trophies stay in the ledger but not on the shelf: there are no
 // challenges to win on the site any more.
 const SHOWN = ACHIEVEMENTS.filter((a) => a.key !== "duelist" && a.key !== "champion");
-
-const SOURCE_LABELS: Record<string, string> = {
-  "claude-code": "Claude Code",
-  codex: "Codex",
-  hermes: "Hermes",
-  openclaw: "openclaw",
-  "anthropic-api": "Anthropic API",
-  "openai-api": "OpenAI API",
-};
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "never";
@@ -260,7 +252,7 @@ export function ProfileClient({
           {user.sources.length > 0 && (
             // Top three by tokens, joined like a person would write it. The full
             // breakdown is the SOURCES card below; this is a sentence, not a list.
-            <> with {joinNames(user.sources.slice(0, 3).map((x) => SOURCE_LABELS[x.source] ?? x.source))}</>
+            <> with {joinNames(user.sources.slice(0, 3).map((x) => sourceLabel(x.source)))}</>
           )}
           , which is rank <strong style={{ color: rank.color, fontWeight: 600 }}>{rank.name}</strong> on burnlog
           {place ? <> and {ordinal(place)} on the global board</> : null}.
@@ -314,7 +306,7 @@ export function ProfileClient({
                   return (
                     <div key={s.source} style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: MONO }}>
                       <span style={{ fontSize: 12, color: "#D97706", fontWeight: 700, minWidth: 100 }}>
-                        {SOURCE_LABELS[s.source] ?? s.source}
+                        {sourceLabel(s.source)}
                       </span>
                       <div style={{ flex: 1, height: 4, borderRadius: 2, background: "#18181B", overflow: "hidden" }}>
                         <div style={{ width: `${pct}%`, height: "100%", background: "#D97706", borderRadius: 2, transition: "width 0.4s ease" }} />

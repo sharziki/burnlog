@@ -1,6 +1,6 @@
 # @sxnalabs/burnlog
 
-> Private leaderboard for AI token burn. Track every token you push through Claude Code, Codex, and other AI coding agents — tokens only, never prompts.
+> Private leaderboard for AI token burn. Track every token you push through Claude Code, Codex, Cursor, Gemini, Copilot, pi, and 50 other AI coding agents — tokens only, never prompts.
 
 ```
 npx @sxnalabs/burnlog
@@ -17,19 +17,21 @@ agents and extracts the `usage` blocks. It **never** reads prompt text, file
 contents, project paths, or anything else that could identify what you were
 working on — only the token counts and a random dedup id.
 
-| Agent        | Path                                          |
-| ------------ | --------------------------------------------- |
-| Claude Code  | `~/.claude/projects/*/*.jsonl`                |
-| OpenAI Codex | `~/.codex/sessions/**/*.jsonl`                |
-| Hermes       | `~/.hermes/` (stub, pending format)           |
-| openclaw     | `~/.openclaw/` (stub, pending format)         |
-| open sink    | `~/.burnlog/events/*.jsonl`                   |
+| Agent | Where the numbers come from |
+| --- | --- |
+| Claude Code | `~/.claude/projects/**/*.jsonl` |
+| OpenAI Codex | `~/.codex/sessions/**/*.jsonl` |
+| Cursor | Cursor's own usage records, fetched with the local Cursor login (sent only to cursor.com) |
+| Gemini CLI | `~/.gemini/tmp/**` |
+| GitHub Copilot | `~/.copilot/` (CLI + desktop) and VS Code chat sessions |
+| opencode, pi, Amp, Factory Droid, Cline, Roo Code, Kilo Code, Goose, Zed, Qwen Code, Kimi, Junie, Kiro, Antigravity, Grok, Hermes, Devin, Augment, jcode, Codebuff, and ~30 more | each agent's own session store — `burnlog scan` lists what it found |
+| open sink | `~/.burnlog/events/*.jsonl` |
 
-Override any root with `BURNLOG_CLAUDE_DIR`, `BURNLOG_CODEX_DIR`,
-`BURNLOG_EVENTS_DIR`.
+Every source's root can be overridden with `BURNLOG_<SOURCE>_DIR`. Session
+parsing is ported from [tokscale](https://github.com/junhoyeo/tokscale) (MIT).
 
-**2. `burnlog wrap`** — for the many tools that never write usage to disk
-(Cursor, Gemini CLI, aider, your own scripts), count at the wire instead:
+**2. `burnlog wrap`** — for tools that keep no usage record at all (aider,
+Windsurf, your own scripts), count at the wire instead:
 
 ```
 burnlog wrap -- aider

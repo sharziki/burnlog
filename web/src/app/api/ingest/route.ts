@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashApiKey } from "@/lib/apiKey";
@@ -333,15 +334,38 @@ export async function POST(req: Request) {
   }
 
   let inserted = 0;
+  let grown = 0;
   if (rows.length) {
-    // createMany + skipDuplicates leverages the (userId, source, requestId)
-    // unique index. One round-trip instead of N.
-    const res = await prisma.burnEvent.createMany({
-      data: rows,
-      skipDuplicates: true,
-    });
-    inserted = res.count;
-    skipped += rows.length - inserted;
+    // One statement on the (userId, source, requestId) unique index. A new id
+    // inserts. A repeated id with a *larger* total replaces the row: adapters
+    // that report one running total per session (codex, hermes, goose, droid,
+    // ...) send the same id again as the session grows, and the old
+    // skipDuplicates kept whatever the first sync happened to see. Never
+    // shrinks, so an identical or partial re-send is a no-op.
+    const values = rows.map(
+      (r) => Prisma.sql`(gen_random_uuid()::text, ${r.userId}, ${r.clubId}, ${r.apiKeyId}, ${r.requestId},
+        ${r.source}, ${r.model}, ${r.provider}, ${BigInt(r.inputTokens)}, ${BigInt(r.outputTokens)},
+        ${BigInt(r.cacheCreationTokens)}, ${BigInt(r.cacheReadTokens)}, ${BigInt(r.totalTokens)}, ${r.timestamp})`,
+    );
+    const res = await prisma.$queryRaw<{ fresh: boolean }[]>`
+      INSERT INTO "BurnEvent" (id, "userId", "clubId", "apiKeyId", "requestId", source, model, provider,
+        "inputTokens", "outputTokens", "cacheCreationTokens", "cacheReadTokens", "totalTokens", timestamp)
+      VALUES ${Prisma.join(values)}
+      ON CONFLICT ("userId", source, "requestId") DO UPDATE SET
+        model = EXCLUDED.model,
+        provider = EXCLUDED.provider,
+        "inputTokens" = EXCLUDED."inputTokens",
+        "outputTokens" = EXCLUDED."outputTokens",
+        "cacheCreationTokens" = EXCLUDED."cacheCreationTokens",
+        "cacheReadTokens" = EXCLUDED."cacheReadTokens",
+        "totalTokens" = EXCLUDED."totalTokens",
+        timestamp = EXCLUDED.timestamp
+      WHERE EXCLUDED."totalTokens" + EXCLUDED."cacheReadTokens"
+          > "BurnEvent"."totalTokens" + "BurnEvent"."cacheReadTokens"
+      RETURNING (xmax = 0) AS fresh`;
+    inserted = res.filter((r) => r.fresh).length;
+    grown = res.length - inserted;
+    skipped += rows.length - res.length;
   }
 
   await prisma.apiKey.update({
@@ -350,7 +374,7 @@ export async function POST(req: Request) {
   });
 
   // Recalculate streak after inserting new events
-  if (inserted > 0) {
+  if (inserted + grown > 0) {
     await updateStreak(keyRow.userId);
 
     // Fire-and-forget notification checks (non-blocking)
@@ -377,6 +401,7 @@ export async function POST(req: Request) {
     {
       ok: true,
       inserted,
+      updated: grown,
       skipped,
       ...(rejected.length ? { rejected: rejected.slice(0, 20) } : {}),
       user: keyRow.user.username,

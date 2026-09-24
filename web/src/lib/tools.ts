@@ -125,45 +125,44 @@ export const TOOLS: ToolPage[] = [
     name: "Cursor",
     title: "Track Cursor token usage",
     description:
-      "What a local tracker can and can't see in Cursor, and how burnlog counts the part it can — honestly, including the case where the answer is that it can't.",
+      "burnlog counts Cursor usage straight from Cursor's own usage records, including the models on your subscription — with the login already on your machine, and without sending it anywhere but cursor.com.",
     verdict:
-      "Depends entirely on whose key you're spending. Your own API key, counted exactly. Cursor's included subscription, not countable by anything on your machine — and any tracker claiming otherwise is guessing.",
-    method: "wrap",
+      "Counted exactly, subscription included. burnlog reads Cursor's own usage records — the same ones on your Cursor dashboard — using the Cursor login already on your machine.",
+    method: "log",
     steps: [
       {
-        name: "Point Cursor at your own API key",
-        text: "In Cursor's settings, supply your own provider key and override the base URL. This is the mode where the requests leave your machine on a path you control.",
+        name: "Paste the prompt into your agent",
+        text: "Copy the setup prompt from burnlog.net and paste it into any coding agent. It installs the CLI, shows you your numbers first, and asks before anything is uploaded.",
       },
       {
-        name: "Start the burnlog proxy",
-        text: "wrap runs a loopback server, sets the standard base-URL variables at it, forwards upstream over ordinary HTTPS, and reads the usage field off each response.",
-        code: "burnlog wrap -- <your command>",
+        name: "Or run it yourself",
+        text: "burnlog finds every agent on the machine, reads its usage, and offers GitHub sign-in.",
+        code: "npx @sxnalabs/burnlog",
       },
       {
-        name: "Sync",
-        text: "Events land in ~/.burnlog/events first, so counting keeps working with no network and no account, and upload when you next sync.",
+        name: "Keep it current",
+        text: "Installs a hook so future sessions sync themselves.",
+        code: "burnlog install",
       },
     ],
     sections: [
       {
-        heading: "Why the subscription case is impossible, for everyone",
+        heading: "Where the numbers come from",
         body: [
-          "When you use Cursor's included models, Cursor's servers call the provider with Cursor's key. Your machine sends a request to Cursor and gets an answer back; the token accounting happens somewhere you have no access to. No local tool can count those tokens, because the numbers were never on your computer to begin with.",
-          "Cursor's own dashboard is the only honest source for that spend. If a tracker shows you a confident Cursor number while you're on the subscription, it is inferring it — usually by counting characters and dividing — and that estimate will not match your bill.",
-          "burnlog would rather show you nothing than show you a number it made up.",
+          "Cursor's included models run on Cursor's servers, so the token accounting was never on your disk. It is on Cursor's usage dashboard, per request: model, input, output, cache reads and writes. That is the only honest source for those tokens, so it is the one burnlog reads.",
+          "The CLI takes the login Cursor already stored on your machine, asks cursor.com for your usage events, and turns each one into a count. The login is sent only to cursor.com. burnlog never stores it, logs it, or uploads it — only the token counts go to burnlog.",
         ],
       },
       {
-        heading: "The part that does work",
+        heading: "Your own API key works too",
         body: [
-          "Run Cursor against your own key and every call becomes countable, exactly, from the provider's own usage field — the same number the provider will bill you for. That covers 14 providers: Anthropic, OpenAI, Google, Mistral, Cohere, OpenRouter, Groq, xAI, DeepSeek, Together, Fireworks, Perplexity, Cerebras, and Ollama.",
-          "wrap is deliberately not a man-in-the-middle proxy. It installs no certificate authority and decrypts nothing — it sets the base-URL environment variables the SDKs already read and forwards over normal HTTPS. Nothing about your machine's trust store changes.",
+          "If you point Cursor at your own provider key, those calls show up in Cursor's usage records as well. For anything outside Cursor on your own key, burnlog wrap counts at the wire across 14 providers without installing a certificate or decrypting anything.",
         ],
       },
     ],
     limits: [
-      "Cursor's included subscription models cannot be counted locally, by burnlog or by anything else.",
-      "Tab completions billed as part of the subscription fall in the same category.",
+      "Cursor has to be signed in on the machine that syncs. If its saved login has expired, open Cursor once and sync again.",
+      "Team seats report personal usage; usage attributed only to a team may not appear.",
     ],
   },
   {
@@ -171,45 +170,37 @@ export const TOOLS: ToolPage[] = [
     name: "Gemini CLI",
     title: "Track Gemini CLI token usage",
     description:
-      "Google's Gemini CLI keeps no usage log burnlog can read, so burnlog counts it at the wire instead — exactly, from Google's own usage field.",
+      "Gemini CLI saves every chat with its token counts under ~/.gemini. burnlog reads them — history included — and puts you on the board.",
     verdict:
-      "Counted through burnlog wrap. One prefix on the command you were going to run anyway, and every call is measured from the response Google sends back.",
-    method: "wrap",
+      "Counted from disk, history included. Gemini CLI records tokens for every turn in its saved chats; burnlog reads those and nothing else.",
+    method: "log",
     steps: [
       {
-        name: "Prefix the command",
-        text: "wrap sets GOOGLE_GEMINI_BASE_URL and GEMINI_BASE_URL at a loopback server for the lifetime of that command, and unsets them after.",
-        code: "burnlog wrap -- gemini",
+        name: "Paste the prompt into your agent",
+        text: "Copy the setup prompt from burnlog.net and paste it into any coding agent. It installs the CLI, shows you your numbers first, and asks before anything is uploaded.",
       },
       {
-        name: "Work normally",
-        text: "Requests forward to Google over ordinary HTTPS. The usage field on each response is read on the way back, then bucketed by model.",
+        name: "Or run it yourself",
+        text: "burnlog finds every agent on the machine, reads its usage, and offers GitHub sign-in.",
+        code: "npx @sxnalabs/burnlog",
       },
       {
-        name: "Sync when you're done",
-        text: "Events are written to the local sink as they happen, so an offline session still counts and uploads later.",
-        code: "burnlog sync",
+        name: "Keep it current",
+        text: "Installs a hook so future sessions sync themselves.",
+        code: "burnlog install",
       },
     ],
     sections: [
       {
-        heading: "Why there's no log to read",
+        heading: "What burnlog reads",
         body: [
-          "Some agents write their usage to a readable file, and burnlog reads it. Gemini CLI does not, which leaves exactly two options: guess, or measure the traffic. burnlog measures.",
-          "The measurement is the provider's own accounting, not an estimate — the same usage object Google computes the bill from. A tokenizer-based approximation would be wrong in both directions and would drift with every model revision.",
-        ],
-      },
-      {
-        heading: "It's the same mechanism for everything else",
-        body: [
-          "wrap is agent-agnostic: aider, opencode, a Python script, a cron job, a homegrown agent. If it reads the standard base-URL variables — and virtually every SDK does — its tokens can be counted without that tool knowing burnlog exists.",
-          SINK_NOTE,
+          "Gemini CLI stores each session under ~/.gemini/tmp (or $GEMINI_CLI_HOME) with a usage block per model turn: input, output, cached and thinking tokens. burnlog takes the counts and the model name. The conversation itself is never read into the upload.",
+          "Cached input is split out from fresh input, and thinking tokens count as output, so a Gemini number means the same thing as a Claude or Codex one on the board.",
         ],
       },
     ],
     limits: [
-      "A command has to be started under wrap. Something already running keeps its old environment, so it isn't counted until it's restarted.",
-      "Gemini usage spent inside Google's web UI never passes through your machine.",
+      "Sessions only count if Gemini CLI saved them. Chats cleared with Gemini's own cleanup are gone before burnlog can see them.",
     ],
   },
   {
@@ -258,41 +249,37 @@ export const TOOLS: ToolPage[] = [
     name: "opencode",
     title: "Track opencode token usage",
     description:
-      "opencode runs on your own API keys, so burnlog counts it at the wire — exactly, from each provider's own usage field, with no adapter needed.",
+      "opencode writes a usage record for every assistant message to disk. burnlog reads those — any provider, history included.",
     verdict:
-      "Counted through burnlog wrap. No adapter, no waiting for burnlog to add support for the model you switched to this morning.",
-    method: "wrap",
+      "Counted from disk, any provider, history included. opencode records tokens for every assistant message; burnlog reads them.",
+    method: "log",
     steps: [
       {
-        name: "Run it under wrap",
-        text: "The proxy covers 14 providers at once, so a mid-session model switch stays counted.",
-        code: "burnlog wrap -- opencode",
+        name: "Paste the prompt into your agent",
+        text: "Copy the setup prompt from burnlog.net and paste it into any coding agent. It installs the CLI, shows you your numbers first, and asks before anything is uploaded.",
       },
       {
-        name: "Sync and check your rank",
-        text: "sync uploads; status prints where you landed on the board.",
-        code: "burnlog sync && burnlog status",
+        name: "Or run it yourself",
+        text: "burnlog finds every agent on the machine, reads its usage, and offers GitHub sign-in.",
+        code: "npx @sxnalabs/burnlog",
+      },
+      {
+        name: "Keep it current",
+        text: "Installs a hook so future sessions sync themselves.",
+        code: "burnlog install",
       },
     ],
     sections: [
       {
-        heading: "Why the proxy beats an adapter here",
+        heading: "What burnlog reads",
         body: [
-          "A log-reading adapter has to be written per tool, and it breaks whenever that tool changes its format. The wire does not change: providers keep reporting usage in the same field because their own billing depends on it.",
-          "So burnlog reads logs where a stable format exists — Claude Code, Codex, Hermes — and reads the wire for everything else. New agent, new model, new provider endpoint: still counted, still without a release.",
-        ],
-      },
-      {
-        heading: "Or skip both",
-        body: [
-          SINK_NOTE,
-          "That is a documented file format, not an internal detail: append a line, run burnlog sync, and it's on the board.",
+          "opencode keeps one JSON file per message under ~/.local/share/opencode/storage. Assistant messages carry input, output, reasoning and cache counts, plus the model and provider. burnlog reads those fields and skips the message text.",
+          "Because opencode records the provider itself, a Claude, GPT or local model run through opencode is attributed correctly on your profile.",
         ],
       },
     ],
     limits: [
-      "Only wrapped commands are counted.",
-      "Local models through Ollama are counted for tokens, and priced at zero — because they cost you hardware and electricity, not API dollars.",
+      "Messages from before opencode started recording tokens have nothing to count.",
     ],
   },
 ];

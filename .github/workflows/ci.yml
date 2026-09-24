@@ -48,6 +48,12 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
+      # 57 session parsers, each against fixtures of its agent's real format.
+      # Node 22 for node:sqlite and zlib zstd; the CLI itself still runs on 20.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
 
   sdk:
     name: sdk · typecheck + build
