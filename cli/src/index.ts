@@ -17,6 +17,7 @@ import { challenge } from "./commands/challenge.js";
 import { log } from "./commands/log.js";
 import { me } from "./commands/me.js";
 import { doctor } from "./commands/doctor.js";
+import { connect } from "./commands/connect.js";
 
 function readVersion(): string {
   try {
@@ -35,6 +36,7 @@ ${pc.bold("usage")}
 
 ${pc.bold("getting on the board")}
   ${pc.cyan("setup")}              the one-command flow (same as bare ${pc.bold("burnlog")})
+  ${pc.cyan("connect")} [code]     one shot for agents: link with a burnlog.net setup code, upload all history, auto-sync
   ${pc.cyan("login")}  [api-key]   sign in with GitHub in the browser; pass a key for CI (alias: ${pc.cyan("auth")})
   ${pc.cyan("logout")}             clear your api key
 
@@ -71,6 +73,9 @@ async function main(): Promise<void> {
     case "login":
     case "auth":
       await login(rest);
+      break;
+    case "connect":
+      await connect(rest);
       break;
     case "logout":
       logout(rest);

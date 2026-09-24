@@ -2,6 +2,7 @@ import pc from "picocolors";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { installSchedule, removeSchedule } from "./schedule.js";
 
 type ClaudeHook = { type: string; command: string };
 type ClaudeHookGroup = { matcher?: string; hooks: ClaudeHook[] };
@@ -42,50 +43,74 @@ function hasBurnlogHook(groups: ClaudeHookGroup[] | undefined): boolean {
   );
 }
 
-export function install(args: string[]): void {
-  const event =
-    args.includes("--on-stop") ? "Stop" : "SessionEnd";
+/** The hook command that runs when `burnlog` is a real binary on PATH. */
+export const HOOK_COMMAND = "burnlog sync --quiet --background || true";
+/** The same, for machines where burnlog only ever arrived through npx. */
+export const NPX_HOOK_COMMAND = "npx -y @sxnalabs/burnlog@latest sync --quiet --background || true";
+
+/**
+ * Add the auto-sync hook to ~/.claude/settings.json. Prints nothing; throws if
+ * the settings file exists but can't be parsed.
+ */
+export function installHook(
+  opts: { event?: "SessionEnd" | "Stop"; command?: string } = {},
+): { status: "installed" | "exists"; event: string; path: string } {
+  const event = opts.event ?? "SessionEnd";
   const path = settingsPath();
   const settings = loadSettings(path);
 
   settings.hooks ??= {};
   settings.hooks[event] ??= [];
 
-  if (hasBurnlogHook(settings.hooks[event])) {
-    console.log(pc.yellow("burnlog hook already installed for ") + pc.bold(event));
-    console.log("  " + pc.dim(path));
-    return;
-  }
+  if (hasBurnlogHook(settings.hooks[event])) return { status: "exists", event, path };
 
   settings.hooks[event].push({
     hooks: [
       {
         type: "command",
-        // Detached, not merely backgrounded.
-        //
-        // A blocking hook gets killed when the session tears down — which
-        // shows up as "Hook cancelled" every time you exit — and a full sync
-        // walks thousands of log files, so it loses that race constantly.
-        // `setsid` puts the sync in its own session so it outlives the exit
-        // and finishes uploading in peace.
+        // Detached, not merely backgrounded: a blocking hook gets killed as
+        // the session tears down, and a sync walking thousands of log files
+        // loses that race. `--background` re-spawns the sync detached (see
+        // sync.ts), which works on macOS too, unlike the old `setsid`.
         //
         // `|| true` so a sync failure never crashes Claude Code.
-        command: "(setsid burnlog sync --quiet >/dev/null 2>&1 &) || true",
+        command: opts.command ?? HOOK_COMMAND,
       },
     ],
   });
 
   saveSettings(path, settings);
+  return { status: "installed", event, path };
+}
+
+export function install(args: string[]): void {
+  const { status, event, path } = installHook({
+    event: args.includes("--on-stop") ? "Stop" : "SessionEnd",
+  });
+
+  if (status === "exists") {
+    console.log(pc.yellow("burnlog hook already installed for ") + pc.bold(event));
+    console.log("  " + pc.dim(path));
+    return;
+  }
 
   console.log(pc.green("✓") + " installed burnlog hook");
   console.log("  event: " + pc.cyan(event));
   console.log("  file:  " + pc.dim(path));
   console.log();
-  console.log(pc.dim("burnlog will now auto-sync when a Claude Code session ends."));
+  const sched = installSchedule();
+  console.log(
+    pc.dim(
+      sched.status === "installed"
+        ? "burnlog will now auto-sync when a Claude Code session ends, and every 30 minutes for every other agent."
+        : `burnlog will now auto-sync when a Claude Code session ends. (No 30-minute schedule: ${sched.reason}.)`,
+    ),
+  );
   console.log(pc.dim("remove with: ") + pc.bold("burnlog uninstall"));
 }
 
 export function uninstall(_args: string[]): void {
+  if (removeSchedule()) console.log(pc.green("✓") + " removed the 30-minute sync schedule");
   const path = settingsPath();
   if (!existsSync(path)) {
     console.log(pc.yellow("no ~/.claude/settings.json — nothing to remove"));

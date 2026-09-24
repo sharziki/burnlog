@@ -1,3 +1,30 @@
+/* Tailwind without preflight: the older pages are inline-styled and lean on
+   browser defaults that preflight would reset. New UI uses utilities + the
+   tokens below. Font vars come from next/font on <html>, which (unlayered)
+   beats the theme layer, so font-sans / font-mono resolve to the site faces. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-bg: #09090B;
+  --color-surface: #0C0C0E;
+  --color-line: #1C1C21;
+  --color-ink: #FAFAFA;
+  --color-soft: #A1A1AA;
+  --color-dim: #71717A;
+  --color-faint: #3F3F46;
+  --color-amber: #F59E0B;
+  --color-ember: #D97706;
+  --color-flame: #EA580C;
+  --animate-grid: grid 18s linear infinite;
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-rise: rise-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  @keyframes grid { 0% { transform: translateY(-50%); } 100% { transform: translateY(0); } }
+  @keyframes rise-in { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
+}
+
+@layer base {
 :root {
   --bg: #09090B;
   --surface: #0C0C0E;
@@ -270,3 +297,5 @@ html { scroll-behavior: smooth; }
     vertical-align: middle;
   }
 }
+
+} /* @layer base */

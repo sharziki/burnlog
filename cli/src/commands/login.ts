@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { randomBytes } from "crypto";
 import { spawn } from "child_process";
 import { AddressInfo } from "net";
-import { loadConfig, saveConfig, configPath } from "../config.js";
+import { loadConfig, saveConfig, configPath, type Config } from "../config.js";
 import { fetchRank } from "../api.js";
 
 const LOGIN_TIMEOUT_MS = 3 * 60_000;
@@ -32,7 +32,7 @@ function htmlResponse(title: string, body: string): string {
 
 // Interactive GitHub login: spin a localhost listener, open the burnlog
 // cli-auth page, and receive a freshly-minted key once the user approves.
-async function browserLogin(): Promise<void> {
+export async function browserLogin(opts: { hints?: boolean } = {}): Promise<void> {
   const cfg = loadConfig();
   const state = randomBytes(24).toString("hex");
 
@@ -85,9 +85,7 @@ async function browserLogin(): Promise<void> {
   });
 
   const key = await keyPromise;
-  const next = loadConfig();
-  next.apiKey = key;
-  saveConfig(next);
+  const next = saveApiKey(key);
   console.log(pc.green("✓") + " saved api key to " + pc.dim(configPath()));
 
   const rank = await fetchRank(next.apiUrl, key);
@@ -99,16 +97,23 @@ async function browserLogin(): Promise<void> {
         pc.yellow(`${rank.rankIcon} ${rank.rank}`),
     );
   }
+  if (opts.hints === false) return;
   console.log();
   console.log(pc.dim("next:"));
   console.log("  " + pc.bold("burnlog sync") + pc.dim("     upload your existing burn history"));
   console.log("  " + pc.bold("burnlog install") + pc.dim("  auto-sync on every Claude Code session"));
 }
 
-function keyLogin(key: string): void {
+/** Persist an api key — the one place login, the browser flow and connect save it. */
+export function saveApiKey(key: string): Config {
   const cfg = loadConfig();
   cfg.apiKey = key;
   saveConfig(cfg);
+  return cfg;
+}
+
+function keyLogin(key: string): void {
+  const cfg = saveApiKey(key);
   console.log(pc.green("✓") + " saved api key to " + pc.dim(configPath()));
   console.log("  api url: " + pc.cyan(cfg.apiUrl));
   fetchRank(cfg.apiUrl, key).then((rank) => {

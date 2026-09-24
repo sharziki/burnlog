@@ -29,6 +29,22 @@ nothing uploaded, tell them so and offer step 1 alone, which works signed out.
 
 ---
 
+## The one command
+
+If the user gave you a setup code (it starts with `blc_`), this is the whole job:
+
+```bash
+npx -y @sxnalabs/burnlog@latest connect <code>
+```
+
+It links this machine to their account, uploads the full history from every
+supported agent, and turns on auto-sync (every 30 minutes, plus at the end of
+each Claude Code session). Relay its output. Without a code, run
+`npx -y @sxnalabs/burnlog@latest connect` — it opens a browser once for GitHub
+sign-in and then does the same. The step-by-step below is the manual path.
+
+---
+
 ## Requirements
 
 - Node.js 20 or newer (`node --version`)

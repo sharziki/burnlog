@@ -1,126 +1,67 @@
-import { auth, signIn } from "@/auth";
-import { NotificationBell } from "./NotificationBell";
+"use client";
+
+import { GithubIcon } from "@/components/ui/github-icon";
+import { Settings } from "lucide-react";
 import { Logo } from "./Logo";
-import { NavLinks } from "./NavLinks";
+import { NotificationBell } from "./NotificationBell";
+import { useMe } from "@/hooks/useMe";
+import { signInWithGitHub } from "@/app/actions";
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
-
-export async function Nav() {
-  const session = await auth();
-  const user = session?.user as
-    | { username?: string; image?: string }
-    | undefined;
+/**
+ * Client-side so no page has to read the session on the server: that one
+ * lookup was forcing every page, the board included, to render per request.
+ */
+export function Nav() {
+  const me = useMe();
 
   return (
-    <header
-      // The class is the only responsive hook this header has — everything
-      // else here is inline, so the phone layout lives in globals.css.
-      className="app-header"
-      style={{
-        maxWidth: 1100,
-        margin: "0 auto",
-        padding: "32px 24px 24px",
-        // Three equal columns rather than flex: it centres the links against
-        // the *header*, not against whatever width the logo and account
-        // controls happen to leave over.
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr",
-        alignItems: "center",
-        borderBottom: "1px solid #18181B",
-        position: "relative",
-        // The header creates a stacking context, so anything it contains —
-        // notably the notification dropdown — is confined to this z-index no
-        // matter how high its own is. The page content also sits at 1 and
-        // comes later in the DOM, so at parity it painted over the dropdown.
-        // Lift the whole header above the content instead.
-        zIndex: 50,
-      }}
-    >
-      <a href="/" style={{ textDecoration: "none", justifySelf: "start" }}>
-        <Logo size={32} />
-      </a>
+    <header className="sticky top-0 z-50 border-b border-white/5 bg-bg/70 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+        <a href="/" className="no-underline">
+          <Logo size={28} />
+        </a>
 
-      <NavLinks />
-
-      {user?.username ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>
-          <NotificationBell />
-          {/* The avatar goes to your profile: it's the most frequent
-              self-check, and pointing it at Settings turned one click into
-              three. Settings gets its own link beside it. */}
+        <nav className="flex items-center gap-2">
           <a
-            href={`/u/${user.username}`}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 11,
-              color: "#E4E4E7",
-              padding: "8px 12px",
-              border: "1px solid #18181B",
-              borderRadius: 6,
-              fontFamily: MONO,
-              textDecoration: "none",
-            }}
+            href="/#board"
+            className="hidden rounded-full px-3 py-1.5 font-mono text-xs text-soft no-underline transition-colors hover:bg-white/5 hover:text-ink sm:inline-block"
           >
-            {user.image && (
-              <img
-                src={user.image}
-                alt=""
-                width={22}
-                height={22}
-                style={{ borderRadius: "50%" }}
-              />
-            )}
-            @{user.username}
+            leaderboard
           </a>
-          <a
-            href="/settings"
-            aria-label="Settings"
-            title="Settings"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "8px 10px",
-              border: "1px solid #18181B",
-              borderRadius: 6,
-              color: "#71717A",
-              fontFamily: MONO,
-              fontSize: 12,
-              textDecoration: "none",
-            }}
-          >
-            ⚙
-          </a>
-        </div>
-      ) : (
-        <form
-          style={{ justifySelf: "end" }}
-          action={async () => {
-            "use server";
-            await signIn("github");
-          }}
-        >
-          <button
-            type="submit"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 11,
-              color: "#D97706",
-              padding: "8px 12px",
-              border: "1px solid #18181B",
-              borderRadius: 6,
-              fontFamily: MONO,
-              background: "transparent",
-              cursor: "pointer",
-            }}
-          >
-            Sign in
-          </button>
-        </form>
-      )}
+          {me === undefined ? (
+            <span className="h-9 w-24" aria-hidden />
+          ) : me ? (
+            <>
+              <NotificationBell />
+              <a
+                href={`/u/${me.username}`}
+                className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3 font-mono text-xs text-ink no-underline transition-colors hover:border-amber/40"
+              >
+                {me.image ? (
+                  <img src={me.image} alt="" width={26} height={26} className="size-[26px] rounded-full" />
+                ) : null}
+                @{me.username}
+              </a>
+              <a
+                href="/settings"
+                aria-label="Settings"
+                className="flex size-9 items-center justify-center rounded-full border border-line text-dim no-underline transition-colors hover:text-ink"
+              >
+                <Settings className="size-4" aria-hidden />
+              </a>
+            </>
+          ) : (
+            <form action={signInWithGitHub}>
+              <button
+                type="submit"
+                className="flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 font-mono text-xs text-ink transition-colors hover:border-amber/40"
+              >
+                <GithubIcon className="size-3.5" aria-hidden /> Sign in
+              </button>
+            </form>
+          )}
+        </nav>
+      </div>
     </header>
   );
 }

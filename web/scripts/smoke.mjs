@@ -76,7 +76,19 @@ check("sitemap: every URL 200", broken.length === 0, broken.join("; "));
 // --- content the deploy could quietly regress ---
 const { body: home } = await get("/");
 check("home: says Clubs, not Teams", !home.includes(">Teams<"));
-check("home: copy-prompt onboarding rendered", home.includes("Copy prompt for Claude Code"));
+check("home: hero and board rendered", home.includes("ship with AI") && home.includes('id="board"'));
+
+// One-paste setup: a code needs a signed-in user, and a bad code is refused.
+{
+  const mint = await fetch(`${BASE}/api/connect`, { method: "POST" });
+  check("connect: minting a code needs sign-in", mint.status === 401, `got ${mint.status}`);
+  const bad = await fetch(`${BASE}/api/connect/redeem`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code: "blc_" + "0".repeat(40) }),
+  });
+  check("connect: an unknown code is refused", bad.status === 400, `got ${bad.status}`);
+}
 check("home: canonical present", home.includes('rel="canonical"'));
 check(
   "home: no unsynced accounts on the board",

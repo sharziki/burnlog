@@ -1,25 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useMe } from "@/hooks/useMe";
+import { Check, Code, Download, Link as LinkIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const MONO = 'var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SITE = "https://burnlog.net";
 
-const btn = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "10px 14px",
-  borderRadius: 8,
-  border: "1px solid #27272A",
-  background: "#0C0C0E",
-  color: "#E4E4E7",
-  fontFamily: MONO,
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: "pointer",
-  textDecoration: "none",
-} as const;
+const btn =
+  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 font-mono text-xs font-semibold text-ink no-underline transition-colors hover:border-amber/40";
 
 /**
  * The flex. The card is the same image that unfurls when the link is pasted,
@@ -29,14 +18,13 @@ export function ShareCard({
   username,
   tokens,
   place,
-  own,
 }: {
   username: string;
   /** Pre-formatted, e.g. "152.8B". */
   tokens: string;
   place: number | null;
-  own: boolean;
 }) {
+  const own = useMe()?.username === username;
   const [copied, setCopied] = useState<"link" | "badge" | null>(null);
   const url = `${SITE}/u/${username}`;
   const card = `/og/u/${username}`;
@@ -57,45 +45,41 @@ export function ShareCard({
   }
 
   return (
-    <section style={{ marginBottom: 32 }}>
-      <a href={card} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
-        <img
-          src={card}
-          alt={`${username}'s burnlog card`}
-          width={1200}
-          height={630}
-          style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, border: "1px solid #27272A" }}
-        />
+    <section className="mb-8">
+      <a
+        href={card}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group block overflow-hidden rounded-2xl border border-line shadow-[0_30px_80px_-30px_rgba(245,158,11,0.35)] transition-transform hover:-translate-y-0.5"
+      >
+        <img src={card} alt={`${username}'s burnlog card`} width={1200} height={630} className="block h-auto w-full" />
       </a>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+      <div className="mt-3 flex flex-wrap gap-2">
         <a
           href={`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ ...btn, background: "#D97706", borderColor: "#D97706", color: "#09090B", fontWeight: 700 }}
+          className={cn(btn, "border-transparent bg-linear-to-r from-amber to-flame text-bg hover:border-transparent hover:brightness-110")}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
           </svg>
           Post on X
         </a>
-        <a
-          href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={btn}
-        >
+        <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" className={btn}>
           LinkedIn
         </a>
-        <button type="button" onClick={() => copy("link")} style={btn}>
-          {copied === "link" ? "✓ Copied" : "Copy link"}
+        <button type="button" onClick={() => copy("link")} className={btn}>
+          {copied === "link" ? <Check className="size-3.5 text-amber" /> : <LinkIcon className="size-3.5" />}
+          {copied === "link" ? "Copied" : "Copy link"}
         </button>
-        <a href={card} download={`burnlog-${username}.png`} style={btn}>
-          Download card
+        <a href={card} download={`burnlog-${username}.png`} className={btn}>
+          <Download className="size-3.5" aria-hidden /> Download card
         </a>
         {own && (
-          <button type="button" onClick={() => copy("badge")} style={btn}>
-            {copied === "badge" ? "✓ Copied" : "README badge"}
+          <button type="button" onClick={() => copy("badge")} className={btn}>
+            {copied === "badge" ? <Check className="size-3.5 text-amber" /> : <Code className="size-3.5" />}
+            {copied === "badge" ? "Copied" : "README badge"}
           </button>
         )}
       </div>

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getBoard, getUserStats } from "@/lib/stats";
 import { getRank } from "@/lib/ranks";
@@ -10,7 +9,12 @@ import { SITE_URL } from "@/lib/seo";
 import { ProfileJsonLd } from "@/components/JsonLd";
 import { ProfileClient } from "./ProfileClient";
 
-export const dynamic = "force-dynamic";
+// Cached per profile and refreshed every minute; nothing here depends on who is looking.
+export const revalidate = 60;
+// No profiles at build time; each is rendered on its first visit, then cached.
+export async function generateStaticParams(): Promise<{ username: string }[]> {
+  return [];
+}
 
 type Props = { params: Promise<{ username: string }> };
 
@@ -62,9 +66,6 @@ export default async function ProfilePage({ params }: Props) {
   });
   if (!user) notFound();
 
-  const session = await auth();
-  const viewer = (session?.user as { username?: string } | undefined)?.username ?? null;
-
   const [stats, achievements, board] = await Promise.all([
     getUserStats(user.id),
     getAchievements(user.id),
@@ -99,7 +100,6 @@ export default async function ProfilePage({ params }: Props) {
         user={stats}
         joinedAt={user.createdAt.toISOString()}
         achievements={achievements.map((a) => a.key)}
-        viewer={viewer}
         place={place || null}
         neighbours={neighbours}
       />

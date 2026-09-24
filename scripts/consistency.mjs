@@ -46,8 +46,9 @@ if (cliDefault) {
 // 2. Every tool the site lists as "read from local logs" must have an adapter.
 const adapterNames = [...read("cli/src/adapters/index.ts").matchAll(/new (\w+)Adapter\(\)/g)]
   .map((m) => m[1].toLowerCase());
-// The onboarding prompt tells a "log" agent that plain sync covers it.
-const logTools = [...read("web/src/components/AgentPaste.tsx").matchAll(/slug: "([^"]+)", name: "[^"]+", method: "log"/g)]
+// Every per-agent page with method "log" promises plain sync reads that agent.
+const logTools = [...read("web/src/lib/tools.ts").matchAll(/slug: "([^"]+)",[\s\S]*?method: "(log|wrap)"/g)]
+  .filter((m) => m[2] === "log")
   .map((m) => m[1]);
 
 check("web: log-read agents are listed", logTools.length > 0);
