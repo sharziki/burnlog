@@ -1,6 +1,7 @@
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
-import { SettingsClient } from "./client";
+import { revalidatePath } from "next/cache";
+import { SettingsClient, type Machine } from "./client";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,42 @@ export default async function SettingsPage() {
       website: row?.website ?? "",
     };
 
+    // Each personal API key is a machine: `connect` labels it with the
+    // hostname. Tokens per key come from the events it uploaded.
+    const [keys, perKey] = await Promise.all([
+      prisma.apiKey.findMany({
+        where: { userId: user.id, clubId: null },
+        select: { id: true, label: true, createdAt: true, lastUsed: true },
+        orderBy: [{ lastUsed: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+      }),
+      prisma.burnEvent.groupBy({
+        by: ["apiKeyId"],
+        where: { userId: user.id, apiKeyId: { not: null } },
+        _sum: { totalTokens: true },
+      }),
+    ]);
+    const tokensByKey = new Map(perKey.map((r) => [r.apiKeyId, Number(r._sum.totalTokens ?? 0)]));
+    const machines: Machine[] = keys.map((k) => ({
+      id: k.id,
+      label: k.label && k.label !== "cli" && k.label !== "agent" ? k.label : "Machine",
+      createdAt: k.createdAt.toISOString(),
+      lastUsed: k.lastUsed?.toISOString() ?? null,
+      tokens: tokensByKey.get(k.id) ?? 0,
+    }));
+    const userId = user.id;
+
     async function signOutAction() {
       "use server";
       await signOut({ redirectTo: "/" });
+    }
+
+    // Disconnect = delete the key. Its burn history stays (the events' key
+    // reference is SET NULL), so the board doesn't change; the machine just
+    // can't upload again until it's reconnected.
+    async function disconnectAction(id: string) {
+      "use server";
+      await prisma.apiKey.deleteMany({ where: { id, userId, clubId: null } });
+      revalidatePath("/settings");
     }
 
     return (
@@ -37,6 +71,8 @@ export default async function SettingsPage() {
         image={user.image ?? null}
         profile={profile}
         signOutAction={signOutAction}
+        machines={machines}
+        disconnectAction={disconnectAction}
       />
     );
   }

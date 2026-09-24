@@ -59,36 +59,57 @@ export function ProfileEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
-  const fields: [string, string, (v: string) => void, string, number][] = [
-    ["bio", bio, setBio, "founder @ …", 160],
-    ["twitter", twitter, setTwitter, "handle, without the @", 15],
-    ["website", website, setWebsite, "https://…", 200],
-  ];
-
   return (
     <div>
       <div className="mb-5 flex items-baseline justify-between gap-4">
-        <h2 className="m-0 text-[13px] font-medium text-soft">Public profile</h2>
+        <h2 className="m-0 text-[15px] font-medium text-ink">Profile</h2>
         <span
           aria-live="polite"
           className={`text-[12px] ${state === "error" ? "text-[#F28B82]" : state === "saved" ? "text-soft" : "text-dim"}`}
         >
-          {state === "saving" ? "saving…" : state === "saved" ? "saved" : state === "error" ? "couldn't save" : "autosaves"}
+          {state === "saving" ? "Saving…" : state === "saved" ? "Saved" : state === "error" ? "Couldn't save" : "Saves as you type"}
         </span>
       </div>
       <div className="grid gap-4">
-        {fields.map(([name, value, set, placeholder, max]) => (
-          <label key={name} className="block">
-            <span className="label capitalize">{name}</span>
+        <label className="block">
+          <span className="label flex justify-between">
+            <span>Bio</span>
+            <span className="font-mono text-faint">{bio.length}/160</span>
+          </span>
+          <textarea
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="What you build, in a line."
+            maxLength={160}
+            rows={2}
+            className="field"
+          />
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="label">X</span>
+            <span className="relative block">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[14px] text-dim">@</span>
+              <input
+                value={twitter}
+                onChange={(e) => setTwitter(e.target.value.replace(/^@/, ""))}
+                placeholder="handle"
+                maxLength={15}
+                className="field pl-7"
+              />
+            </span>
+          </label>
+          <label className="block">
+            <span className="label">Website</span>
             <input
-              value={value}
-              onChange={(e) => set(e.target.value)}
-              placeholder={placeholder}
-              maxLength={max}
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="yoursite.com"
+              maxLength={200}
               className="field"
             />
           </label>
-        ))}
+        </div>
       </div>
       {state === "error" && (
         <button onClick={() => void save()} className="btn mt-5">Retry save</button>
