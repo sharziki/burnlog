@@ -256,7 +256,7 @@ export function ProfileClient({
         {earned.length ? (
           <p className="m-0 text-[14px] leading-7 text-soft">
             {earned.map((a, i) => (
-              <span key={a.key} title={a.how}>
+              <span key={a.key} title={a.how} className="whitespace-nowrap">
                 {i > 0 && <span className="px-2 text-faint">·</span>}
                 {a.name}
               </span>
