@@ -22,6 +22,7 @@ export async function Nav() {
           <a href="/" className="text-soft no-underline transition-colors hover:text-ink">
             Leaderboard
           </a>
+          <a href="/groups" className="text-soft no-underline transition-colors hover:text-ink">Groups</a>
           {signedIn ? (
             <a href="/me" className="text-ink no-underline transition-colors hover:text-accent">My profile</a>
           ) : (

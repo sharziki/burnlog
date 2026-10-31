@@ -141,7 +141,7 @@ export async function GET() {
         image: c.image,
         isPrivate: c.isPrivate,
         plan: clubPlan(c.plan),
-        limits: clubLimits(c.plan),
+        limits: { ...clubLimits(c.plan), memberLimit: c.isPrivate ? clubLimits(c.plan).memberLimit : 5000 },
         createdAt: c.createdAt,
         owner: c.owner,
         memberCount: c.memberships.length,

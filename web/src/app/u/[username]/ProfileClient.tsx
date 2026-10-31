@@ -94,6 +94,8 @@ export function ProfileClient({
   joinedAt,
   place = null,
   neighbours = [],
+  groups = [],
+  tags = [],
   isOwner = false,
   accountControls = null,
 }: {
@@ -103,6 +105,8 @@ export function ProfileClient({
   place?: number | null;
   /** The burners immediately above and below, for context and for crawl paths. */
   neighbours?: { place: number; username: string; name: string; image: string | null; totalTokens: number }[];
+  groups?: { name: string; slug: string }[];
+  tags?: string[];
   isOwner?: boolean;
   accountControls?: React.ReactNode;
 }) {
@@ -137,6 +141,7 @@ export function ProfileClient({
             ) : null}
           </p>
           {user.bio && <p className="m-0 mt-3 max-w-xl text-[15px] leading-relaxed text-soft">{user.bio}</p>}
+          {tags.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Self-selected interests">{tags.map((tag) => <span key={tag} className="rounded-full bg-surface px-3 py-1 font-mono text-[11px] text-soft">#{tag.replace(/ /g, "-")}</span>)}</div>}
           <p className="m-0 mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-dim">
             {user.github && (
               <a href={`https://github.com/${user.github}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-soft no-underline hover:text-ink">
@@ -161,6 +166,7 @@ export function ProfileClient({
             <span>joined {joinDate}</span>
             {user.lastActive && <span>active {relativeTime(user.lastActive)}</span>}
           </p>
+          {groups.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-2"><span className="mr-1 text-[12px] text-dim">Groups</span>{groups.map((group) => <a key={group.slug} href={`/g/${group.slug}`} className="rounded-full border border-line px-3 py-1 text-[12px] text-soft no-underline hover:border-accent hover:text-ink">{group.name}</a>)}</div>}
           {isOwner && <a href="#account" className="mt-4 inline-block text-[13px] text-accent underline underline-offset-4">Edit profile and machines</a>}
         </div>
       </header>

@@ -10,6 +10,7 @@ export async function PATCH(req: Request) {
 
   const body = (await req.json()) as {
     bio?: string;
+    tags?: string;
     github?: string;
     twitter?: string;
     website?: string;
@@ -17,6 +18,10 @@ export async function PATCH(req: Request) {
 
   const data: Record<string, string | null> = {};
   if ("bio" in body) data.bio = (body.bio ?? "").trim().slice(0, 160) || null;
+  if ("tags" in body) {
+    const tags = (typeof body.tags === "string" ? body.tags : "").split(",").map((tag) => tag.trim().replace(/[^\p{L}\p{N} -]/gu, "").replace(/\s+/g, " ").slice(0, 24)).filter(Boolean);
+    data.tags = [...new Set(tags.map((tag) => tag.toLowerCase()))].slice(0, 5).join(",") || null;
+  }
   if ("github" in body) data.github = (body.github ?? "").trim().slice(0, 39) || null;
   if ("twitter" in body) data.twitter = (body.twitter ?? "").trim().replace(/^@/, "").slice(0, 15) || null;
   if ("website" in body) {

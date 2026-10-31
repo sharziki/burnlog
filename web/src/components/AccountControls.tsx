@@ -43,7 +43,7 @@ export function AccountControls({
   signOutAction,
   disconnectAction,
 }: {
-  profile: { bio: string; twitter: string; website: string };
+  profile: { bio: string; tags: string; twitter: string; website: string };
   machines: Machine[];
   signOutAction: () => Promise<void>;
   disconnectAction: (id: string) => Promise<void>;

@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: abs("/"), lastModified: now, changeFrequency: "hourly", priority: 1 },
+    { url: abs("/groups"), lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: abs("/embed"), lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: abs("/tools"), lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     // The prompt page is the primary onboarding route now, so it ranks above
@@ -64,5 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...profiles];
+  const groups = await prisma.club.findMany({ where: { isPrivate: false, memberships: { some: {} } }, select: { slug: true, createdAt: true } });
+  const groupPages: MetadataRoute.Sitemap = groups.map((group) => ({ url: abs(`/g/${group.slug}`), lastModified: group.createdAt, changeFrequency: "daily" as const, priority: 0.6 }));
+  return [...staticRoutes, ...profiles, ...groupPages];
 }
