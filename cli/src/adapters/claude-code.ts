@@ -62,13 +62,27 @@ export class ClaudeCodeAdapter implements Adapter {
 
       let files: string[] = [];
       try {
-        files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
+        // Claude stores subagent transcripts under session/subagents/.
+        // Keep the same request map across every file so duplicate records
+        // still contribute only once.
+        const pending = [dir];
+        while (pending.length) {
+          const current = pending.pop()!;
+          for (const name of readdirSync(current)) {
+            const path = join(current, name);
+            try {
+              const stat = statSync(path);
+              if (stat.isDirectory()) pending.push(path);
+              else if (stat.isFile() && name.endsWith(".jsonl")) files.push(path);
+            } catch { /* file disappeared during scan */ }
+          }
+        }
       } catch {
         continue;
       }
 
       for (const file of files) {
-        const full = join(dir, file);
+        const full = file;
         try {
           if (!shouldRead(statSync(full).mtimeMs, opts.since)) continue;
         } catch {

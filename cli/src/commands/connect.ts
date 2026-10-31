@@ -1,13 +1,13 @@
 import pc from "picocolors";
-import { existsSync, statSync } from "fs";
-import { delimiter, join, sep } from "path";
+import { existsSync } from "fs";
+import { join } from "path";
 import { homedir, hostname } from "os";
 import { loadConfig } from "../config.js";
 import { fetchRank, redeemConnectCode } from "../api.js";
 import { formatTokens } from "../format.js";
 import { browserLogin, saveApiKey } from "./login.js";
 import { runSync, type SyncResult } from "./sync.js";
-import { installHook, HOOK_COMMAND, NPX_HOOK_COMMAND } from "./install.js";
+import { installHook, HOOK_COMMAND, NPX_HOOK_COMMAND, burnlogOnPath } from "./install.js";
 import { installSchedule } from "./schedule.js";
 
 /**
@@ -34,25 +34,6 @@ function machineLabel(): string {
   return hostname().replace(/\.local$/, "").replace(/[^\w.-]+/g, "-").slice(0, 40);
 }
 
-/**
- * Is there a real, persistent `burnlog` on PATH? Under npx the package's own
- * bin dir (…/_npx/<hash>/node_modules/.bin) is on PATH too, but it's a cache
- * that a hook firing next week can't rely on — so it doesn't count.
- */
-function burnlogOnPath(): boolean {
-  const names = process.platform === "win32" ? ["burnlog.cmd", "burnlog.exe", "burnlog"] : ["burnlog"];
-  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
-    if (!dir || dir.includes(`${sep}_npx${sep}`)) continue;
-    for (const n of names) {
-      try {
-        if (statSync(join(dir, n)).isFile()) return true;
-      } catch {
-        // not here
-      }
-    }
-  }
-  return false;
-}
 
 function list(names: string[]): string {
   return names.join(", ");

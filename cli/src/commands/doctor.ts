@@ -7,6 +7,7 @@ import { loadConfig, configPath } from "../config.js";
 import { scanAll, totalTokens } from "../adapters/index.js";
 import { readSink } from "../sink.js";
 import { formatTokens } from "../format.js";
+import { scheduleInstalled } from "./schedule.js";
 
 /**
  * `burnlog doctor` — find the things that quietly make your numbers wrong.
@@ -107,13 +108,14 @@ export async function doctor(_args: string[] = []): Promise<void> {
 
   // ---- automation ----
   const hook = claudeHookInstalled();
+  const schedule = scheduleInstalled();
   checks.push({
-    level: hook ? "ok" : "warn",
-    title: hook ? "auto-sync installed" : "auto-sync not installed",
-    detail: hook
-      ? "Claude Code SessionEnd hook will sync for you"
-      : "run `burnlog install` so you never have to run sync by hand",
+    level: hook || schedule ? "ok" : "warn",
+    title: hook || schedule ? "auto-sync installed" : "auto-sync not installed",
+    detail: [schedule ? "30-minute schedule" : "", hook ? "Claude Code session-end hook" : ""].filter(Boolean).join(" + ")
+      || "run `burnlog install --schedule-only` for a 30-minute sync",
   });
+  if (cfg.syncHealth?.lastError) checks.push({ level: "bad", title: "last sync failed", detail: cfg.syncHealth.lastError });
 
   // ---- render ----
   console.log();
