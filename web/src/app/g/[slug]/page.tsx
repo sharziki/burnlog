@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const group = await prisma.club.findUnique({ where: { slug }, select: { name: true, description: true, isPrivate: true } });
   if (!group || group.isPrivate) return { title: "Group not found" };
-  return { title: `${group.name} — burnlog group`, description: group.description || `See the ${group.name} AI coding leaderboard on Burnlog.`, alternates: { canonical: `/g/${slug}` } };
+  return { title: `${group.name} group`, description: group.description || `See the ${group.name} AI coding leaderboard on Burnlog.`, alternates: { canonical: `/g/${slug}` } };
 }
 export default async function GroupPage({ params }: Props) {
   const { slug } = await params;
