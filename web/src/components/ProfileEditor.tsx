@@ -10,20 +10,21 @@ import { useEffect, useRef, useState } from "react";
 export function ProfileEditor({
   initial,
 }: {
-  initial: { bio: string; twitter: string; website: string };
+  initial: { bio: string; tags: string; twitter: string; website: string };
 }) {
   const [bio, setBio] = useState(initial.bio);
+  const [tags, setTags] = useState(initial.tags);
   const [twitter, setTwitter] = useState(initial.twitter);
   const [website, setWebsite] = useState(initial.website);
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const saved = useRef(JSON.stringify({ bio: initial.bio, twitter: initial.twitter, website: initial.website }));
+  const saved = useRef(JSON.stringify({ bio: initial.bio, tags: initial.tags, twitter: initial.twitter, website: initial.website }));
   const latest = useRef(saved.current);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
-  const draft = JSON.stringify({ bio, twitter, website });
+  const draft = JSON.stringify({ bio, tags, twitter, website });
   latest.current = draft;
 
-  async function save(next = { bio, twitter, website }) {
+  async function save(next = { bio, tags, twitter, website }) {
     const payload = JSON.stringify(next);
     setState("saving");
     const request = queue.current.then(async () => {
@@ -48,7 +49,7 @@ export function ProfileEditor({
   useEffect(() => {
     if (draft === saved.current) return;
     setState("idle");
-    const next = { bio, twitter, website };
+    const next = { bio, tags, twitter, website };
     const id = setTimeout(() => void save(next), 650);
     return () => clearTimeout(id);
     // Save the exact draft captured by this render after typing pauses.
@@ -81,6 +82,7 @@ export function ProfileEditor({
             className="field"
           />
         </label>
+        <label className="block"><span className="label">Interests <span className="font-normal text-dim">· up to 5, separated by commas</span></span><input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="agents, open source, research" maxLength={160} className="field" /><span className="mt-1 block text-[12px] text-dim">Self-selected tags appear on your public profile.</span></label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="label">X</span>

@@ -60,11 +60,11 @@ export default async function ProfilePage({ params }: Props) {
   const { username } = await params;
   const user = await prisma.user.findFirst({
     where: { username },
-    select: { id: true, createdAt: true },
+    select: { id: true, createdAt: true, tags: true },
   });
   if (!user) notFound();
 
-  const [stats, board, session] = await Promise.all([
+  const [stats, board, session, groups] = await Promise.all([
     cachedUserStats(user.id),
     // Standing and neighbours. Also the only links between one profile and the
     // next: without them each profile is an island a crawler reaches only from
@@ -72,6 +72,7 @@ export default async function ProfilePage({ params }: Props) {
     // from the pages around it.
     getBoard(),
     auth(),
+    prisma.clubMembership.findMany({ where: { userId: user.id, club: { isPrivate: false } }, select: { club: { select: { name: true, slug: true } } }, orderBy: { joinedAt: "asc" } }),
   ]);
   if (!stats) notFound();
 
@@ -101,6 +102,8 @@ export default async function ProfilePage({ params }: Props) {
         joinedAt={user.createdAt.toISOString()}
         place={place || null}
         neighbours={neighbours}
+        groups={groups.map((m) => m.club)}
+        tags={user.tags?.split(",").filter(Boolean) ?? []}
         isOwner={isOwner}
         accountControls={accountControls}
       />
@@ -110,7 +113,7 @@ export default async function ProfilePage({ params }: Props) {
 
 async function AccountSection({ userId, username }: { userId: string; username: string }) {
   const [profile, keys, perKey] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { bio: true, twitter: true, website: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { bio: true, tags: true, twitter: true, website: true } }),
     prisma.apiKey.findMany({
       where: { userId, clubId: null },
       select: { id: true, label: true, createdAt: true, lastUsed: true },
@@ -145,7 +148,7 @@ async function AccountSection({ userId, username }: { userId: string; username: 
   }
 
   return <AccountControls
-    profile={{ bio: profile?.bio ?? "", twitter: profile?.twitter ?? "", website: profile?.website ?? "" }}
+    profile={{ bio: profile?.bio ?? "", tags: profile?.tags ?? "", twitter: profile?.twitter ?? "", website: profile?.website ?? "" }}
     machines={machines}
     signOutAction={signOutAction}
     disconnectAction={disconnectAction}

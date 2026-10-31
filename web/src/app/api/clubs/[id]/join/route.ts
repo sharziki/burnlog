@@ -35,9 +35,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const members = await prisma.clubMembership.count({ where: { clubId: id } });
   const limits = clubLimits(club.plan);
-  if (members >= limits.memberLimit) {
+  // Public communities are for discovery, not seat-limited workspaces.
+  if (members >= (club.isPrivate ? limits.memberLimit : 5000)) {
     return NextResponse.json(
-      { ok: false, error: "member_limit", message: `${club.plan} plan allows ${limits.memberLimit} members` },
+      { ok: false, error: "member_limit", message: club.isPrivate ? `${club.plan} plan allows ${limits.memberLimit} members` : "This group is full" },
       { status: 409 },
     );
   }

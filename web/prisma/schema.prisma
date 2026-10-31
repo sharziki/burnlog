@@ -17,6 +17,7 @@ model User {
   image         String?
   username      String?   @unique // github login
   bio           String?
+  tags          String? // comma-separated, self-selected profile interests
   github        String?
   twitter       String?
   website       String?

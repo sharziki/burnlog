@@ -47,6 +47,7 @@ export default async function Home() {
           <p className="m-0 mt-3 max-w-2xl text-[15px] leading-[1.6] text-soft">
             The public leaderboard for AI coding tokens. Counts only — never prompts or code.
           </p>
+          <a href="/groups" className="mt-4 inline-block text-[14px] text-accent underline underline-offset-4">Find your group or start one →</a>
         </div>
         <div className="shrink-0">
           <SetupCTA />
