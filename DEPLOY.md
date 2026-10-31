@@ -240,6 +240,11 @@ Those chains are in-memory only, so the rule is re-asserted by
 `burnlog-db-firewall.service` + `.timer` (every 10 min) on runtime-01. If the
 site suddenly cannot reach the database, check that unit before anything else:
 
+The versioned repair script is [`scripts/burnlog-db-firewall`](scripts/burnlog-db-firewall).
+It checks **position**, not just rule presence: an ACCEPT below the SXNA drop
+chain leaves the database unreachable. After updating the server copy, run the
+service once and verify `iptables -S DOCKER-USER` lists the 55432 ACCEPT first.
+
 ```bash
 ssh root@100.86.211.91 'systemctl status burnlog-db-firewall.service; iptables -L DOCKER-USER -n | head -4'
 ```
