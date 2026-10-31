@@ -12,10 +12,9 @@ then on. Nothing is asked of you before you've seen what it found.
 
 ## Two ways it counts
 
-**1. Log scraping** — burnlog walks local log files written by your coding
-agents and extracts the `usage` blocks. It **never** reads prompt text, file
-contents, project paths, or anything else that could identify what you were
-working on — only the token counts and a random dedup id.
+**1. Log scraping** — burnlog opens local agent log files and extracts their
+`usage` blocks. It uploads token counts, model, timestamp, and an opaque dedup
+ID; it does not upload prompts, code, filenames, or project paths.
 
 | Agent | Where the numbers come from |
 | --- | --- |
@@ -77,18 +76,20 @@ burnlog log 0 --in 30000 --out 12000 --model gpt-5
 burnlog                       scan, sign in, sync, install the hook (same as `setup`)
 burnlog login [api-key]       browser sign-in; pass a key for CI (~/.burnlog/config.json, mode 600)
 burnlog scan                  parse logs locally, show totals (does not upload)
+burnlog scan --json           exact per-source token buckets; no paths or session IDs
 burnlog sync [--quiet]        upload new burn events to the leaderboard
 burnlog wrap -- <cmd>         count any command's LLM calls, any provider
 burnlog log <tokens>          record usage by hand
 burnlog challenge             list challenges · `new` to start one · `join <code>`
-burnlog status                show current config
+burnlog status                show sync health, active sync mechanisms, and rank
 burnlog budget                show joined team budget usage
 burnlog budget --club <slug>  show one team by slug or id
 burnlog budget --fail-on-over exit 2 when any joined team is over budget
 burnlog report [--club <slug>] export team usage CSV
-burnlog install               install a Claude Code hook for automatic sync
-burnlog uninstall             remove the Claude Code hook
-burnlog daemon                run a background watcher that syncs every 30s
+burnlog install               install a 30-minute schedule and Claude Code hook
+burnlog install --schedule-only  install the schedule without a hook
+burnlog uninstall             remove both schedule and hook; keeps sign-in
+burnlog daemon                sync every 30s while this process runs
 burnlog logout                delete the stored api key
 ```
 
@@ -110,6 +111,22 @@ BURNLOG_API_KEY=blg_team_or_user_key burnlog report --club platform --from 2026-
 
 With a team API key, `--club` can be omitted because the key sees only one team.
 Service usage in the CSV is split by team API key label for new events.
+
+## Auto-sync and recovery
+
+`burnlog install` creates a user-level 30-minute cron job (macOS/Linux) or Task Scheduler task (Windows). It also adds a Claude Code session-end hook for faster updates. `--schedule-only` skips the hook. `burnlog uninstall` removes both; it does not sign you out. Neither `install` nor `connect` is needed for manual sync.
+
+`burnlog status` shows the installed mechanisms, last attempt, last success, and last error. A quiet scheduled run still exits nonzero on upload failure and saves the error for the next status check. A failed batch leaves the sync checkpoint unchanged, so the next run retries it. `burnlog sync --full` scans all history; already uploaded request IDs are skipped by the server.
+
+## Windows PowerShell command discovery
+
+If `npm install -g @sxnalabs/burnlog` succeeds but `burnlog` is not recognized, use `npx -y @sxnalabs/burnlog@latest status` (or replace `status` with `connect`, `sync`, or another command). Check the global executable directory with `npm prefix -g`; on Windows it should contain `burnlog.cmd`. `Get-Command burnlog` tells you whether PowerShell can find it. If the shim exists but the command is missing, add that directory to your **user PATH**, then open a new PowerShell session. If `burnlog.cmd` does not exist, reinstall the package. A new session is needed after changing PATH, not merely after installing into a directory already on PATH.
+
+## Reconcile token totals with ccusage
+
+Run `burnlog scan --json` and compare its exact `rankedTokens` per source with ccusage over the **same machines and full available history**. Burnlog's ranked total is fresh input + output + cache creation; cache reads are reported in a separate bucket and excluded. Codex's `input_tokens` includes `cached_input_tokens`, so Burnlog subtracts cached input before ranking. Claude Code's cache read and cache creation fields are separate from `input_tokens`; creation counts toward rank. The adapters also differ in which source files and agents they support. `scannedFiles` and `events` help identify coverage gaps without sharing private logs.
+
+Claude Code nested subagent transcripts are included from 0.9.2. To backfill newly discovered events after upgrading, run `burnlog sync --full` once. This does not rewrite older server events with the same request ID; historical totals created by older adapter versions may still differ. If a gap remains, share only `scan --json` aggregates and source/version details, never transcripts or session IDs.
 
 ## Environment
 

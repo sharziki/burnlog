@@ -2,8 +2,24 @@ import pc from "picocolors";
 import { scanAll, totalTokens } from "../adapters/index.js";
 import { formatTokens } from "../format.js";
 
-export async function scan(_args: string[]): Promise<void> {
+export async function scan(args: string[]): Promise<void> {
   const results = await scanAll();
+  if (args.includes("--json")) {
+    // Aggregates only: safe to share without exposing paths, session IDs,
+    // request IDs, prompts, or raw log records.
+    console.log(JSON.stringify(results.map((r) => ({
+      source: r.source,
+      events: r.events.length,
+      scannedFiles: r.scannedFiles,
+      inputTokens: r.events.reduce((n, e) => n + e.inputTokens, 0),
+      outputTokens: r.events.reduce((n, e) => n + e.outputTokens, 0),
+      cacheCreationTokens: r.events.reduce((n, e) => n + e.cacheCreationTokens, 0),
+      cacheReadTokens: r.events.reduce((n, e) => n + e.cacheReadTokens, 0),
+      rankedTokens: r.events.reduce((n, e) => n + totalTokens(e), 0),
+      ...(r.note ? { note: r.note } : {}),
+    })), null, 2));
+    return;
+  }
   const allEvents = results.flatMap((r) => r.events);
   const grand = allEvents.reduce((s, e) => s + totalTokens(e), 0);
 

@@ -1,6 +1,6 @@
 import pc from "picocolors";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { join } from "path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from "fs";
+import { delimiter, join, sep } from "path";
 import { homedir } from "os";
 import { installSchedule, removeSchedule } from "./schedule.js";
 
@@ -16,6 +16,18 @@ type ClaudeSettings = {
  * `@sxnalabs/burnlog@latest sync …`, which a plain substring check missed.
  */
 export const BURNLOG_HOOK_RE = /burnlog(@[\w.-]+)? sync/;
+
+/** Ignore npx's transient shim when choosing a persistent hook command. */
+export function burnlogOnPath(): boolean {
+  const names = process.platform === "win32" ? ["burnlog.cmd", "burnlog.exe", "burnlog"] : ["burnlog"];
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (!dir || dir.includes(`${sep}_npx${sep}`)) continue;
+    for (const name of names) {
+      try { if (statSync(join(dir, name)).isFile()) return true; } catch { /* absent */ }
+    }
+  }
+  return false;
+}
 
 function settingsPath(): string {
   return join(homedir(), ".claude", "settings.json");
@@ -58,7 +70,7 @@ export const NPX_HOOK_COMMAND = "npx -y @sxnalabs/burnlog@latest sync --quiet --
  */
 export function installHook(
   opts: { event?: "SessionEnd" | "Stop"; command?: string } = {},
-): { status: "installed" | "exists"; event: string; path: string } {
+): { status: "installed" | "updated" | "exists"; event: string; path: string } {
   const event = opts.event ?? "SessionEnd";
   const path = settingsPath();
   const settings = loadSettings(path);
@@ -66,7 +78,17 @@ export function installHook(
   settings.hooks ??= {};
   settings.hooks[event] ??= [];
 
-  if (hasBurnlogHook(settings.hooks[event])) return { status: "exists", event, path };
+  if (hasBurnlogHook(settings.hooks[event])) {
+    let updated = false;
+    for (const group of settings.hooks[event]) for (const hook of group.hooks ?? []) {
+      if (BURNLOG_HOOK_RE.test(hook.command ?? "") && opts.command && hook.command !== opts.command) {
+        hook.command = opts.command;
+        updated = true;
+      }
+    }
+    if (updated) saveSettings(path, settings);
+    return { status: updated ? "updated" : "exists", event, path };
+  }
 
   settings.hooks[event].push({
     hooks: [
@@ -88,28 +110,19 @@ export function installHook(
 }
 
 export function install(args: string[]): void {
-  const { status, event, path } = installHook({
-    event: args.includes("--on-stop") ? "Stop" : "SessionEnd",
-  });
-
-  if (status === "exists") {
-    console.log(pc.yellow("burnlog hook already installed for ") + pc.bold(event));
-    console.log("  " + pc.dim(path));
-    return;
+  if (!args.includes("--schedule-only")) {
+    const { status, event, path } = installHook({
+      event: args.includes("--on-stop") ? "Stop" : "SessionEnd",
+      command: burnlogOnPath() ? HOOK_COMMAND : NPX_HOOK_COMMAND,
+    });
+    console.log(status === "exists" ? pc.yellow("burnlog hook already installed") : pc.green("✓") + ` ${status} burnlog hook`);
+    console.log("  event: " + pc.cyan(event));
+    console.log("  file:  " + pc.dim(path));
   }
-
-  console.log(pc.green("✓") + " installed burnlog hook");
-  console.log("  event: " + pc.cyan(event));
-  console.log("  file:  " + pc.dim(path));
-  console.log();
   const sched = installSchedule();
-  console.log(
-    pc.dim(
-      sched.status === "installed"
-        ? "burnlog will now auto-sync when a Claude Code session ends, and every 30 minutes for every other agent."
-        : `burnlog will now auto-sync when a Claude Code session ends. (No 30-minute schedule: ${sched.reason}.)`,
-    ),
-  );
+  console.log(sched.status === "installed"
+    ? pc.green("✓") + " 30-minute sync schedule installed"
+    : pc.yellow(`30-minute schedule unavailable: ${sched.reason}`));
   console.log(pc.dim("remove with: ") + pc.bold("burnlog uninstall"));
 }
 

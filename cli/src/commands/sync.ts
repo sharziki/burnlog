@@ -51,58 +51,74 @@ export type SyncHooks = {
 
 /**
  * The core of `burnlog sync`: scan, upload, record progress. Prints nothing —
- * callers decide what to show. Throws if an upload fails (config is then left
- * untouched, so the next run retries the same range).
+ * callers decide what to show. A failed upload records an error without
+ * advancing lastSync, so the next run retries the same range.
  */
 export async function runSync(opts: { full?: boolean } = {}, hooks: SyncHooks = {}): Promise<SyncResult> {
   const cfg = loadConfig();
   if (!cfg.apiKey) throw new Error("no api key — run burnlog login <key>");
-  // Incremental by default: only re-read logs touched since the last sync.
-  // A full re-read of years of history took long enough that the Claude Code
-  // session-end hook was cancelled mid-run. Server-side dedupe means a full
-  // scan is never *wrong*, just slow, so `--full` stays available for when
-  // history needs rebuilding (e.g. after an adapter fix).
-  const since = opts.full ? undefined : cfg.lastSync ? new Date(cfg.lastSync) : undefined;
-  // Sources this machine has never fully read — new in this version, typically
-  // — get their whole history this once. Configs from before this field
-  // existed had fully read the original six.
-  const backfilled = new Set(
-    cfg.backfilled ?? ["claude-code", "codex", "hermes", "openclaw", "opencode", "jsonl"],
-  );
-  const fullFor = new Set(adapters.map((a) => a.name).filter((n) => !backfilled.has(n)));
-  const results = await scanAll({ since }, fullFor);
-  const sources: SourceSummary[] = results.map((r) => ({
-    source: r.source,
-    events: r.events.length,
-    tokens: r.events.reduce((s, e) => s + totalTokens(e), 0),
-    ...(r.note ? { note: r.note } : {}),
-  }));
-  // Session aggregates can exceed the server's per-event storage ceiling;
-  // split them so the tokens are kept rather than rejected.
-  const events = results.flatMap((r) => r.events).flatMap(splitOversized);
-  if (!events.length) return { inserted: 0, skipped: 0, sources, total: 0 };
-
-  const total = events.reduce((s, e) => s + totalTokens(e), 0);
-  hooks.onScan?.({ events: events.length, sources, total });
-
-  let inserted = 0;
-  let skipped = 0;
-  for (let i = 0; i < events.length; i += BATCH) {
-    const chunk = events.slice(i, i + BATCH);
-    hooks.onBatchStart?.(i + 1, i + chunk.length, events.length);
-    const res = await ingest(cfg.apiUrl, cfg.apiKey, chunk);
-    inserted += res.inserted;
-    skipped += res.skipped;
-    hooks.onBatchDone?.();
-  }
-
-  cfg.lastSync = new Date().toISOString();
-  // Only a source that actually produced events counts as backfilled: one
-  // that was signed out or empty today must get its full read when it has data.
-  cfg.backfilled = [...new Set([...backfilled, ...results.filter((r) => r.events.length).map((r) => r.source)])];
+  const started = new Date().toISOString();
+  cfg.syncHealth = { ...cfg.syncHealth, lastAttempt: started };
   saveConfig(cfg);
+  try {
+    // Incremental by default: only re-read logs touched since the last sync.
+    // A full re-read of years of history took long enough that the Claude Code
+    // session-end hook was cancelled mid-run. Server-side dedupe means a full
+    // scan is never *wrong*, just slow, so `--full` stays available for when
+    // history needs rebuilding (e.g. after an adapter fix).
+    const since = opts.full ? undefined : cfg.lastSync ? new Date(cfg.lastSync) : undefined;
+    // Sources this machine has never fully read — new in this version, typically
+    // — get their whole history this once. Configs from before this field
+    // existed had fully read the original six.
+    const backfilled = new Set(
+      cfg.backfilled ?? ["claude-code", "codex", "hermes", "openclaw", "opencode", "jsonl"],
+    );
+    const fullFor = new Set(adapters.map((a) => a.name).filter((n) => !backfilled.has(n)));
+    const results = await scanAll({ since }, fullFor);
+    const sources: SourceSummary[] = results.map((r) => ({
+      source: r.source,
+      events: r.events.length,
+      tokens: r.events.reduce((s, e) => s + totalTokens(e), 0),
+      ...(r.note ? { note: r.note } : {}),
+    }));
+    // Session aggregates can exceed the server's per-event storage ceiling;
+    // split them so the tokens are kept rather than rejected.
+    const events = results.flatMap((r) => r.events).flatMap(splitOversized);
+    if (!events.length) {
+      cfg.lastSync = started;
+      cfg.syncHealth = { lastAttempt: started, lastSuccess: new Date().toISOString() };
+      saveConfig(cfg);
+      return { inserted: 0, skipped: 0, sources, total: 0 };
+    }
 
-  return { inserted, skipped, sources, total };
+    const total = events.reduce((s, e) => s + totalTokens(e), 0);
+    hooks.onScan?.({ events: events.length, sources, total });
+
+    let inserted = 0;
+    let skipped = 0;
+    for (let i = 0; i < events.length; i += BATCH) {
+      const chunk = events.slice(i, i + BATCH);
+      hooks.onBatchStart?.(i + 1, i + chunk.length, events.length);
+      const res = await ingest(cfg.apiUrl, cfg.apiKey, chunk);
+      inserted += res.inserted;
+      skipped += res.skipped;
+      hooks.onBatchDone?.();
+    }
+
+    // Files changed during upload must stay eligible on the next scan.
+    cfg.lastSync = started;
+    cfg.syncHealth = { lastAttempt: started, lastSuccess: new Date().toISOString() };
+    // Only a source that actually produced events counts as backfilled: one
+    // that was signed out or empty today must get its full read when it has data.
+    cfg.backfilled = [...new Set([...backfilled, ...results.filter((r) => r.events.length).map((r) => r.source)])];
+    saveConfig(cfg);
+
+    return { inserted, skipped, sources, total };
+  } catch (err) {
+    cfg.syncHealth = { ...cfg.syncHealth, lastError: err instanceof Error ? err.message : String(err) };
+    saveConfig(cfg);
+    throw err;
+  }
 }
 
 async function syncOnly(args: string[]): Promise<void> {
@@ -116,7 +132,7 @@ async function syncOnly(args: string[]): Promise<void> {
 
   const cfg = loadConfig();
   if (!cfg.apiKey) {
-    if (quiet) process.exit(0); // silent no-op when run from a hook before login
+    if (quiet) return; // hooks can fire before login
     console.error(pc.red("no api key — run ") + pc.bold("burnlog login <key>"));
     process.exit(1);
   }
@@ -140,7 +156,10 @@ async function syncOnly(args: string[]): Promise<void> {
       },
     );
   } catch (err) {
-    if (quiet) process.exit(0); // hook context — fail silently
+    if (quiet) {
+      process.exitCode = 1; // scheduler sees failure; status retains error
+      return;
+    }
     process.stdout.write(pc.red("fail\n"));
     console.error("  " + pc.red(String(err)));
     process.exit(1);

@@ -2,6 +2,12 @@ import pc from "picocolors";
 import { loadConfig, configPath } from "../config.js";
 import { fetchRank } from "../api.js";
 import { formatTokens } from "../format.js";
+import { scheduleInstalled } from "./schedule.js";
+import { BURNLOG_HOOK_RE, burnlogOnPath } from "./install.js";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
+import { spawnSync } from "child_process";
 
 export async function status(_args: string[]): Promise<void> {
   const cfg = loadConfig();
@@ -18,6 +24,19 @@ export async function status(_args: string[]): Promise<void> {
   );
   console.log("  claude dir       " + pc.dim(cfg.claudeProjectsDir ?? ""));
   console.log("  last sync        " + (cfg.lastSync ? pc.cyan(cfg.lastSync) : pc.dim("never")));
+  console.log("  last attempt     " + (cfg.syncHealth?.lastAttempt ?? "never"));
+  console.log("  last success     " + (cfg.syncHealth?.lastSuccess ?? "never"));
+  console.log("  last error       " + (cfg.syncHealth?.lastError ? pc.red(cfg.syncHealth.lastError) : pc.dim("none")));
+  const settings = join(homedir(), ".claude", "settings.json");
+  let hook = false;
+  try { hook = existsSync(settings) && BURNLOG_HOOK_RE.test(readFileSync(settings, "utf8")); } catch { /* unreadable */ }
+  console.log("  scheduled sync   " + (scheduleInstalled() ? "every 30 minutes" : "off"));
+  console.log("  Claude hook      " + (hook ? "session end" : "off"));
+  if (process.platform === "win32" && !burnlogOnPath()) {
+    const prefix = spawnSync("cmd.exe", ["/d", "/s", "/c", "npm prefix -g"], { encoding: "utf8" }).stdout?.trim();
+    console.log("  command          " + pc.yellow("not on PATH; use npx -y @sxnalabs/burnlog@latest status"));
+    if (prefix) console.log("  npm global bin   " + pc.cyan(prefix) + pc.dim(" — add this directory to user PATH, then reopen PowerShell"));
+  }
 
   if (cfg.apiKey) {
     process.stdout.write(pc.dim("\n  fetching stats... "));

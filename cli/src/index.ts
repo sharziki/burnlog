@@ -41,19 +41,19 @@ ${pc.bold("getting on the board")}
   ${pc.cyan("logout")}             clear your api key
 
 ${pc.bold("counting tokens")}
-  ${pc.cyan("scan")}               parse logs locally, show totals (dry run)
+  ${pc.cyan("scan")}    [--json]   parse logs locally, show totals (dry run)
   ${pc.cyan("sync")}    [--full]   upload once, now — incremental; --full re-reads all history
   ${pc.cyan("wrap")}    -- <cmd>   count any command's LLM calls (any provider)
   ${pc.cyan("log")}     <tokens>   record usage by hand (dashboards, batch jobs)
   ${pc.cyan("me")}      [--days n] your burn over time (default 180 days)
-  ${pc.cyan("install")}            set up auto-sync so you never run ${pc.bold("sync")} by hand again
+  ${pc.cyan("install")} [--schedule-only]  set up 30-minute sync; optional Claude hook
   ${pc.cyan("uninstall")}          remove auto-sync
   ${pc.cyan("daemon")}             keep syncing every 30s while it runs (alternative to install)
   ${pc.cyan("doctor")}             check for double counting, stale config, missing auto-sync
 
 ${pc.bold("competing")}
   ${pc.cyan("challenge")}          list / ${pc.bold("new")} / ${pc.bold("join <code>")}
-  ${pc.cyan("status")}             show config + leaderboard rank
+  ${pc.cyan("status")}             show sync health, mechanisms + leaderboard rank
 
 ${pc.bold("teams")}
   ${pc.cyan("budget")}             show team budgets (CI: --club <slug> --fail-on-over)

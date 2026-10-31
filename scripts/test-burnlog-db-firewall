@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+root=$(mktemp -d)
+trap 'find "$root" -type f -delete; rmdir "$root"' EXIT
+cat > "$root/iptables" <<'MOCK'
+#!/bin/sh
+rule='-A DOCKER-USER -p tcp -m conntrack --ctstate NEW --ctorigdstport 55432 -j ACCEPT'
+case "$1" in
+  -S) printf '%s\n' '-N DOCKER-USER'; cat "$STATE" ;;
+  -C) grep -Fxq -- "$rule" "$STATE" ;;
+  -D) grep -Fxv -- "$rule" "$STATE" > "$STATE.next"; mv "$STATE.next" "$STATE" ;;
+  -I) { printf '%s\n' "$rule"; cat "$STATE"; } > "$STATE.next"; mv "$STATE.next" "$STATE" ;;
+  *) exit 1 ;;
+esac
+MOCK
+chmod +x "$root/iptables"
+export STATE="$root/rules" PATH="$root:$PATH"
+printf '%s\n' '-A DOCKER-USER -j SXNA-DROP' '-A DOCKER-USER -p tcp -m conntrack --ctstate NEW --ctorigdstport 55432 -j ACCEPT' > "$STATE"
+sh scripts/burnlog-db-firewall
+first=$(head -1 "$STATE")
+[ "$first" = '-A DOCKER-USER -p tcp -m conntrack --ctstate NEW --ctorigdstport 55432 -j ACCEPT' ]
+sh scripts/burnlog-db-firewall
+[ "$(wc -l < "$STATE")" -eq 2 ]
+printf '%s\n' 'firewall rule order and idempotence: ok'

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Vercel reaches Burnlog Postgres through Docker's published port 55432.
+# Place this rule before SXNA's DOCKER-USER drop chain. A rule present later
+# in the chain does not help and was the cause of the 2026-10-31 outage.
+set -eu
+rule='-A DOCKER-USER -p tcp -m conntrack --ctstate NEW --ctorigdstport 55432 -j ACCEPT'
+first=$(iptables -S DOCKER-USER | sed -n '2p')
+[ "$first" = "$rule" ] && exit 0
+if iptables -C DOCKER-USER -p tcp -m conntrack --ctstate NEW --ctorigdstport 55432 -j ACCEPT 2>/dev/null; then
+  iptables -D DOCKER-USER -p tcp -m conntrack --ctstate NEW --ctorigdstport 55432 -j ACCEPT
+fi
+iptables -I DOCKER-USER 1 -p tcp -m conntrack --ctstate NEW --ctorigdstport 55432 -j ACCEPT

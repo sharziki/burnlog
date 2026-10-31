@@ -57,6 +57,13 @@ function writeCrontab(content: string): void {
 
 export type ScheduleResult = { status: "installed" } | { status: "unavailable"; reason: string };
 
+export function scheduleInstalled(): boolean {
+  if (process.platform === "win32") {
+    return spawnSync("schtasks", ["/Query", "/TN", TASK], { stdio: "ignore" }).status === 0;
+  }
+  return !!which("crontab") && readCrontab().includes(MARK);
+}
+
 export function installSchedule(): ScheduleResult {
   // Tests (and anyone who wants hook-only syncing) opt out here.
   if (process.env.BURNLOG_NO_SCHEDULE) return { status: "unavailable", reason: "disabled by BURNLOG_NO_SCHEDULE" };
