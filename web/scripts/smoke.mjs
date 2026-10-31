@@ -17,10 +17,17 @@
 const BASE = (process.argv[2] ?? "https://burnlog.net").replace(/\/$/, "");
 const results = [];
 const check = (name, ok, detail = "") => results.push({ name, ok: Boolean(ok), detail });
+const smokeFetch = async (url, options = {}) => {
+  try {
+    return await fetch(url, { ...options, signal: AbortSignal.timeout(15_000) });
+  } catch (err) {
+    throw new Error(`request timed out or failed: ${url}`, { cause: err });
+  }
+};
 
 async function get(path, { redirect = "follow" } = {}) {
   const url = path.startsWith("http") ? path : BASE + path;
-  const res = await fetch(url, { redirect, headers: { "user-agent": "burnlog-smoke/1" } });
+  const res = await smokeFetch(url, { redirect, headers: { "user-agent": "burnlog-smoke/1" } });
   return { status: res.status, body: await res.text(), headers: res.headers };
 }
 
@@ -80,9 +87,9 @@ check("home: hero and board rendered", home.includes("Every token you burn") && 
 
 // One-paste setup: a code needs a signed-in user, and a bad code is refused.
 {
-  const mint = await fetch(`${BASE}/api/connect`, { method: "POST" });
+  const mint = await smokeFetch(`${BASE}/api/connect`, { method: "POST" });
   check("connect: minting a code needs sign-in", mint.status === 401, `got ${mint.status}`);
-  const bad = await fetch(`${BASE}/api/connect/redeem`, {
+  const bad = await smokeFetch(`${BASE}/api/connect/redeem`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ code: "blc_" + "0".repeat(40) }),
@@ -114,12 +121,12 @@ if (publicUsername) {
 // the way *back* from GitHub — only runtime logs can, which is why the
 // [auth][error] watcher exists alongside this.
 {
-  const csrfRes = await fetch(`${BASE}/api/auth/csrf`, { headers: { "user-agent": "burnlog-smoke/1" } });
+  const csrfRes = await smokeFetch(`${BASE}/api/auth/csrf`, { headers: { "user-agent": "burnlog-smoke/1" } });
   const cookie = (csrfRes.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
   const { csrfToken } = await csrfRes.json();
   check("auth: csrf token issued", Boolean(csrfToken));
 
-  const signin = await fetch(`${BASE}/api/auth/signin/github`, {
+  const signin = await smokeFetch(`${BASE}/api/auth/signin/github`, {
     method: "POST",
     redirect: "manual",
     headers: {
