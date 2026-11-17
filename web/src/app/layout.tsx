@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     type: "website",
     locale: "en_US",
-    images: [{ url: `${siteUrl}/og`, width: 1200, height: 630, alt: "burnlog" }],
+    images: [{ url: `${siteUrl}/og?v=2`, width: 1200, height: 630, alt: "burnlog" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     creator: "@sharziki",
     site: "@sharziki",
-    images: [`${siteUrl}/og`],
+    images: [`${siteUrl}/og?v=2`],
   },
   // SVG first for crisp tabs; PNG/ICO for the surfaces that won't take SVG
   // (Safari, some launchers, link-preview scrapers).
